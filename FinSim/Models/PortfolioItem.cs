@@ -5,12 +5,12 @@ using System.Threading.Tasks;
 
 namespace FinSim.Models
 {
-    public class Portfolio_Item
+    public class PortfolioItem
     {
         public Guid Id { get; set; }
         public Guid UserId { get; set; }
         public Guid InstrumentId { get; set; }
-        public int TtalQuantity { get; set; }
+        public int TotalQuantity { get; set; }
         public int LockedQuantity { get; set; }
         public decimal AverageCost { get; set; }
     }
