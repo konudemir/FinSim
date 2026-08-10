@@ -3,6 +3,7 @@ using System;
 using FinSim.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -11,9 +12,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace FinSim.Migrations
 {
     [DbContext(typeof(FinSimDbContext))]
-    partial class FinSimDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260810134407_ModelConfiguration")]
+    partial class ModelConfiguration
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -178,18 +181,14 @@ namespace FinSim.Migrations
                     b.Property<DateTime>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
 
-                    b.Property<string>("Direction")
-                        .IsRequired()
-                        .HasMaxLength(20)
-                        .HasColumnType("character varying(20)");
+                    b.Property<int>("Direction")
+                        .HasColumnType("integer");
 
                     b.Property<Guid>("InstrumentId")
                         .HasColumnType("uuid");
 
-                    b.Property<string>("OrderType")
-                        .IsRequired()
-                        .HasMaxLength(20)
-                        .HasColumnType("character varying(20)");
+                    b.Property<int>("OrderType")
+                        .HasColumnType("integer");
 
                     b.Property<decimal?>("Price")
                         .HasPrecision(18, 2)
@@ -198,10 +197,8 @@ namespace FinSim.Migrations
                     b.Property<int>("Quantity")
                         .HasColumnType("integer");
 
-                    b.Property<string>("Status")
-                        .IsRequired()
-                        .HasMaxLength(20)
-                        .HasColumnType("character varying(20)");
+                    b.Property<int>("Status")
+                        .HasColumnType("integer");
 
                     b.Property<DateTime>("UpdatedAt")
                         .HasColumnType("timestamp with time zone");
@@ -383,7 +380,7 @@ namespace FinSim.Migrations
                     b.HasOne("FinSim.Models.Order", "Order")
                         .WithMany("Transactions")
                         .HasForeignKey("OrderId")
-                        .OnDelete(DeleteBehavior.Restrict)
+                        .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
                     b.HasOne("FinSim.Models.User", "User")
