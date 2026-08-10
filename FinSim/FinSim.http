@@ -1,0 +1,6 @@
+@FinSim_HostAddress = http://localhost:5209
+
+GET {{FinSim_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
