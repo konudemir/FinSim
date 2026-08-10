@@ -18,7 +18,6 @@ namespace FinSim.Data
         public DbSet<PortfolioItem> PortfolioItems => Set<PortfolioItem>();
         public DbSet<Order> Orders => Set<Order>();
         public DbSet<Transaction> Transactions => Set<Transaction>();
-        public DbSet<PriceHistory> PriceHistories => Set<PriceHistory>();
 
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
@@ -62,11 +61,9 @@ namespace FinSim.Data
                 .WithMany(o => o.Transactions)
                 .HasForeignKey(t => t.OrderId)
                 .OnDelete(DeleteBehavior.Restrict);
-                
+
             });
 
-            modelBuilder.Entity<PriceHistory>()
-                .HasIndex(p => new { p.InstrumentId, p.RecordedAt });
             modelBuilder.Entity<Instrument>().HasData(
             new Instrument
             {
@@ -184,6 +181,19 @@ namespace FinSim.Data
                 BasePrice = 18m,
                 CurrentPrice = 18m,
                 IsActive = false // Added an inactive one for testing scenarios
+            }
+        );
+
+        modelBuilder.Entity<User>().HasData(
+            new User
+            {
+                Id = Guid.Parse("f0000000-0000-0000-0000-000000000001"),
+                FirstName = "Demir",
+                LastName = "Test",
+                Email = "demir@finsim.local",
+                FreeCashBalance = 100_000m,
+                lockedCashBalance = 0m,
+                CreatedAt = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc)
             }
         );
         }

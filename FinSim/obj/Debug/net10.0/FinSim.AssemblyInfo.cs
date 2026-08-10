@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("FinSim")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+bdf5dbabdbb7070d86f6152750d596d90970a2a2")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+d87a8a3e34e7eaa555985e58944a4d0ff114a15e")]
 [assembly: System.Reflection.AssemblyProductAttribute("FinSim")]
 [assembly: System.Reflection.AssemblyTitleAttribute("FinSim")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

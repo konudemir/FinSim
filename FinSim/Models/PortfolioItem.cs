@@ -7,6 +7,9 @@ namespace FinSim.Models
 {
     public class PortfolioItem
     {
+
+        public User User { get; set; } = null!;
+        public Instrument Instrument { get; set; } = null!;
         public Guid Id { get; set; }
         public Guid UserId { get; set; }
         public Guid InstrumentId { get; set; }

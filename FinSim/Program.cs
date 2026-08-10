@@ -8,5 +8,9 @@ builder.Services.AddOpenApi();
 
 builder.Services.AddDbContext<FinSimDbContext>(options =>
     options.UseNpgsql(builder.Configuration.GetConnectionString("BorsaDb")));
-    
+
+builder.Services.AddControllers();
 var app = builder.Build();
+app.MapControllers();
+
+app.Run();

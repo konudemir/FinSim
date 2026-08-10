@@ -13,6 +13,5 @@ namespace FinSim.Models
         public decimal BasePrice { get; set; }
         public decimal CurrentPrice { get; set; }
         public bool IsActive { get; set; }
-        public ICollection<PriceHistory> PreviousPrices { get; set; } = [];//added a price history for a better look at the frontend
     }
 }

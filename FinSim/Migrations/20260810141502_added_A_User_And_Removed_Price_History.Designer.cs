@@ -3,6 +3,7 @@ using System;
 using FinSim.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -11,9 +12,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace FinSim.Migrations
 {
     [DbContext(typeof(FinSimDbContext))]
-    partial class FinSimDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260810141502_added_A_User_And_Removed_Price_History")]
+    partial class added_A_User_And_Removed_Price_History
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
