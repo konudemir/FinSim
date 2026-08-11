@@ -7,18 +7,22 @@ using FinSim.Models.Enums;
 using FinSim.Models;
 using Microsoft.AspNetCore.Http.HttpResults;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.AspNetCore.SignalR;
+using FinSim.Hubs;
 
 namespace FinSim.Services
 {
     public class Worker : BackgroundService//Background worker or Price Simulating Engine
     {
+        private readonly IHubContext<PriceHub> _hub;
         private readonly ILogger<Worker> _logger;
         private readonly IServiceScopeFactory _scopeFactory;
 
-        public Worker(ILogger<Worker> logger, IServiceScopeFactory scopeFactory)
+        public Worker(ILogger<Worker> logger, IServiceScopeFactory scopeFactory, IHubContext<PriceHub> hub)
         {
             _logger = logger;
             _scopeFactory = scopeFactory;
+            _hub = hub;
         }
         protected override async Task ExecuteAsync(CancellationToken stoppingToken)
         {
@@ -35,12 +39,12 @@ namespace FinSim.Services
                     {
                         i.CurrentPrice = nextValue(i.CurrentPrice, i.BasePrice, marketMove);
                     }
-                    await db.SaveChangesAsync(stoppingToken);
-
                     await using var tx = await db.Database.BeginTransactionAsync(stoppingToken);
                     await MatchOrdersAsync(db, stoppingToken);
                     await db.SaveChangesAsync(stoppingToken);
                     await tx.CommitAsync(stoppingToken);
+                    var prices = instruments.Select(i => new { i.Symbol, i.CurrentPrice }).ToList();
+                    await _hub.Clients.All.SendAsync("PriceUpdate", prices, stoppingToken);
                 }
                 catch(Exception exc)
                 {
