@@ -16,8 +16,8 @@ namespace FinSim.Models
         public int Quantity { get; set; }
         public decimal? Price { get; set; }
         public OrderStatus Status { get; set; } = OrderStatus.Pending;
-        public DateTime CreatedAt { get; set; }
-        public DateTime UpdatedAt { get; set; }
+        public DateTimeOffset CreatedAt { get; set; }
+        public DateTimeOffset UpdatedAt { get; set; }
 
         public User User { get; set; } = null!;
         public Instrument Instrument { get; set; } = null!;

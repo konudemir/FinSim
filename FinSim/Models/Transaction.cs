@@ -14,7 +14,7 @@ namespace FinSim.Models
         public int ExecutedQuantity { get; set; }
         public decimal ExecutedPrice { get; set; }
         public decimal TotalAmount { get; set; }
-        public DateTime TransactionDate { get; set; }
+        public DateTimeOffset TransactionDate { get; set; }
 
         public Order Order { get; set; } = null!;
         public User User { get; set; } = null!;

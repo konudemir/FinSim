@@ -27,7 +27,7 @@ namespace FinSim.Data
             modelBuilder.Entity<User>(e =>
             {
                 e.Property(u => u.FreeCashBalance).HasPrecision(18, 2);
-                e.Property(u => u.lockedCashBalance).HasPrecision(18, 2);
+                e.Property(u => u.LockedCashBalance).HasPrecision(18, 2);
             });
 
             modelBuilder.Entity<Instrument>(e =>
@@ -192,8 +192,8 @@ namespace FinSim.Data
                 LastName = "Test",
                 Email = "demir@finsim.local",
                 FreeCashBalance = 100_000m,
-                lockedCashBalance = 0m,
-                CreatedAt = new DateTime(2026, 1, 1, 0, 0, 0, DateTimeKind.Utc)
+                LockedCashBalance = 0m,
+                CreatedAt = new DateTimeOffset(2026, 1, 1, 0, 0, 0, TimeSpan.Zero)
             }
         );
         }

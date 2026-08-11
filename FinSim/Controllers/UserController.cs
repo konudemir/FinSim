@@ -26,8 +26,8 @@ namespace FinSim.Controllers
             .Select(u => new
             {
                 u.FreeCashBalance,
-                u.lockedCashBalance,
-                Total = u.FreeCashBalance + u.lockedCashBalance
+                u.LockedCashBalance,
+                Total = u.FreeCashBalance + u.LockedCashBalance
             })
             .FirstOrDefaultAsync();
             return (balance is null) ? NotFound() : Ok(balance);

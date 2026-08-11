@@ -12,7 +12,7 @@ namespace FinSim.Models
         public string? LastName { get; set; }
         public string? Email { get; set; }
         public decimal FreeCashBalance { get; set; }
-        public decimal lockedCashBalance { get; set; }
-        public DateTime CreatedAt { get; set; }
+        public decimal LockedCashBalance { get; set; }
+        public DateTimeOffset CreatedAt { get; set; }
     }
 }

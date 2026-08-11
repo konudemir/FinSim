@@ -175,7 +175,7 @@ namespace FinSim.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
-                    b.Property<DateTime>("CreatedAt")
+                    b.Property<DateTimeOffset>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
 
                     b.Property<string>("Direction")
@@ -203,7 +203,7 @@ namespace FinSim.Migrations
                         .HasMaxLength(20)
                         .HasColumnType("character varying(20)");
 
-                    b.Property<DateTime>("UpdatedAt")
+                    b.Property<DateTimeOffset>("UpdatedAt")
                         .HasColumnType("timestamp with time zone");
 
                     b.Property<Guid>("UserId")
@@ -244,6 +244,10 @@ namespace FinSim.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasIndex("InstrumentId");
+
+                    b.HasIndex("UserId");
+
                     b.ToTable("PortfolioItems");
                 });
 
@@ -270,7 +274,7 @@ namespace FinSim.Migrations
                         .HasPrecision(18, 2)
                         .HasColumnType("numeric(18,2)");
 
-                    b.Property<DateTime>("TransactionDate")
+                    b.Property<DateTimeOffset>("TransactionDate")
                         .HasColumnType("timestamp with time zone");
 
                     b.Property<Guid>("UserId")
@@ -293,7 +297,7 @@ namespace FinSim.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uuid");
 
-                    b.Property<DateTime>("CreatedAt")
+                    b.Property<DateTimeOffset>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
 
                     b.Property<string>("Email")
@@ -309,7 +313,7 @@ namespace FinSim.Migrations
                     b.Property<string>("LastName")
                         .HasColumnType("text");
 
-                    b.Property<decimal>("lockedCashBalance")
+                    b.Property<decimal>("LockedCashBalance")
                         .HasPrecision(18, 2)
                         .HasColumnType("numeric(18,2)");
 
@@ -321,16 +325,35 @@ namespace FinSim.Migrations
                         new
                         {
                             Id = new Guid("f0000000-0000-0000-0000-000000000001"),
-                            CreatedAt = new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Utc),
+                            CreatedAt = new DateTimeOffset(new DateTime(2026, 1, 1, 0, 0, 0, 0, DateTimeKind.Unspecified), new TimeSpan(0, 0, 0, 0, 0)),
                             Email = "demir@finsim.local",
                             FirstName = "Demir",
                             FreeCashBalance = 100000m,
                             LastName = "Test",
-                            lockedCashBalance = 0m
+                            LockedCashBalance = 0m
                         });
                 });
 
             modelBuilder.Entity("FinSim.Models.Order", b =>
+                {
+                    b.HasOne("FinSim.Models.Instrument", "Instrument")
+                        .WithMany()
+                        .HasForeignKey("InstrumentId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("FinSim.Models.User", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Instrument");
+
+                    b.Navigation("User");
+                });
+
+            modelBuilder.Entity("FinSim.Models.PortfolioItem", b =>
                 {
                     b.HasOne("FinSim.Models.Instrument", "Instrument")
                         .WithMany()
