@@ -6,6 +6,7 @@ using System.Threading.Tasks;
 using FinSim.Data;
 using FinSim.Dtos;
 using FinSim.Models;
+using FinSim.Models.Enums;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
@@ -33,7 +34,8 @@ namespace FinSim.Controllers
                 return NotFound("Instrument not found.");
             if(!instrument.IsActive)
                 return BadRequest("Instrument is not active.");
-            var prc = Math.Round(instrument.CurrentPrice * request.Quantity * tampon, 2, MidpointRounding.AwayFromZero);
+            var prc = Math.Round(instrument.CurrentPrice * request.Quantity, 2, MidpointRounding.AwayFromZero);
+            await using var tx = await _db.Database.BeginTransactionAsync();
             if(request.Direction == Models.Enums.OrderDirection.Buy)
             {
                 if(user.FreeCashBalance < prc)
@@ -42,6 +44,26 @@ namespace FinSim.Controllers
                 }
                 user.FreeCashBalance -= prc;
                 user.LockedCashBalance += prc;
+                var portItem  = await _db.PortfolioItems.FirstOrDefaultAsync(i => i.UserId == request.UserId && i.InstrumentId == request.InstrumentId);
+                if(portItem == null)
+                {
+                    portItem = new PortfolioItem
+                    {
+                        Id = Guid.NewGuid(),
+                        UserId = request.UserId,
+                        InstrumentId = request.InstrumentId,
+                        TotalQuantity = request.Quantity,
+                        LockedQuantity = 0,
+                        AverageCost = instrument.CurrentPrice
+                    };
+                    _db.PortfolioItems.Add(portItem);
+                }
+                else
+                {//already exists a portfolio item
+                    portItem.AverageCost = ( (portItem.AverageCost * portItem.TotalQuantity) + instrument.CurrentPrice * request.Quantity ) / (portItem.TotalQuantity + request.Quantity);
+                    portItem.TotalQuantity += request.Quantity;
+                }
+                user.LockedCashBalance -= prc;  
             }
             else //sell
             {
@@ -58,6 +80,15 @@ namespace FinSim.Controllers
                 }
                 else
                     return BadRequest("Not enough shares to sell");
+                ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+                item.TotalQuantity -= request.Quantity;
+                item.LockedQuantity -= request.Quantity;
+                user.FreeCashBalance += prc;
+                if(item.TotalQuantity == 0)
+                {
+                    _db.PortfolioItems.Remove(item);
+                }
+                ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
             }
             var order = new Order
             {
@@ -68,15 +99,28 @@ namespace FinSim.Controllers
                 Direction = request.Direction,
                 Quantity = request.Quantity,
                 Price = null,
-                Status = Models.Enums.OrderStatus.Pending,
+                Status = Models.Enums.OrderStatus.Filled,
                 CreatedAt = DateTimeOffset.UtcNow,
                 UpdatedAt = DateTimeOffset.UtcNow,
                 User = user,
                 Instrument = instrument
             };
+            var transaction = new Transaction
+            {
+                Id = Guid.NewGuid(),
+                OrderId = order.Id,
+                UserId = request.UserId,
+                InstrumentId = request.InstrumentId,
+                ExecutedQuantity = request.Quantity,
+                ExecutedPrice = instrument.CurrentPrice,
+                TotalAmount = prc,
+                TransactionDate = DateTimeOffset.UtcNow
+            };
+            _db.Transactions.Add(transaction);
             _db.Orders.Add(order);
             await _db.SaveChangesAsync();
-            return Ok();
+            await tx.CommitAsync();
+            return Ok("Order successful.");
         }
 
         [HttpPost("limit")]
@@ -133,7 +177,53 @@ namespace FinSim.Controllers
             };
             _db.Orders.Add(order);
             await _db.SaveChangesAsync();
-            return Ok();
+            return Ok(new { order.Id, order.Status });
         }
+    
+        [HttpPost("{id:guid}/cancel")]
+        public async Task<IActionResult> CancelOrder(Guid id)
+        {
+            var order = await _db.Orders.FirstOrDefaultAsync(o => o.Id == id);
+            if (order == null)
+                return NotFound("Order not found.");
+
+            if (order.Status != Models.Enums.OrderStatus.Pending)
+                return BadRequest("Only pending orders can be cancelled.");
+
+            var user = await _db.Users.FirstOrDefaultAsync(u => u.Id == order.UserId);
+            if (user == null)
+                return NotFound("User not found.");
+
+            await using var tx = await _db.Database.BeginTransactionAsync();
+
+            if (order.Direction == Models.Enums.OrderDirection.Buy)
+            {
+                var locked = order.Price!.Value * order.Quantity;
+                user.LockedCashBalance -= locked;
+                user.FreeCashBalance   += locked;
+            }
+            else // sell
+            {
+                var portItem = await _db.PortfolioItems
+                    .FirstOrDefaultAsync(p => p.UserId == order.UserId
+                                        && p.InstrumentId == order.InstrumentId);
+                if (portItem == null)
+                    return BadRequest("Portfolio item not found.");
+
+                portItem.LockedQuantity -= order.Quantity;
+            }
+
+            order.Status = Models.Enums.OrderStatus.Cancelled;
+            order.UpdatedAt = DateTimeOffset.UtcNow;
+
+            await _db.SaveChangesAsync();
+            await tx.CommitAsync();
+
+            return Ok("Order cancelled.");
+        }
+
+        
+    
+    
     }
 }

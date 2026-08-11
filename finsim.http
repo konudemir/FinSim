@@ -1,6 +1,41 @@
 @FinSim_HostAddress = http://localhost:5209
+@user = f0000000-0000-0000-0000-000000000001
+@thyao = 11111111-1111-1111-1111-111111111111
 
-### Limit alım emri
+### 0 - Başlangıç: bakiye 100000, locked 0
+GET {{FinSim_HostAddress}}/api/users/{{user}}/balance
+
+### 1 - Güncel THYAO fiyatını gör (not al!)
+GET {{FinSim_HostAddress}}/api/instruments/THYAO
+### 2 - 10 lot market alış
+POST {{FinSim_HostAddress}}/api/order/market
+Content-Type: application/json
+
+{
+  "userId": "f0000000-0000-0000-0000-000000000001",
+  "instrumentId": "11111111-1111-1111-1111-111111111111",
+  "direction": "Buy",
+  "quantity": 100
+}
+
+### 3 - Bakiye: free düşmüş, locked 0 olmalı
+GET {{FinSim_HostAddress}}/api/users/{{user}}/balance
+
+### 4 - 5 lot market satış
+POST {{FinSim_HostAddress}}/api/order/market
+Content-Type: application/json
+
+{
+  "userId": "f0000000-0000-0000-0000-000000000001",
+  "instrumentId": "11111111-1111-1111-1111-111111111111",
+  "direction": "Sell",
+  "quantity": 200
+}
+
+### 5 - Bakiye: para gelmiş, locked 0
+GET {{FinSim_HostAddress}}/api/users/{{user}}/balance
+
+### 6 - Limit alış: 1. adımdaki fiyatın %20 ÜSTÜNE yaz (hemen dolsun)
 POST {{FinSim_HostAddress}}/api/order/limit
 Content-Type: application/json
 
@@ -8,26 +43,25 @@ Content-Type: application/json
   "userId": "f0000000-0000-0000-0000-000000000001",
   "instrumentId": "11111111-1111-1111-1111-111111111111",
   "direction": "Buy",
-  "quantity": 10,
-  "price": 95.50
+  "quantity": 1,
+  "price": 500.00
 }
 
-### Bakiye kontrolü
-GET {{FinSim_HostAddress}}/api/users/f0000000-0000-0000-0000-000000000001/balance
+### 7 - 5 saniye bekle, sonra bakiye: locked 0'a dönmüş olmalı
+GET {{FinSim_HostAddress}}/api/users/{{user}}/balance
 
-### Adet 0 - 400 dönmeli
-POST {{FinSim_HostAddress}}/api/order/limit
+### 8 - Hatalar: adet 0
+POST {{FinSim_HostAddress}}/api/order/market
 Content-Type: application/json
 
 {
   "userId": "f0000000-0000-0000-0000-000000000001",
   "instrumentId": "11111111-1111-1111-1111-111111111111",
   "direction": "Buy",
-  "quantity": 0,
-  "price": 95.50
+  "quantity": 0
 }
 
-### HEKTS (inactive) - 400 dönmeli
+### 9 - Hatalar: inaktif hisse (HEKTS)
 POST {{FinSim_HostAddress}}/api/order/market
 Content-Type: application/json
 
@@ -37,3 +71,41 @@ Content-Type: application/json
   "direction": "Buy",
   "quantity": 5
 }
+
+### 10 - Hatalar: elinde olmayan hisseyi sat
+POST {{FinSim_HostAddress}}/api/order/market
+Content-Type: application/json
+
+{
+  "userId": "f0000000-0000-0000-0000-000000000001",
+  "instrumentId": "22222222-2222-2222-2222-222222222222",
+  "direction": "Sell",
+  "quantity": 5
+}
+
+
+
+http
+### 1 - Düşük fiyatlı limit alış (dolmasın, Pending kalsın)
+POST {{FinSim_HostAddress}}/api/order/limit
+Content-Type: application/json
+
+{
+  "userId": "f0000000-0000-0000-0000-000000000001",
+  "instrumentId": "11111111-1111-1111-1111-111111111111",
+  "direction": "Buy",
+  "quantity": 10,
+  "price": 30.00
+}
+
+### 2 - locked = 300 olmalı
+GET {{FinSim_HostAddress}}/api/users/{{user}}/balance
+
+### 3 - İptal (ORDER_ID yerine emrin id'sini yaz)
+POST {{FinSim_HostAddress}}/api/order/6988425d-7e1d-41dd-ac74-5de926e57659/cancel
+
+### 4 - locked = 0, free 300 artmış olmalı
+GET {{FinSim_HostAddress}}/api/users/{{user}}/balance
+
+### 5 - Tekrar iptal - 400 dönmeli
+POST {{FinSim_HostAddress}}/api/order/ORDER_ID/cancel
