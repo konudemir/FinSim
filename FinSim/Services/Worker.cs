@@ -7,7 +7,7 @@ using Microsoft.EntityFrameworkCore;
 
 namespace FinSim.Services
 {
-    public class Worker : BackgroundService
+    public class Worker : BackgroundService//Background worker or Price Simulating Engine
     {
         private readonly ILogger<Worker> _logger;
         private readonly IServiceScopeFactory _scopeFactory;

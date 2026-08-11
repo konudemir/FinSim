@@ -1,4 +1,5 @@
 using Microsoft.EntityFrameworkCore;
+using System.Text.Json.Serialization;
 using FinSim.Data;
 using FinSim.Services;
 var builder = WebApplication.CreateBuilder(args);
@@ -11,6 +12,8 @@ builder.Services.AddDbContext<FinSimDbContext>(options =>
     options.UseNpgsql(builder.Configuration.GetConnectionString("BorsaDb")));
 
 builder.Services.AddControllers();
+builder.Services.AddControllers()
+    .AddJsonOptions(o => o.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter()));
 builder.Services.AddHostedService<Worker>();
 var app = builder.Build();
 app.MapControllers();

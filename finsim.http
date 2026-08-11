@@ -1,0 +1,39 @@
+@FinSim_HostAddress = http://localhost:5209
+
+### Limit alım emri
+POST {{FinSim_HostAddress}}/api/order/limit
+Content-Type: application/json
+
+{
+  "userId": "f0000000-0000-0000-0000-000000000001",
+  "instrumentId": "11111111-1111-1111-1111-111111111111",
+  "direction": "Buy",
+  "quantity": 10,
+  "price": 95.50
+}
+
+### Bakiye kontrolü
+GET {{FinSim_HostAddress}}/api/users/f0000000-0000-0000-0000-000000000001/balance
+
+### Adet 0 - 400 dönmeli
+POST {{FinSim_HostAddress}}/api/order/limit
+Content-Type: application/json
+
+{
+  "userId": "f0000000-0000-0000-0000-000000000001",
+  "instrumentId": "11111111-1111-1111-1111-111111111111",
+  "direction": "Buy",
+  "quantity": 0,
+  "price": 95.50
+}
+
+### HEKTS (inactive) - 400 dönmeli
+POST {{FinSim_HostAddress}}/api/order/market
+Content-Type: application/json
+
+{
+  "userId": "f0000000-0000-0000-0000-000000000001",
+  "instrumentId": "dddddddd-dddd-dddd-dddd-dddddddddddd",
+  "direction": "Buy",
+  "quantity": 5
+}
