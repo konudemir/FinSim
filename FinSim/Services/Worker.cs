@@ -30,9 +30,10 @@ namespace FinSim.Services
                     using var scope = _scopeFactory.CreateScope();
                     var db = scope.ServiceProvider.GetRequiredService<FinSimDbContext>();
                     var instruments = await db.Instruments.Where(i => i.IsActive).ToListAsync(stoppingToken);//learn
+                    var marketMove = (decimal)(Random.Shared.NextDouble() * 2 - 1) * 0.02m;
                     foreach (var i in instruments)
                     {
-                        i.CurrentPrice = nextValue(i.CurrentPrice, i.BasePrice);
+                        i.CurrentPrice = nextValue(i.CurrentPrice, i.BasePrice, marketMove);
                     }
                     await db.SaveChangesAsync(stoppingToken);
 
@@ -125,15 +126,14 @@ namespace FinSim.Services
                 });
             }
         }
-        private static decimal nextValue(decimal currVal, decimal baseVal)
+        private static decimal nextValue(decimal currVal, decimal baseVal, decimal marketMove)
         {
-            if (currVal == 0) return (decimal)0.01;
-            var change = (decimal)(Random.Shared.NextDouble() * 2 - 1) * 0.05m;
-            if(currVal < baseVal * (decimal)0.25)
-            {
-                change = (decimal)(Random.Shared.NextDouble() * 2 - 0.5) * 0.05m; // -0.025, +0.075
-            }
-            return Math.Round(currVal * (1 + change), 2, MidpointRounding.AwayFromZero);
+            if (currVal <= 0) return 0.01m;
+
+            var idio = (decimal)(Random.Shared.NextDouble() * 2 - 1) * 0.03m;  // hisseye özgü
+            var pull = (baseVal - currVal) / baseVal * 0.05m;                   // ortalamaya dönüş
+
+            return Math.Round(currVal * (1 + marketMove + idio + pull), 2, MidpointRounding.AwayFromZero);
         }
     }
 }
