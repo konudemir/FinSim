@@ -44,7 +44,11 @@ namespace FinSim.Services
                     await db.SaveChangesAsync(stoppingToken);
                     await tx.CommitAsync(stoppingToken);
                     var prices = instruments.Select(i => new { i.Symbol, i.CurrentPrice }).ToList();
-                    await _hub.Clients.All.SendAsync("PriceUpdate", prices, stoppingToken);
+                    await _hub.Clients.All.SendAsync("PriceUpdate", new
+                    {
+                        marketMove,
+                        prices = instruments.Select(i => new { i.Symbol, i.CurrentPrice })
+                    }, stoppingToken);
                 }
                 catch(Exception exc)
                 {
@@ -135,7 +139,7 @@ namespace FinSim.Services
             if (currVal <= 0) return 0.01m;
 
             var idio = (decimal)(Random.Shared.NextDouble() * 2 - 1) * 0.03m;  // hisseye özgü
-            var pull = (baseVal - currVal) / baseVal * 0.05m;                   // ortalamaya dönüş
+            var pull = (baseVal - currVal) / baseVal * 0.02m;                   // ortalamaya dönüş
 
             return Math.Round(currVal * (1 + marketMove + idio + pull), 2, MidpointRounding.AwayFromZero);
         }
