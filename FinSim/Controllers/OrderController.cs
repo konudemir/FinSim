@@ -120,7 +120,13 @@ namespace FinSim.Controllers
             _db.Orders.Add(order);
             await _db.SaveChangesAsync();
             await tx.CommitAsync();
-            return Ok("Order successful.");
+            return Ok(new
+            {
+                order.Id,
+                order.Status,
+                executedPrice = instrument.CurrentPrice,
+                totalAmount = prc
+            });
         }
 
         [HttpPost("limit")]

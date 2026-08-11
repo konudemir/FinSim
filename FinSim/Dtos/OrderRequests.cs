@@ -23,7 +23,8 @@ namespace FinSim.Dtos
         [Required]public OrderDirection Direction { get; set; }
         [Range(1, int.MaxValue, ErrorMessage = "At least 1 in quantity.")]
         public int Quantity { get; set; }
-        [Required]public decimal Price { get; set; }
+        [Range(0.01, double.MaxValue, ErrorMessage = "Fiyat 0'dan büyük olmalı.")]
+        public decimal Price { get; set; }
     }
     public class OrderResponse
     {

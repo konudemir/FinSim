@@ -32,5 +32,28 @@ namespace FinSim.Controllers
             .FirstOrDefaultAsync();
             return (balance is null) ? NotFound() : Ok(balance);
         }
+        [HttpGet("{id:guid}/portfolio")]
+        public async Task<IActionResult> GetPortfolio(Guid id)
+        {
+            var items = await _db.PortfolioItems
+                .Where(p => p.UserId == id)
+                .Join(_db.Instruments,
+                    p => p.InstrumentId,
+                    i => i.Id,
+                    (p, i) => new
+                    {
+                        i.Symbol,
+                        i.Name,
+                        p.TotalQuantity,
+                        p.LockedQuantity,
+                        p.AverageCost,
+                        CurrentPrice = i.CurrentPrice,
+                        MarketValue = i.CurrentPrice * p.TotalQuantity,
+                        ProfitLoss = (i.CurrentPrice - p.AverageCost) * p.TotalQuantity
+                    })
+                .ToListAsync();
+
+            return Ok(items);
+        }
     }
 }
