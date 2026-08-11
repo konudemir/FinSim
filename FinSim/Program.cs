@@ -17,8 +17,16 @@ builder.Services.AddControllers()
     .AddJsonOptions(o => o.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter()));
 builder.Services.AddHostedService<Worker>();
 builder.Services.AddSignalR();
+
+builder.Services.AddCors(o => o.AddDefaultPolicy(p =>
+    p.WithOrigins("http://localhost:5173")
+     .AllowAnyHeader()
+     .AllowAnyMethod()
+     .AllowCredentials()));
+
 var app = builder.Build();
 app.UseStaticFiles();
+app.UseCors();
 app.MapControllers();
 app.MapHub<PriceHub>("/hubs/prices");
 app.Run();
