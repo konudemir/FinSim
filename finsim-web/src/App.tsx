@@ -1,9 +1,8 @@
 import { useEffect, useState } from 'react'
-import axios from 'axios'
 import * as signalR from '@microsoft/signalr'
-
-const API = 'http://localhost:5209'
-const USER = 'f0000000-0000-0000-0000-000000000001'
+import api, { API } from './api'
+import { useAuth } from './auth'
+import Login from './Login'
 
 type Instrument = {
   id: string
@@ -50,6 +49,16 @@ type PriceUpdate = {
 const parseDecimal = (s: string) => parseFloat(s.replace(',', '.'))
 
 export default function App() {
+  const { loggedIn, logout } = useAuth()
+
+  if (!loggedIn) {
+    return <Login onSuccess={() => window.location.reload()} />
+  }
+
+  return <Dashboard onLogout={logout} />
+}
+
+function Dashboard({ onLogout }: { onLogout: () => void }) {
   const [instruments, setInstruments] = useState<Instrument[]>([])
   const [history, setHistory] = useState<Record<string, number[]>>({})
   const [balance, setBalance] = useState<Balance | null>(null)
@@ -62,17 +71,17 @@ export default function App() {
   const [orders, setOrders] = useState<Order[]>([])
 
   const loadOrders = () =>
-    axios.get<Order[]>(`${API}/api/order?userId=${USER}`)
+    api.get<Order[]>('/api/order')
       .then(r => setOrders(r.data))
       .catch(console.error)
 
   const loadBalance = () =>
-    axios.get<Balance>(`${API}/api/users/${USER}/balance`)
+    api.get<Balance>('/api/users/balance')
       .then(r => setBalance(r.data))
       .catch(console.error)
 
   const loadPortfolio = () =>
-    axios.get<PortfolioItem[]>(`${API}/api/users/${USER}/portfolio`)
+    api.get<PortfolioItem[]>('/api/users/portfolio')
       .then(r => {
         const map: Record<string, PortfolioItem> = {}
         for (const p of r.data) map[p.symbol] = p
@@ -81,7 +90,7 @@ export default function App() {
       .catch(console.error)
 
   useEffect(() => {
-    axios.get<Instrument[]>(`${API}/api/instruments`)
+    api.get<Instrument[]>('/api/instruments')
       .then(res => setInstruments(res.data))
       .catch(console.error)
     loadOrders()
@@ -114,8 +123,8 @@ export default function App() {
       })
 
       loadPortfolio()
-    loadBalance()
-    loadOrders()
+      loadBalance()
+      loadOrders()
     })
 
     conn.start().catch(console.error)
@@ -130,8 +139,7 @@ export default function App() {
     }
 
     try {
-      await axios.post(`${API}/api/order/market`, {
-        userId: USER,
+      await api.post('/api/order/market', {
         instrumentId,
         direction,
         quantity,
@@ -160,8 +168,7 @@ export default function App() {
     }
 
     try {
-      await axios.post(`${API}/api/order/limit`, {
-        userId: USER,
+      await api.post('/api/order/limit', {
         instrumentId,
         direction,
         quantity,
@@ -181,7 +188,7 @@ export default function App() {
 
   const cancelOrder = async (id: string) => {
     try {
-      await axios.post(`${API}/api/order/${id}/cancel`)
+      await api.post(`/api/order/${id}/cancel`)
       loadBalance(); loadPortfolio(); loadOrders()
     } catch (e: any) {
       alert(e.response?.data ?? 'Hata')
@@ -204,6 +211,12 @@ export default function App() {
         >
           Piyasa {marketMove >= 0 ? '▲' : '▼'} {(marketMove * 100).toFixed(2)}%
         </span>
+        <button
+          onClick={onLogout}
+          className="ml-auto text-xs bg-slate-700 hover:bg-slate-600 px-3 py-1 rounded"
+        >
+          Çıkış Yap
+        </button>
       </div>
 
       <div className="flex gap-6 items-center mb-6 text-sm">

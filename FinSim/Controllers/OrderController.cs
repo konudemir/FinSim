@@ -22,7 +22,6 @@ namespace FinSim.Controllers
         private readonly FinSimDbContext _db;
         private Guid CurrentUserId =>
             Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
-        private const decimal tampon = 1.10m;
         public OrderController(FinSimDbContext db)
         {
             _db = db;
@@ -186,6 +185,19 @@ namespace FinSim.Controllers
                 User = user,
                 Instrument = instrument
             };
+            var transaction = new Transaction
+            {
+                Id = Guid.NewGuid(),
+                OrderId = order.Id,
+                UserId = CurrentUserId,
+                InstrumentId = request.InstrumentId,
+                ExecutedQuantity = request.Quantity,
+                ExecutedPrice = instrument.CurrentPrice,
+                TotalAmount = prc,
+                TransactionDate = DateTimeOffset.UtcNow
+            };
+            _db.Transactions.Add(transaction);
+            _db.Orders.Add(order);
             _db.Orders.Add(order);
             await _db.SaveChangesAsync();
             return Ok(new { order.Id, order.Status });
