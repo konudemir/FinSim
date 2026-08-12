@@ -20,6 +20,7 @@ namespace FinSim.Data
         public DbSet<Transaction> Transactions => Set<Transaction>();
 
 
+
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             base.OnModelCreating(modelBuilder);
@@ -28,6 +29,8 @@ namespace FinSim.Data
             {
                 e.Property(u => u.FreeCashBalance).HasPrecision(18, 2);
                 e.Property(u => u.LockedCashBalance).HasPrecision(18, 2);
+                e.HasIndex(u => u.Username).IsUnique();
+                e.HasIndex(u => u.Email).IsUnique();
             });
 
             modelBuilder.Entity<Instrument>(e =>
@@ -193,7 +196,12 @@ namespace FinSim.Data
                 Email = "demir@finsim.local",
                 FreeCashBalance = 100_000m,
                 LockedCashBalance = 0m,
-                CreatedAt = new DateTimeOffset(2026, 1, 1, 0, 0, 0, TimeSpan.Zero)
+                CreatedAt = new DateTimeOffset(2026, 1, 1, 0, 0, 0, TimeSpan.Zero),
+
+
+                Username = "demir",
+                // password is: Demir1234!
+                PasswordHash = "AQAAAAIAAzRQAAAAEAqcyyZ/tgtSea8HOJc3gmsP+ReImKyPRUq3hgYXDYVNzlkAwMO+VA6mdr712qLTIQ==",
             }
         );
         }

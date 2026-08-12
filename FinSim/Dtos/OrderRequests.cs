@@ -9,7 +9,6 @@ namespace FinSim.Dtos
 {
     public class CreateMarketOrderRequest
     {
-        [Required]public Guid UserId { get; set; }
         [Required]public Guid InstrumentId { get; set; }
         [Required]public OrderDirection Direction { get; set; }
         [Range(1, int.MaxValue, ErrorMessage = "At least 1 in quantity.")]
@@ -18,7 +17,6 @@ namespace FinSim.Dtos
 
     public class CreateLimitOrderRequest
     {
-        [Required]public Guid UserId { get; set; }
         [Required]public Guid InstrumentId { get; set; }
         [Required]public OrderDirection Direction { get; set; }
         [Range(1, int.MaxValue, ErrorMessage = "At least 1 in quantity.")]

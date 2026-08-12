@@ -7,16 +7,21 @@ using FinSim.Data;
 using FinSim.Dtos;
 using FinSim.Models;
 using FinSim.Models.Enums;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using System.Security.Claims;
 
 namespace FinSim.Controllers
 {
     [ApiController]
     [Route("api/order")]
+    [Authorize]
     public class OrderController : ControllerBase
     {
         private readonly FinSimDbContext _db;
+        private Guid CurrentUserId =>
+            Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
         private const decimal tampon = 1.10m;
         public OrderController(FinSimDbContext db)
         {
@@ -26,7 +31,7 @@ namespace FinSim.Controllers
         [HttpPost("market")]
         public async Task<IActionResult> createMarketRequest([FromBody] CreateMarketOrderRequest request)
         {
-            var user = await _db.Users.FirstOrDefaultAsync(u => u.Id == request.UserId);
+            var user = await _db.Users.FirstOrDefaultAsync(u => u.Id == CurrentUserId);
             if(user == null)
                 return NotFound("User not found.");
             var instrument = await _db.Instruments.FirstOrDefaultAsync(i => i.Id == request.InstrumentId);
@@ -44,13 +49,13 @@ namespace FinSim.Controllers
                 }
                 user.FreeCashBalance -= prc;
                 user.LockedCashBalance += prc;
-                var portItem  = await _db.PortfolioItems.FirstOrDefaultAsync(i => i.UserId == request.UserId && i.InstrumentId == request.InstrumentId);
+                var portItem  = await _db.PortfolioItems.FirstOrDefaultAsync(i => i.UserId == CurrentUserId && i.InstrumentId == request.InstrumentId);
                 if(portItem == null)
                 {
                     portItem = new PortfolioItem
                     {
                         Id = Guid.NewGuid(),
-                        UserId = request.UserId,
+                        UserId = CurrentUserId,
                         InstrumentId = request.InstrumentId,
                         TotalQuantity = request.Quantity,
                         LockedQuantity = 0,
@@ -68,7 +73,7 @@ namespace FinSim.Controllers
             else //sell
             {
                 var item = await _db.PortfolioItems
-                .FirstOrDefaultAsync(p => p.UserId == request.UserId
+                .FirstOrDefaultAsync(p => p.UserId == CurrentUserId
                 && p.InstrumentId == request.InstrumentId);
                 if(item == null)
                 {
@@ -93,7 +98,7 @@ namespace FinSim.Controllers
             var order = new Order
             {
                 Id = Guid.NewGuid(),
-                UserId = request.UserId,
+                UserId = CurrentUserId,
                 InstrumentId = request.InstrumentId,
                 OrderType = Models.Enums.OrderType.Market,
                 Direction = request.Direction,
@@ -109,7 +114,7 @@ namespace FinSim.Controllers
             {
                 Id = Guid.NewGuid(),
                 OrderId = order.Id,
-                UserId = request.UserId,
+                UserId = CurrentUserId,
                 InstrumentId = request.InstrumentId,
                 ExecutedQuantity = request.Quantity,
                 ExecutedPrice = instrument.CurrentPrice,
@@ -132,7 +137,7 @@ namespace FinSim.Controllers
         [HttpPost("limit")]
         public async Task<IActionResult> createLimitRequest([FromBody] CreateLimitOrderRequest request)
         {
-            var user = await _db.Users.FirstOrDefaultAsync(u => u.Id == request.UserId);
+            var user = await _db.Users.FirstOrDefaultAsync(u => u.Id == CurrentUserId);
             if(user == null)
                 return NotFound("User not found.");
             var instrument = await _db.Instruments.FirstOrDefaultAsync(i => i.Id == request.InstrumentId);
@@ -153,7 +158,7 @@ namespace FinSim.Controllers
             else //sell
             {
                 var item = await _db.PortfolioItems
-                .FirstOrDefaultAsync(p => p.UserId == request.UserId
+                .FirstOrDefaultAsync(p => p.UserId == CurrentUserId
                 && p.InstrumentId == request.InstrumentId);
                 if(item == null)
                 {
@@ -169,7 +174,7 @@ namespace FinSim.Controllers
             var order = new Order
             {
                 Id = Guid.NewGuid(),
-                UserId = request.UserId,
+                UserId = CurrentUserId,
                 InstrumentId = request.InstrumentId,
                 OrderType = Models.Enums.OrderType.Limit,
                 Direction = request.Direction,
@@ -192,7 +197,8 @@ namespace FinSim.Controllers
             var order = await _db.Orders.FirstOrDefaultAsync(o => o.Id == id);
             if (order == null)
                 return NotFound("Order not found.");
-
+            if (order.UserId != CurrentUserId)
+                return NotFound("Order not found.");
             if (order.Status != Models.Enums.OrderStatus.Pending)
                 return BadRequest("Only pending orders can be cancelled.");
 
@@ -229,10 +235,10 @@ namespace FinSim.Controllers
         }
 
         [HttpGet]
-        public async Task<IActionResult> GetOrders([FromQuery] Guid userId)
+        public async Task<IActionResult> GetOrders()
         {
             var orders = await _db.Orders
-                .Where(o => o.UserId == userId)
+                .Where(o => o.UserId == CurrentUserId)
                 .OrderByDescending(o => o.CreatedAt)
                 .Take(50)
                 .Join(_db.Instruments,

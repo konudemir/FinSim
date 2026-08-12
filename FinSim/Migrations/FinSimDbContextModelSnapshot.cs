@@ -317,7 +317,21 @@ namespace FinSim.Migrations
                         .HasPrecision(18, 2)
                         .HasColumnType("numeric(18,2)");
 
+                    b.Property<string>("PasswordHash")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<string>("Username")
+                        .IsRequired()
+                        .HasColumnType("text");
+
                     b.HasKey("Id");
+
+                    b.HasIndex("Email")
+                        .IsUnique();
+
+                    b.HasIndex("Username")
+                        .IsUnique();
 
                     b.ToTable("Users");
 
@@ -330,7 +344,9 @@ namespace FinSim.Migrations
                             FirstName = "Demir",
                             FreeCashBalance = 100000m,
                             LastName = "Test",
-                            LockedCashBalance = 0m
+                            LockedCashBalance = 0m,
+                            PasswordHash = "AQAAAAIAAzRQAAAAEAqcyyZ/tgtSea8HOJc3gmsP+ReImKyPRUq3hgYXDYVNzlkAwMO+VA6mdr712qLTIQ==",
+                            Username = "demir"
                         });
                 });
 
