@@ -1,0 +1,26 @@
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
+using FinSim.Domain.Models.Enums;
+
+namespace FinSim.Domain.Models
+{
+    public class Order
+    {
+        public Guid Id { get; set; }
+        public Guid UserId { get; set; }
+        public Guid InstrumentId { get; set; }
+        public OrderType OrderType { get; set; }//enums instead of strings
+        public OrderDirection Direction { get; set; }
+        public int Quantity { get; set; }
+        public decimal? Price { get; set; }
+        public OrderStatus Status { get; set; } = OrderStatus.Pending;
+        public DateTimeOffset CreatedAt { get; set; }
+        public DateTimeOffset UpdatedAt { get; set; }
+
+        public User User { get; set; } = null!;
+        public Instrument Instrument { get; set; } = null!;
+        public ICollection<Transaction> Transactions { get; set; } = [];
+    }
+}
