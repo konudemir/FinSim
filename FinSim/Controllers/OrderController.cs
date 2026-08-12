@@ -228,8 +228,31 @@ namespace FinSim.Controllers
             return Ok("Order cancelled.");
         }
 
-        
-    
+        [HttpGet]
+        public async Task<IActionResult> GetOrders([FromQuery] Guid userId)
+        {
+            var orders = await _db.Orders
+                .Where(o => o.UserId == userId)
+                .OrderByDescending(o => o.CreatedAt)
+                .Take(50)
+                .Join(_db.Instruments,
+                    o => o.InstrumentId,
+                    i => i.Id,
+                    (o, i) => new
+                    {
+                        o.Id,
+                        i.Symbol,
+                        OrderType = o.OrderType.ToString(),
+                        Direction = o.Direction.ToString(),
+                        o.Quantity,
+                        o.Price,
+                        Status = o.Status.ToString(),
+                        o.CreatedAt
+                    })
+                .ToListAsync();
+
+            return Ok(orders);
+        }  
     
     }
 }

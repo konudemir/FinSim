@@ -19,6 +19,17 @@ type Balance = {
   total: number
 }
 
+type Order = {
+  id: string
+  symbol: string
+  orderType: string
+  direction: string
+  quantity: number
+  price: number | null
+  status: string
+  createdAt: string
+}
+
 type PortfolioItem = {
   symbol: string
   name: string
@@ -35,15 +46,25 @@ type PriceUpdate = {
   prices: { symbol: string; currentPrice: number }[]
 }
 
+// "42,5" -> 42.5 ; "" / "42." / "abc" -> NaN
+const parseDecimal = (s: string) => parseFloat(s.replace(',', '.'))
+
 export default function App() {
   const [instruments, setInstruments] = useState<Instrument[]>([])
   const [history, setHistory] = useState<Record<string, number[]>>({})
   const [balance, setBalance] = useState<Balance | null>(null)
   const [portfolio, setPortfolio] = useState<Record<string, PortfolioItem>>({})
-  const [qty, setQty] = useState(1)
+  const [qty, setQty] = useState('1')
   const [marketMove, setMarketMove] = useState(0)
   const [limitOpen, setLimitOpen] = useState<string | null>(null)
   const [limitPrice, setLimitPrice] = useState('')
+
+  const [orders, setOrders] = useState<Order[]>([])
+
+  const loadOrders = () =>
+    axios.get<Order[]>(`${API}/api/order?userId=${USER}`)
+      .then(r => setOrders(r.data))
+      .catch(console.error)
 
   const loadBalance = () =>
     axios.get<Balance>(`${API}/api/users/${USER}/balance`)
@@ -63,6 +84,7 @@ export default function App() {
     axios.get<Instrument[]>(`${API}/api/instruments`)
       .then(res => setInstruments(res.data))
       .catch(console.error)
+    loadOrders()
     loadBalance()
     loadPortfolio()
   }, [])
@@ -92,7 +114,8 @@ export default function App() {
       })
 
       loadPortfolio()
-      loadBalance()
+    loadBalance()
+    loadOrders()
     })
 
     conn.start().catch(console.error)
@@ -100,23 +123,38 @@ export default function App() {
   }, [])
 
   const sendOrder = async (instrumentId: string, direction: 'Buy' | 'Sell') => {
+    const quantity = parseInt(qty, 10)
+    if (!Number.isFinite(quantity) || quantity < 1) {
+      alert('Geçerli bir adet gir')
+      return
+    }
+
     try {
       await axios.post(`${API}/api/order/market`, {
         userId: USER,
         instrumentId,
         direction,
-        quantity: qty,
+        quantity,
       })
       loadBalance()
       loadPortfolio()
     } catch (e: any) {
       alert(e.response?.data ?? 'Hata')
     }
+    loadPortfolio()
+    loadBalance()
+    loadOrders()
   }
 
   const sendLimit = async (instrumentId: string, direction: 'Buy' | 'Sell') => {
-    const price = Number(limitPrice)
-    if (!price || price <= 0) {
+    const quantity = parseInt(qty, 10)
+    if (!Number.isFinite(quantity) || quantity < 1) {
+      alert('Geçerli bir adet gir')
+      return
+    }
+
+    const price = parseDecimal(limitPrice)
+    if (!Number.isFinite(price) || price <= 0) {
       alert('Geçerli bir fiyat gir')
       return
     }
@@ -126,7 +164,7 @@ export default function App() {
         userId: USER,
         instrumentId,
         direction,
-        quantity: qty,
+        quantity,
         price,
       })
       setLimitOpen(null)
@@ -136,6 +174,23 @@ export default function App() {
     } catch (e: any) {
       alert(e.response?.data ?? 'Hata')
     }
+    loadPortfolio()
+    loadBalance()
+    loadOrders()
+  }
+
+  const cancelOrder = async (id: string) => {
+    try {
+      await axios.post(`${API}/api/order/${id}/cancel`)
+      loadBalance(); loadPortfolio(); loadOrders()
+    } catch (e: any) {
+      alert(e.response?.data ?? 'Hata')
+    }
+  }
+
+  const toggleLimit = (instrumentId: string) => {
+    setLimitOpen(prev => (prev === instrumentId ? null : instrumentId))
+    setLimitPrice('')
   }
 
   return (
@@ -158,10 +213,13 @@ export default function App() {
         <label className="ml-auto">
           Adet:
           <input
-            type="number"
-            min={1}
+            type="text"
+            inputMode="numeric"
             value={qty}
-            onChange={e => setQty(Number(e.target.value))}
+            onChange={e => {
+              const v = e.target.value
+              if (v === '' || /^\d+$/.test(v)) setQty(v)
+            }}
             className="ml-2 w-20 bg-slate-700 px-2 py-1 rounded"
           />
         </label>
@@ -211,7 +269,7 @@ export default function App() {
                   Sat
                 </button>
                 <button
-                  onClick={() => setLimitOpen(limitOpen === i.id ? null : i.id)}
+                  onClick={() => toggleLimit(i.id)}
                   disabled={!i.isActive}
                   className="px-2 bg-slate-600 hover:bg-slate-500 disabled:bg-slate-700 rounded py-1 text-sm"
                 >
@@ -222,11 +280,19 @@ export default function App() {
               {limitOpen === i.id && (
                 <div className="mt-3 pt-3 border-t border-slate-700">
                   <input
-                    type="number"
-                    step="0.01"
+                    type="text"
+                    inputMode="decimal"
+                    autoFocus
                     placeholder="Limit fiyatı"
                     value={limitPrice}
-                    onChange={e => setLimitPrice(e.target.value)}
+                    onChange={e => {
+                      const v = e.target.value
+                      if (v === '' || /^\d*[.,]?\d*$/.test(v)) setLimitPrice(v)
+                    }}
+                    onKeyDown={e => {
+                      if (e.key === 'Enter') sendLimit(i.id, 'Buy')
+                      if (e.key === 'Escape') toggleLimit(i.id)
+                    }}
                     className="w-full bg-slate-700 px-2 py-1 rounded text-sm mb-2"
                   />
                   <div className="flex gap-2">
@@ -249,6 +315,52 @@ export default function App() {
           )
         })}
       </div>
+        <h2 className="text-xl font-bold mt-10 mb-3">Emirler</h2>
+        <table className="w-full text-sm">
+          <thead className="text-slate-400 text-left">
+            <tr>
+              <th className="py-1">Hisse</th>
+              <th>Tip</th>
+              <th>Yön</th>
+              <th className="text-right">Adet</th>
+              <th className="text-right">Fiyat</th>
+              <th>Durum</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            {orders.map(o => (
+              <tr key={o.id} className="border-t border-slate-800">
+                <td className="py-1 font-medium">{o.symbol}</td>
+                <td>{o.orderType}</td>
+                <td className={o.direction === 'Buy' ? 'text-green-400' : 'text-red-400'}>
+                  {o.direction}
+                </td>
+                <td className="text-right">{o.quantity}</td>
+                <td className="text-right">{o.price?.toFixed(2) ?? '—'}</td>
+                <td>
+                  <span className={
+                    o.status === 'Pending' ? 'text-yellow-400'
+                    : o.status === 'Filled' ? 'text-green-400'
+                    : 'text-slate-500'
+                  }>
+                    {o.status}
+                  </span>
+                </td>
+                <td className="text-right">
+                  {o.status === 'Pending' && (
+                    <button
+                      onClick={() => cancelOrder(o.id)}
+                      className="text-xs bg-slate-700 hover:bg-slate-600 px-2 py-0.5 rounded"
+                    >
+                      İptal
+                    </button>
+                  )}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
     </div>
   )
 }
