@@ -9,6 +9,7 @@ using System.Text;
 using FinSim.Api.Services;
 using FinSim.Infrastructure.Repositories;
 using FinSim.Application.Interfaces;
+using FinSim.Infrastructure.Services;
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
@@ -30,6 +31,9 @@ builder.Services.AddScoped<IOrderRepository, OrderRepository>();
 builder.Services.AddScoped<IUserRepository, UserRepository>();
 builder.Services.AddScoped<IPortfolioRepository, PortfolioRepository>();
 builder.Services.AddScoped<ITransactionRepository, TransactionRepository>();
+builder.Services.AddScoped<AuthService>();
+builder.Services.AddScoped<IPasswordHasher, PasswordHasher>();
+builder.Services.AddScoped<ITokenService, JwtTokenService>();
 builder.Services.AddSignalR();
 
 builder.Services.AddCors(o => o.AddDefaultPolicy(p =>
