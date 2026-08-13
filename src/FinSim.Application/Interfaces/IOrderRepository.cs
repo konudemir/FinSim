@@ -9,5 +9,7 @@ namespace FinSim.Application.Interfaces
         Task<List<Order>> GetRecentByUserAsync(Guid userId, int take, CancellationToken ct);
         void Add(Order order);
         Task SaveChangesAsync(CancellationToken ct);
+
+        Task<bool> TrySaveChangesAsync(CancellationToken ct);
     }
 }

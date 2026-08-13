@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 using FinSim.Domain.Models;
+using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
 namespace FinSim.Infrastructure.Data
 {
@@ -40,6 +41,7 @@ namespace FinSim.Infrastructure.Data
 
             modelBuilder.Entity<Order>(e =>
             {
+                e.Property(o => o.Price).HasPrecision(18, 2);
                 e.Property(o => o.Price).HasPrecision(18, 2);
 
                 e.Property(o => o.OrderType).HasConversion<string>().HasMaxLength(20);

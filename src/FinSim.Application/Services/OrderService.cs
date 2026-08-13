@@ -190,9 +190,9 @@ public class OrderService
 
         order.Status = OrderStatus.Cancelled;
         order.UpdatedAt = DateTimeOffset.UtcNow;
-
-        await _orders.SaveChangesAsync(ct);
-        return OrderResult.Success;
+        return await _orders.TrySaveChangesAsync(ct)
+            ? OrderResult.Success
+            : OrderResult.NotCancellable;   // worker filled it first
     }
 
     public async Task<List<OrderDto>> GetRecentAsync(Guid userId, CancellationToken ct)
@@ -204,7 +204,7 @@ public class OrderService
 
         return orders.Select(o => new OrderDto(
             o.Id,
-            instruments.TryGetValue(o.InstrumentId, out var i) ? i.Symbol : "?",
+            instruments.TryGetValue(o.InstrumentId, out var i) ? i.Symbol! : "?",
             o.OrderType.ToString(),
             o.Direction.ToString(),
             o.Quantity,

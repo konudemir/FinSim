@@ -29,5 +29,19 @@ namespace FinSim.Infrastructure.Repositories
         public void Add(Order order) => _db.Orders.Add(order);
 
         public Task SaveChangesAsync(CancellationToken ct) => _db.SaveChangesAsync(ct);
+
+
+        public async Task<bool> TrySaveChangesAsync(CancellationToken ct)
+        {
+            try
+            {
+                await _db.SaveChangesAsync(ct);
+                return true;
+            }
+            catch (DbUpdateConcurrencyException)
+            {
+                return false;   // someone else modified the order first
+            }
+        }
     }
 }
