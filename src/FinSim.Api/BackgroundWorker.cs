@@ -1,8 +1,6 @@
 using FinSim.Api.Hubs;
 using FinSim.Infrastructure.Data;
 using Microsoft.AspNetCore.SignalR;
-using FinSim.Domain.Models;
-using FinSim.Domain.Models.Enums;
 
 namespace FinSim.Api.Services
 {

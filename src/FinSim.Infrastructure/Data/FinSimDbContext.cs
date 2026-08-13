@@ -2,7 +2,6 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 using FinSim.Domain.Models;
-using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
 namespace FinSim.Infrastructure.Data
 {

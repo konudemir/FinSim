@@ -1,18 +1,6 @@
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
-using FinSim.Infrastructure.Data;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
 using FinSim.Domain.Dtos;
-using Microsoft.AspNetCore.Identity;
-using FinSim.Domain.Models;
 using Microsoft.AspNetCore.Authorization;
-using System.Security.Claims;
-using System.Text;
-using Microsoft.IdentityModel.Tokens;
-using System.IdentityModel.Tokens.Jwt;
 using FinSim.Application.Services;
 namespace FinSim.Controllers
 {
