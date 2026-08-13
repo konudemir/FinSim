@@ -10,6 +10,8 @@ using FinSim.Api.Services;
 using FinSim.Infrastructure.Repositories;
 using FinSim.Application.Interfaces;
 using FinSim.Infrastructure.Services;
+using Microsoft.AspNetCore.Identity;
+using FinSim.Domain.Models;
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
@@ -23,6 +25,10 @@ builder.Services.AddControllers();
 builder.Services.AddControllers()
     .AddJsonOptions(o => o.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter()));
 
+builder.Services.AddIdentityCore<User>()
+    .AddEntityFrameworkStores<FinSimDbContext>()
+    .AddDefaultTokenProviders();
+
 builder.Services.AddHostedService<BackgroundWorker>();
 builder.Services.AddScoped<PriceSimEngine>();
 builder.Services.AddScoped<OrderCheckEngine>();
@@ -34,7 +40,6 @@ builder.Services.AddScoped<UserService>();
 builder.Services.AddScoped<IPortfolioRepository, PortfolioRepository>();
 builder.Services.AddScoped<ITransactionRepository, TransactionRepository>();
 builder.Services.AddScoped<AuthService>();
-builder.Services.AddScoped<IPasswordHasher, PasswordHasher>();
 builder.Services.AddScoped<ITokenService, JwtTokenService>();
 builder.Services.AddScoped<OrderService>();
 builder.Services.AddSignalR();

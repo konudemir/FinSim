@@ -1,27 +1,44 @@
 using FinSim.Application.Interfaces;
-using FinSim.Infrastructure.Data;
 using FinSim.Domain.Models;
-using Microsoft.EntityFrameworkCore;
+using FinSim.Infrastructure.Data;
+using Microsoft.AspNetCore.Identity;
 
 namespace FinSim.Infrastructure.Repositories
 {
     public class UserRepository : IUserRepository
     {
+        private readonly UserManager<User> _users;
         private readonly FinSimDbContext _db;
-        public UserRepository(FinSimDbContext db) => _db = db;
+
+        public UserRepository(UserManager<User> users, FinSimDbContext db)
+        {
+            _users = users;
+            _db = db;
+        }
 
         public Task<User?> GetByIdAsync(Guid id, CancellationToken ct) =>
-            _db.Users.FirstOrDefaultAsync(u => u.Id == id, ct);
+            _users.FindByIdAsync(id.ToString());
+
         public Task<User?> GetByUsernameAsync(string username, CancellationToken ct) =>
-            _db.Users.FirstOrDefaultAsync(u => u.Username == username, ct);
+            _users.FindByNameAsync(username);
 
-        public Task<bool> UsernameExistsAsync(string username, CancellationToken ct) =>
-            _db.Users.AnyAsync(u => u.Username == username, ct);
+        public async Task<bool> UsernameExistsAsync(string username, CancellationToken ct) =>
+            await _users.FindByNameAsync(username) is not null;
 
-        public Task<bool> EmailExistsAsync(string email, CancellationToken ct) =>
-            _db.Users.AnyAsync(u => u.Email == email, ct);
+        public async Task<bool> EmailExistsAsync(string email, CancellationToken ct) =>
+            await _users.FindByEmailAsync(email) is not null;
 
-        public void Add(User user) => _db.Users.Add(user);
+        public Task<bool> CheckPasswordAsync(User user, string password, CancellationToken ct) =>
+            _users.CheckPasswordAsync(user, password);
+
+        public async Task<IReadOnlyList<string>> CreateAsync(
+            User user, string password, CancellationToken ct)
+        {
+            var result = await _users.CreateAsync(user, password);
+            return result.Succeeded
+                ? []
+                : result.Errors.Select(e => e.Description).ToList();
+        }
 
         public Task SaveChangesAsync(CancellationToken ct) => _db.SaveChangesAsync(ct);
     }

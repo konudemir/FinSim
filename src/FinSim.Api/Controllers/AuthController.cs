@@ -36,12 +36,13 @@ namespace FinSim.Controllers
         [HttpPost("register")]
         public async Task<IActionResult> Register([FromBody] RegisterRequest req, CancellationToken ct)
         {
-            var result = await _auth.RegisterAsync(req, ct);
+            var (result, errors) = await _auth.RegisterAsync(req, ct);
             return result switch
             {
-                RegisterResult.UsernameTaken => Conflict("Username already taken."),
-                RegisterResult.EmailTaken    => Conflict("E-mail already taken."),
-                _                            => Ok("User created.")
+                RegisterResult.UsernameTaken   => Conflict("Username already taken."),
+                RegisterResult.EmailTaken      => Conflict("E-mail already taken."),
+                RegisterResult.InvalidPassword => BadRequest(errors),
+                _                              => Ok("User created.")
             };
         }
     }

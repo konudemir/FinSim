@@ -18,7 +18,7 @@ namespace FinSim.Infrastructure.Services
             var claims = new List<Claim>
             {
                 new(ClaimTypes.NameIdentifier, user.Id.ToString()),
-                new(ClaimTypes.Name, user.Username)
+                new(ClaimTypes.Name, user.UserName!)
             };
 
             var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_config["Jwt:Key"]!));
