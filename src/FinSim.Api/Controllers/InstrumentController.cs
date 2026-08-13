@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using FinSim.Application.Services;
 using FinSim.Infrastructure.Data;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -12,33 +13,37 @@ namespace FinSim.Controllers
     [Route("api/instruments")]
     public class InstrumentController : ControllerBase
     {
-        private readonly FinSimDbContext _db;
-        public InstrumentController(FinSimDbContext db)
+        private readonly InstrumentService _inst;
+        public InstrumentController(InstrumentService inst)
         {
-            _db = db;
+            _inst = inst;
         }
 
         [HttpGet]
-        public async Task<IActionResult> GetAll()
+        public async Task<IActionResult> GetAll(CancellationToken ct)
         {
-            var instruments = await _db.Instruments.ToListAsync();
-            return Ok(instruments);
+            var result = await _inst.GetAllAsync(ct);
+            return result is null
+                ? NotFound("Could not get instruments list.")
+                : Ok(result);
         }
 
         [HttpGet("by-id/{id:guid}")]
-        public async Task<IActionResult> GetById(Guid id)
+        public async Task<IActionResult> GetById(Guid id, CancellationToken ct)
         {
-            var instrument = await _db.Instruments.FindAsync(id);
-            return instrument is null ? NotFound() : Ok(instrument);
+            var result = await _inst.GetByIdAsync(id, ct);
+            return result is null
+                ? NotFound("Could not get the instrument with the specified id.")
+                : Ok(result);
         }
 
         [HttpGet("{symbol}")]
-        public async Task<IActionResult> GetBySymbol(string symbol)
+        public async Task<IActionResult> GetBySymbol(string symbol, CancellationToken ct)
         {
-            var instrument = await _db.Instruments
-                .FirstOrDefaultAsync(i => i.Symbol == symbol.ToUpper());
-
-            return instrument is null ? NotFound() : Ok(instrument);
+            var result = await _inst.GetBySymbolAsync(symbol, ct);
+            return result is null
+                ? NotFound("Could not get the instrument with the specified symbol.")
+                : Ok(result);
         }
     }
 }

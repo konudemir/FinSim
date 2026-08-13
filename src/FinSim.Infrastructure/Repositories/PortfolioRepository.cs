@@ -16,5 +16,8 @@ namespace FinSim.Infrastructure.Repositories
 
         public void Add(PortfolioItem item) => _db.PortfolioItems.Add(item);
         public void Remove(PortfolioItem item) => _db.PortfolioItems.Remove(item);
+        
+        public Task<List<PortfolioItem>> GetByUserAsync(Guid userId, CancellationToken ct) =>
+            _db.PortfolioItems.Where(p => p.UserId == userId).ToListAsync(ct);
     }
 }

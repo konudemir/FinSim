@@ -7,5 +7,6 @@ namespace FinSim.Application.Interfaces
         Task<PortfolioItem?> GetAsync(Guid userId, Guid instrumentId, CancellationToken ct);
         void Add(PortfolioItem item);
         void Remove(PortfolioItem item);
+        Task<List<PortfolioItem>> GetByUserAsync(Guid userId, CancellationToken ct);
     }
 }

@@ -27,13 +27,16 @@ builder.Services.AddHostedService<BackgroundWorker>();
 builder.Services.AddScoped<PriceSimEngine>();
 builder.Services.AddScoped<OrderCheckEngine>();
 builder.Services.AddScoped<IInstrumentRepository, InstrumentRepository>();
+builder.Services.AddScoped<InstrumentService>();
 builder.Services.AddScoped<IOrderRepository, OrderRepository>();
 builder.Services.AddScoped<IUserRepository, UserRepository>();
+builder.Services.AddScoped<UserService>();
 builder.Services.AddScoped<IPortfolioRepository, PortfolioRepository>();
 builder.Services.AddScoped<ITransactionRepository, TransactionRepository>();
 builder.Services.AddScoped<AuthService>();
 builder.Services.AddScoped<IPasswordHasher, PasswordHasher>();
 builder.Services.AddScoped<ITokenService, JwtTokenService>();
+builder.Services.AddScoped<OrderService>();
 builder.Services.AddSignalR();
 
 builder.Services.AddCors(o => o.AddDefaultPolicy(p =>

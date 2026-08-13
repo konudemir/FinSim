@@ -1,7 +1,7 @@
 using FinSim.Application.Interfaces;
-using FinSim.Infrastructure.Data;
 using FinSim.Domain.Models;
 using FinSim.Domain.Models.Enums;
+using FinSim.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
 
 namespace FinSim.Infrastructure.Repositories
@@ -15,5 +15,19 @@ namespace FinSim.Infrastructure.Repositories
             _db.Orders
                .Where(o => o.Status == OrderStatus.Pending && o.OrderType == OrderType.Limit)
                .ToListAsync(ct);
+
+        public Task<Order?> GetByIdAsync(Guid id, CancellationToken ct) =>
+            _db.Orders.FirstOrDefaultAsync(o => o.Id == id, ct);
+
+        public Task<List<Order>> GetRecentByUserAsync(Guid userId, int take, CancellationToken ct) =>
+            _db.Orders
+               .Where(o => o.UserId == userId)
+               .OrderByDescending(o => o.CreatedAt)
+               .Take(take)
+               .ToListAsync(ct);
+
+        public void Add(Order order) => _db.Orders.Add(order);
+
+        public Task SaveChangesAsync(CancellationToken ct) => _db.SaveChangesAsync(ct);
     }
 }
