@@ -173,12 +173,102 @@ namespace FinSim.Infrastructure.Data
                 },
                 new Instrument
                 {
+                    Id = Guid.Parse("eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee"),
+                    Symbol = "PGSUS",
+                    Name = "Pegasus Hava Yolları",
+                    BasePrice = 220m,
+                    CurrentPrice = 220m,
+                    IsActive = true
+                },
+                new Instrument
+                {
+                    Id = Guid.Parse("ffffffff-ffff-ffff-ffff-ffffffffffff"),
+                    Symbol = "TCELL",
+                    Name = "Turkcell",
+                    BasePrice = 95m,
+                    CurrentPrice = 95m,
+                    IsActive = true
+                },
+                new Instrument
+                {
+                    Id = Guid.Parse("10000000-0000-0000-0000-000000000001"),
+                    Symbol = "ISCTR",
+                    Name = "İş Bankası (C)",
+                    BasePrice = 14m,
+                    CurrentPrice = 14m,
+                    IsActive = true
+                },
+                new Instrument
+                {
+                    Id = Guid.Parse("10000000-0000-0000-0000-000000000002"),
+                    Symbol = "TOASO",
+                    Name = "Tofaş Otomobil Fabrikası",
+                    BasePrice = 260m,
+                    CurrentPrice = 260m,
+                    IsActive = true
+                },
+                new Instrument
+                {
+                    Id = Guid.Parse("10000000-0000-0000-0000-000000000003"),
+                    Symbol = "ARCLK",
+                    Name = "Arçelik",
+                    BasePrice = 140m,
+                    CurrentPrice = 140m,
+                    IsActive = true
+                },
+                new Instrument
+                {
+                    Id = Guid.Parse("10000000-0000-0000-0000-000000000004"),
+                    Symbol = "TTKOM",
+                    Name = "Türk Telekom",
+                    BasePrice = 48m,
+                    CurrentPrice = 48m,
+                    IsActive = true
+                },
+                new Instrument
+                {
+                    Id = Guid.Parse("10000000-0000-0000-0000-000000000005"),
+                    Symbol = "VAKBN",
+                    Name = "VakıfBank",
+                    BasePrice = 27m,
+                    CurrentPrice = 27m,
+                    IsActive = true
+                },
+                new Instrument
+                {
+                    Id = Guid.Parse("10000000-0000-0000-0000-000000000006"),
+                    Symbol = "PETKM",
+                    Name = "Petkim",
+                    BasePrice = 21m,
+                    CurrentPrice = 21m,
+                    IsActive = true
+                },
+                new Instrument
+                {
+                    Id = Guid.Parse("10000000-0000-0000-0000-000000000007"),
+                    Symbol = "ENKAI",
+                    Name = "Enka İnşaat",
+                    BasePrice = 58m,
+                    CurrentPrice = 58m,
+                    IsActive = true
+                },
+                new Instrument
+                {
+                    Id = Guid.Parse("10000000-0000-0000-0000-000000000008"),
+                    Symbol = "MGROS",
+                    Name = "Migros Ticaret",
+                    BasePrice = 520m,
+                    CurrentPrice = 520m,
+                    IsActive = true
+                },
+                new Instrument
+                {
                     Id = Guid.Parse("dddddddd-dddd-dddd-dddd-dddddddddddd"),
                     Symbol = "HEKTS",
                     Name = "Hektaş",
-                    BasePrice = 18m,
+                    BasePrice = 4m,
                     CurrentPrice = 18m,
-                    IsActive = false // Added an inactive one for testing scenarios
+                    IsActive = true // Added an inactive one for testing scenarios
                 }
             );
         }

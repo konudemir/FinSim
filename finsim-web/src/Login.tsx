@@ -9,12 +9,20 @@ export default function Login({ onSuccess }: { onSuccess: () => void }) {
   const [email, setEmail] = useState('')
   const [firstName, setFirstName] = useState('')
   const [lastName, setLastName] = useState('')
-  const [error, setError] = useState('')
+  const [note, setNote] = useState('')
+  const [noteOk, setNoteOk] = useState(false)
   const [busy, setBusy] = useState(false)
+
+  const fail = (e: any) => {
+    const d = e.response?.data
+    if (typeof d === 'string') return d
+    if (Array.isArray(d)) return d.join(' ')
+    return 'Bağlantı kurulamadı.'
+  }
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault()
-    setError('')
+    setNote('')
     setBusy(true)
     try {
       if (mode === 'login') {
@@ -23,87 +31,109 @@ export default function Login({ onSuccess }: { onSuccess: () => void }) {
       } else {
         await register(username, password, email, firstName, lastName)
         setMode('login')
-        setError('Hesap oluşturuldu, şimdi giriş yapabilirsin.')
+        setNoteOk(true)
+        setNote('Hesap açıldı. Şimdi giriş yapabilirsin.')
       }
     } catch (err: any) {
-      setError(err.response?.data ?? 'Bir hata oluştu')
+      setNoteOk(false)
+      setNote(fail(err))
     } finally {
       setBusy(false)
     }
   }
 
+  const swap = () => {
+    setMode(mode === 'login' ? 'register' : 'login')
+    setNote('')
+  }
+
   return (
-    <div className="min-h-screen bg-slate-900 text-slate-100 flex items-center justify-center p-4">
-      <form onSubmit={submit} className="bg-slate-800 rounded p-6 w-full max-w-sm">
-        <h1 className="text-xl font-bold mb-4">
-          {mode === 'login' ? 'Giriş Yap' : 'Hesap Oluştur'}
-        </h1>
+    <div className="gate">
+      <div className="gate-card">
+        <div className="gate-mark">Fin<em>Sim</em></div>
+        <div className="gate-tag">Financial Terminal</div>
 
-        {error && (
-          <div className="text-sm text-red-400 bg-red-950 rounded p-2 mb-3">{error}</div>
-        )}
+        <form onSubmit={submit}>
+          {note && <div className={`gate-note${noteOk ? ' ok' : ''}`}>{note}</div>}
 
-        <label className="block text-sm mb-1">Kullanıcı adı</label>
-        <input
-          value={username}
-          onChange={(e) => setUsername(e.target.value)}
-          className="w-full bg-slate-700 px-2 py-1 rounded mb-3"
-          required
-        />
-
-        <label className="block text-sm mb-1">Şifre</label>
-        <input
-          type="password"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          className="w-full bg-slate-700 px-2 py-1 rounded mb-3"
-          required
-          minLength={mode === 'register' ? 8 : undefined}
-        />
-
-        {mode === 'register' && (
-          <>
-            <label className="block text-sm mb-1">E-posta</label>
+          <div>
+            <label className="field-label" htmlFor="u">Kullanıcı adı</label>
             <input
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              className="w-full bg-slate-700 px-2 py-1 rounded mb-3"
+              id="u"
+              className="field-input"
+              value={username}
+              onChange={e => setUsername(e.target.value)}
+              autoComplete="username"
               required
             />
-            <label className="block text-sm mb-1">Ad</label>
+          </div>
+
+          <div>
+            <label className="field-label" htmlFor="p">Parola</label>
             <input
-              value={firstName}
-              onChange={(e) => setFirstName(e.target.value)}
-              className="w-full bg-slate-700 px-2 py-1 rounded mb-3"
+              id="p"
+              className="field-input"
+              type="password"
+              value={password}
+              onChange={e => setPassword(e.target.value)}
+              autoComplete={mode === 'login' ? 'current-password' : 'new-password'}
               required
             />
-            <label className="block text-sm mb-1">Soyad</label>
-            <input
-              value={lastName}
-              onChange={(e) => setLastName(e.target.value)}
-              className="w-full bg-slate-700 px-2 py-1 rounded mb-3"
-              required
-            />
-          </>
-        )}
+            {mode === 'register' && (
+              <div style={{ fontSize: 11, color: 'var(--faint)', marginTop: 6 }}>
+                En az 8 karakter, bir büyük harf, bir rakam ve bir sembol.
+              </div>
+            )}
+          </div>
 
-        <button
-          type="submit"
-          disabled={busy}
-          className="w-full bg-green-600 hover:bg-green-500 disabled:bg-slate-700 rounded py-2 mt-2"
-        >
-          {busy ? '...' : mode === 'login' ? 'Giriş Yap' : 'Kaydol'}
-        </button>
+          {mode === 'register' && (
+            <>
+              <div>
+                <label className="field-label" htmlFor="e">E-posta</label>
+                <input
+                  id="e"
+                  className="field-input"
+                  type="email"
+                  value={email}
+                  onChange={e => setEmail(e.target.value)}
+                  autoComplete="email"
+                  required
+                />
+              </div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+                <div>
+                  <label className="field-label" htmlFor="fn">Ad</label>
+                  <input
+                    id="fn"
+                    className="field-input"
+                    value={firstName}
+                    onChange={e => setFirstName(e.target.value)}
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="field-label" htmlFor="ln">Soyad</label>
+                  <input
+                    id="ln"
+                    className="field-input"
+                    value={lastName}
+                    onChange={e => setLastName(e.target.value)}
+                    required
+                  />
+                </div>
+              </div>
+            </>
+          )}
 
-        <button
-          type="button"
-          onClick={() => { setMode(mode === 'login' ? 'register' : 'login'); setError('') }}
-          className="w-full text-sm text-slate-400 hover:text-slate-200 mt-3"
-        >
-          {mode === 'login' ? 'Hesabın yok mu? Kaydol' : 'Zaten hesabın var mı? Giriş yap'}
-        </button>
-      </form>
+          <button className="gate-submit" type="submit" disabled={busy}>
+            {busy ? '···' : mode === 'login' ? 'Giriş yap' : 'Hesap aç'}
+          </button>
+
+          <button className="gate-switch" type="button" onClick={swap}>
+            {mode === 'login' ? 'Hesabın yok mu? Hesap aç' : 'Zaten hesabın var mı? Giriş yap'}
+          </button>
+        </form>
+      </div>
     </div>
   )
 }

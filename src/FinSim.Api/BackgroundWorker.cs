@@ -48,6 +48,7 @@ namespace FinSim.Api.Services
                     await _hub.Clients.All.SendAsync("PriceUpdate", new
                     {
                         marketMove = tick.MarketMove,
+                        indexValue = tick.IndexValue,
                         prices = tick.Instruments.Select(i => new { i.Symbol, i.CurrentPrice })
                     }, stoppingToken);
                 }

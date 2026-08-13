@@ -19,7 +19,10 @@ namespace FinSim.Application.Services
             foreach (var i in instruments)
                 i.CurrentPrice = NextValue(i.CurrentPrice, i.BasePrice, marketMove);
 
-            return new PriceTickResult(marketMove, instruments);
+            var index = Math.Round(
+            instruments.Sum(i => i.CurrentPrice / i.BasePrice) / instruments.Count * 10_000m, 2);
+
+            return new PriceTickResult(marketMove, index, instruments);
         }
 
         private static decimal NextValue(decimal currVal, decimal baseVal, decimal marketMove)
@@ -33,5 +36,5 @@ namespace FinSim.Application.Services
         }
     }
 
-    public record PriceTickResult(decimal MarketMove, List<Instrument> Instruments);
+    public record PriceTickResult(decimal MarketMove, decimal IndexValue, List<Instrument> Instruments);
 }

@@ -1,8 +1,9 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import * as signalR from '@microsoft/signalr'
 import api, { API } from './api'
 import { useAuth } from './auth'
 import Login from './Login'
+import { useTheme } from './theme'
 
 type Instrument = {
   id: string
@@ -42,43 +43,73 @@ type PortfolioItem = {
 
 type PriceUpdate = {
   marketMove: number
+  indexValue: number
   prices: { symbol: string; currentPrice: number }[]
 }
+
+type Tick = 'up' | 'down'
 
 // "42,5" -> 42.5 ; "" / "42." / "abc" -> NaN
 const parseDecimal = (s: string) => parseFloat(s.replace(',', '.'))
 
+const fmt = (n: number) =>
+  n.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+
+const signed = (n: number) => (n >= 0 ? '+' : '−') + fmt(Math.abs(n))
+
+const dirOf = (n: number) => (n > 0 ? 'up' : n < 0 ? 'down' : 'flat')
+
+/** 1.234,56 with the kuruş set smaller — print-ledger habit. */
+function Money({ value }: { value: number }) {
+  const [lira, kurus] = fmt(value).split(',')
+  return (
+    <span>
+      {lira}
+      <span className="kurus">,{kurus}</span>
+    </span>
+  )
+}
+
+
 export default function App() {
   const { loggedIn, logout } = useAuth()
+  const { theme, toggle } = useTheme()
 
   if (!loggedIn) {
     return <Login onSuccess={() => window.location.reload()} />
   }
 
-  return <Dashboard onLogout={logout} />
+  return <Terminal onLogout={logout} theme={theme} onToggleTheme={toggle} />
 }
 
-function Dashboard({ onLogout }: { onLogout: () => void }) {
+function Terminal({ onLogout, theme, onToggleTheme }: {
+  onLogout: () => void
+  theme: 'night' | 'day'
+  onToggleTheme: () => void
+}) {
+  const [indexValue, setIndexValue] = useState(0)
   const [instruments, setInstruments] = useState<Instrument[]>([])
   const [history, setHistory] = useState<Record<string, number[]>>({})
   const [balance, setBalance] = useState<Balance | null>(null)
   const [portfolio, setPortfolio] = useState<Record<string, PortfolioItem>>({})
-  const [qty, setQty] = useState('1')
-  const [marketMove, setMarketMove] = useState(0)
-  const [limitOpen, setLimitOpen] = useState<string | null>(null)
-  const [limitPrice, setLimitPrice] = useState('')
-
   const [orders, setOrders] = useState<Order[]>([])
+  const [marketMove, setMarketMove] = useState(0)
+
+  const [selected, setSelected] = useState<string | null>(null)
+  const [mode, setMode] = useState<'market' | 'limit'>('market')
+  const [qty, setQty] = useState('1')
+  const [limitPrice, setLimitPrice] = useState('')
+  const [notice, setNotice] = useState('')
+  const [busy, setBusy] = useState(false)
+
+  const [ticks, setTicks] = useState<Record<string, Tick>>({})
+  const prevPrices = useRef<Record<string, number>>({})
 
   const loadOrders = () =>
-    api.get<Order[]>('/api/order')
-      .then(r => setOrders(r.data))
-      .catch(console.error)
+    api.get<Order[]>('/api/order').then(r => setOrders(r.data)).catch(console.error)
 
   const loadBalance = () =>
-    api.get<Balance>('/api/users/balance')
-      .then(r => setBalance(r.data))
-      .catch(console.error)
+    api.get<Balance>('/api/users/balance').then(r => setBalance(r.data)).catch(console.error)
 
   const loadPortfolio = () =>
     api.get<PortfolioItem[]>('/api/users/portfolio')
@@ -91,7 +122,10 @@ function Dashboard({ onLogout }: { onLogout: () => void }) {
 
   useEffect(() => {
     api.get<Instrument[]>('/api/instruments')
-      .then(res => setInstruments(res.data))
+      .then(res => {
+        setInstruments(res.data)
+        for (const i of res.data) prevPrices.current[i.symbol] = i.currentPrice
+      })
       .catch(console.error)
     loadOrders()
     loadBalance()
@@ -106,6 +140,17 @@ function Dashboard({ onLogout }: { onLogout: () => void }) {
 
     conn.on('PriceUpdate', (payload: PriceUpdate) => {
       setMarketMove(payload.marketMove)
+      setIndexValue(payload.indexValue)
+
+      const fresh: Record<string, Tick> = {}
+      for (const u of payload.prices) {
+        const before = prevPrices.current[u.symbol]
+        if (before !== undefined && u.currentPrice !== before) {
+          fresh[u.symbol] = u.currentPrice > before ? 'up' : 'down'
+        }
+        prevPrices.current[u.symbol] = u.currentPrice
+      }
+      setTicks(fresh)
 
       setInstruments(prev =>
         prev.map(i => {
@@ -117,7 +162,7 @@ function Dashboard({ onLogout }: { onLogout: () => void }) {
       setHistory(prev => {
         const next = { ...prev }
         for (const u of payload.prices) {
-          next[u.symbol] = [...(prev[u.symbol] ?? []), u.currentPrice].slice(-10)
+          next[u.symbol] = [...(prev[u.symbol] ?? []), u.currentPrice].slice(-24)
         }
         return next
       })
@@ -131,55 +176,44 @@ function Dashboard({ onLogout }: { onLogout: () => void }) {
     return () => { conn.stop() }
   }, [])
 
-  const sendOrder = async (instrumentId: string, direction: 'Buy' | 'Sell') => {
+  const chosen = instruments.find(i => i.id === selected) ?? null
+
+  const holdings = Object.values(portfolio)
+  const holdingsValue = holdings.reduce((s, p) => s + p.marketValue, 0)
+  const openPL = holdings.reduce((s, p) => s + p.profitLoss, 0)
+  const equity = (balance?.total ?? 0) + holdingsValue
+
+  const submit = async (direction: 'Buy' | 'Sell') => {
+    if (!chosen) return
+    setNotice('')
+
     const quantity = parseInt(qty, 10)
     if (!Number.isFinite(quantity) || quantity < 1) {
-      alert('Geçerli bir adet gir')
+      setNotice('Adet en az 1 olmalı.')
       return
     }
 
+    let body: Record<string, unknown> = { instrumentId: chosen.id, direction, quantity }
+    let url = '/api/order/market'
+
+    if (mode === 'limit') {
+      const price = parseDecimal(limitPrice)
+      if (!Number.isFinite(price) || price <= 0) {
+        setNotice('Limit fiyatı 0’dan büyük olmalı.')
+        return
+      }
+      body = { ...body, price }
+      url = '/api/order/limit'
+    }
+
+    setBusy(true)
     try {
-      await api.post('/api/order/market', {
-        instrumentId,
-        direction,
-        quantity,
-      })
-      loadBalance()
-      loadPortfolio()
+      await api.post(url, body)
+      if (mode === 'limit') setLimitPrice('')
     } catch (e: any) {
-      alert(e.response?.data ?? 'Hata')
-    }
-    loadPortfolio()
-    loadBalance()
-    loadOrders()
-  }
-
-  const sendLimit = async (instrumentId: string, direction: 'Buy' | 'Sell') => {
-    const quantity = parseInt(qty, 10)
-    if (!Number.isFinite(quantity) || quantity < 1) {
-      alert('Geçerli bir adet gir')
-      return
-    }
-
-    const price = parseDecimal(limitPrice)
-    if (!Number.isFinite(price) || price <= 0) {
-      alert('Geçerli bir fiyat gir')
-      return
-    }
-
-    try {
-      await api.post('/api/order/limit', {
-        instrumentId,
-        direction,
-        quantity,
-        price,
-      })
-      setLimitOpen(null)
-      setLimitPrice('')
-      loadBalance()
-      loadPortfolio()
-    } catch (e: any) {
-      alert(e.response?.data ?? 'Hata')
+      setNotice(typeof e.response?.data === 'string' ? e.response.data : 'Emir geçmedi.')
+    } finally {
+      setBusy(false)
     }
     loadPortfolio()
     loadBalance()
@@ -187,219 +221,311 @@ function Dashboard({ onLogout }: { onLogout: () => void }) {
   }
 
   const cancelOrder = async (id: string) => {
+    setNotice('')
     try {
       await api.post(`/api/order/${id}/cancel`)
-      loadBalance(); loadPortfolio(); loadOrders()
     } catch (e: any) {
-      alert(e.response?.data ?? 'Hata')
+      setNotice(typeof e.response?.data === 'string' ? e.response.data : 'İptal geçmedi.')
     }
+    loadBalance(); loadPortfolio(); loadOrders()
   }
 
-  const toggleLimit = (instrumentId: string) => {
-    setLimitOpen(prev => (prev === instrumentId ? null : instrumentId))
-    setLimitPrice('')
+  const pick = (i: Instrument) => {
+    if (!i.isActive) return
+    setSelected(prev => (prev === i.id ? null : i.id))
+    setLimitPrice(prev => (prev === '' ? i.currentPrice.toFixed(2).replace('.', ',') : prev))
   }
+
+  const tapeRow = instruments.map(i => {
+    const h = history[i.symbol] ?? []
+    const base = h.length > 1 ? h[0] : i.currentPrice
+    const pct = base ? ((i.currentPrice - base) / base) * 100 : 0
+    return { ...i, pct }
+  })
 
   return (
-    <div className="p-8 bg-slate-900 min-h-screen text-slate-100">
-      <div className="flex items-baseline gap-4 mb-6">
-        <h1 className="text-2xl font-bold">Borsa Tahtası</h1>
-        <span
-          className={`text-sm px-2 py-0.5 rounded ${
-            marketMove >= 0 ? 'bg-green-900 text-green-300' : 'bg-red-900 text-red-300'
-          }`}
-        >
-          Piyasa {marketMove >= 0 ? '▲' : '▼'} {(marketMove * 100).toFixed(2)}%
-        </span>
-        <button
-          onClick={onLogout}
-          className="ml-auto text-xs bg-slate-700 hover:bg-slate-600 px-3 py-1 rounded"
-        >
-          Çıkış Yap
-        </button>
-      </div>
+    <div className="shell">
+      <header className="rail">
+        <div className="wrap rail-in">
+          <span className="mark">Fin<em>Sim</em></span>
+          <span className="mark-sub">Borsa Simülasyonu</span>
+          <span className="rail-spacer" />
+          <span style={{ fontFamily: 'var(--mono)', fontSize: 13 }}>
+            <span style={{ color: 'var(--faint)', letterSpacing: '0.08em' }}>Market </span>
+            {indexValue ? fmt(indexValue) : '—'}
+            <span className={dirOf(marketMove)}>
+              {' '}{marketMove >= 0 ? '▲' : '▼'} {(Math.abs(marketMove) * 100).toFixed(2)}%
+            </span>
+          </span>
+          <button
+            className="ghost-btn"
+            onClick={onToggleTheme}
+            aria-label={theme === 'night' ? 'Gündüz moduna geç' : 'Gece moduna geç'}
+          >
+            {theme === 'night' ? '☀' : '☾'}
+          </button>
+          <button className="ghost-btn" onClick={onLogout}>Çıkış</button>
+        </div>
+      </header>
 
-      <div className="flex gap-6 items-center mb-6 text-sm">
-        <span>Serbest: <b>{balance?.freeCashBalance.toFixed(2) ?? '—'}</b></span>
-        <span>Kilitli: <b>{balance?.lockedCashBalance.toFixed(2) ?? '—'}</b></span>
-        <span>Toplam: <b>{balance?.total.toFixed(2) ?? '—'}</b></span>
-        <label className="ml-auto">
-          Adet:
-          <input
-            type="text"
-            inputMode="numeric"
-            value={qty}
-            onChange={e => {
-              const v = e.target.value
-              if (v === '' || /^\d+$/.test(v)) setQty(v)
-            }}
-            className="ml-2 w-20 bg-slate-700 px-2 py-1 rounded"
-          />
-        </label>
-      </div>
-
-      <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
-        {instruments.map(i => {
-          const pos = portfolio[i.symbol]
-          return (
-            <div
-              key={i.id}
-              className={`bg-slate-800 rounded p-4 ${!i.isActive ? 'opacity-40' : ''}`}
-            >
-              <div className="flex justify-between items-baseline mb-1">
-                <span className="font-bold">{i.symbol}</span>
-                <span>{i.currentPrice.toFixed(2)}</span>
-              </div>
-
-              {pos ? (
-                <div className="text-xs text-slate-400 mb-2">
-                  {pos.totalQuantity} lot
-                  {pos.lockedQuantity > 0 && ` (${pos.lockedQuantity} kilitli)`}
-                  {' · ort '}{pos.averageCost.toFixed(2)}
-                  <span className={pos.profitLoss >= 0 ? ' text-green-400' : ' text-red-400'}>
-                    {' '}{pos.profitLoss >= 0 ? '+' : ''}{pos.profitLoss.toFixed(2)}
+      <div className="tape">
+        <div className="tape-run">
+          {[0, 1].map(copy => (
+            <div key={copy} style={{ display: 'flex' }}>
+              {tapeRow.map(i => (
+                <div className="tape-item" key={`${copy}-${i.id}`}>
+                  <span className="tape-sym">{i.symbol}</span>
+                  <span className="tape-px">{fmt(i.currentPrice)}</span>
+                  <span className={`tape-dt ${dirOf(i.pct)}`}>
+                    {i.pct >= 0 ? '▲' : '▼'} {Math.abs(i.pct).toFixed(2)}%
                   </span>
                 </div>
-              ) : (
-                <div className="text-xs text-slate-600 mb-2">pozisyon yok</div>
-              )}
-
-              <Sparkline data={history[i.symbol] ?? []} />
-
-              <div className="flex gap-2 mt-3">
-                <button
-                  onClick={() => sendOrder(i.id, 'Buy')}
-                  disabled={!i.isActive}
-                  className="flex-1 bg-green-600 hover:bg-green-500 disabled:bg-slate-700 rounded py-1 text-sm"
-                >
-                  Al
-                </button>
-                <button
-                  onClick={() => sendOrder(i.id, 'Sell')}
-                  disabled={!i.isActive}
-                  className="flex-1 bg-red-600 hover:bg-red-500 disabled:bg-slate-700 rounded py-1 text-sm"
-                >
-                  Sat
-                </button>
-                <button
-                  onClick={() => toggleLimit(i.id)}
-                  disabled={!i.isActive}
-                  className="px-2 bg-slate-600 hover:bg-slate-500 disabled:bg-slate-700 rounded py-1 text-sm"
-                >
-                  Limit
-                </button>
-              </div>
-
-              {limitOpen === i.id && (
-                <div className="mt-3 pt-3 border-t border-slate-700">
-                  <input
-                    type="text"
-                    inputMode="decimal"
-                    autoFocus
-                    placeholder="Limit fiyatı"
-                    value={limitPrice}
-                    onChange={e => {
-                      const v = e.target.value
-                      if (v === '' || /^\d*[.,]?\d*$/.test(v)) setLimitPrice(v)
-                    }}
-                    onKeyDown={e => {
-                      if (e.key === 'Enter') sendLimit(i.id, 'Buy')
-                      if (e.key === 'Escape') toggleLimit(i.id)
-                    }}
-                    className="w-full bg-slate-700 px-2 py-1 rounded text-sm mb-2"
-                  />
-                  <div className="flex gap-2">
-                    <button
-                      onClick={() => sendLimit(i.id, 'Buy')}
-                      className="flex-1 bg-green-700 hover:bg-green-600 rounded py-1 text-xs"
-                    >
-                      Limit Al
-                    </button>
-                    <button
-                      onClick={() => sendLimit(i.id, 'Sell')}
-                      className="flex-1 bg-red-700 hover:bg-red-600 rounded py-1 text-xs"
-                    >
-                      Limit Sat
-                    </button>
-                  </div>
-                </div>
-              )}
+              ))}
             </div>
-          )
-        })}
+          ))}
+        </div>
       </div>
-        <h2 className="text-xl font-bold mt-10 mb-3">Emirler</h2>
-        <table className="w-full text-sm">
-          <thead className="text-slate-400 text-left">
-            <tr>
-              <th className="py-1">Hisse</th>
-              <th>Tip</th>
-              <th>Yön</th>
-              <th className="text-right">Adet</th>
-              <th className="text-right">Fiyat</th>
-              <th>Durum</th>
-              <th></th>
-            </tr>
-          </thead>
-          <tbody>
-            {orders.map(o => (
-              <tr key={o.id} className="border-t border-slate-800">
-                <td className="py-1 font-medium">{o.symbol}</td>
-                <td>{o.orderType}</td>
-                <td className={o.direction === 'Buy' ? 'text-green-400' : 'text-red-400'}>
-                  {o.direction}
-                </td>
-                <td className="text-right">{o.quantity}</td>
-                <td className="text-right">{o.price?.toFixed(2) ?? '—'}</td>
-                <td>
-                  <span className={
-                    o.status === 'Pending' ? 'text-yellow-400'
-                    : o.status === 'Filled' ? 'text-green-400'
-                    : 'text-slate-500'
-                  }>
-                    {o.status}
+
+      <section className="strip">
+        <div className="cell">
+          <div className="cell-label">Hesap Değeri</div>
+          <div className="cell-value">₺<Money value={equity} /></div>
+          <div className={`cell-delta ${dirOf(openPL)}`}>
+            Açık pozisyon {signed(openPL)} ₺
+          </div>
+        </div>
+        <div className="cell">
+          <div className="cell-label">Serbest</div>
+          <div className="cell-value sm">{balance ? fmt(balance.freeCashBalance) : '—'}</div>
+        </div>
+        <div className="cell">
+          <div className="cell-label">Kilitli</div>
+          <div
+            className="cell-value sm"
+            style={{ color: (balance?.lockedCashBalance ?? 0) > 0 ? 'var(--amber)' : undefined }}
+          >
+            {balance ? fmt(balance.lockedCashBalance) : '—'}
+          </div>
+        </div>
+        <div className="cell">
+          <div className="cell-label">Pozisyon</div>
+          <div className="cell-value sm">{fmt(holdingsValue)}</div>
+        </div>
+      </section>
+
+      <main className="wrap">
+        {notice && (
+          <div className="notice">
+            <span style={{ flex: 1 }}>{notice}</span>
+            <button onClick={() => setNotice('')} aria-label="Kapat">×</button>
+          </div>
+        )}
+
+        <div className="section-head">
+          <h2>Tahta</h2>
+          <span className="section-note">{instruments.length} enstrüman · emir için seç</span>
+        </div>
+
+        <div className="board">
+          {instruments.map(i => {
+            const pos = portfolio[i.symbol]
+            return (
+              <button
+                key={i.id}
+                className="tile"
+                data-selected={selected === i.id}
+                data-inactive={!i.isActive}
+                onClick={() => pick(i)}
+                disabled={!i.isActive}
+              >
+                <AreaSpark data={history[i.symbol] ?? []} />
+                <div className="tile-top">
+                  <span className="tile-sym">{i.symbol}</span>
+                  <span className="tile-px" data-tick={ticks[i.symbol]} key={i.currentPrice}>
+                    {fmt(i.currentPrice)}
                   </span>
-                </td>
-                <td className="text-right">
-                  {o.status === 'Pending' && (
-                    <button
-                      onClick={() => cancelOrder(o.id)}
-                      className="text-xs bg-slate-700 hover:bg-slate-600 px-2 py-0.5 rounded"
-                    >
-                      İptal
-                    </button>
+                </div>
+                <div className="tile-name">{i.name}</div>
+                <div className="tile-pos">
+                  {pos ? (
+                    <>
+                      <span>{pos.totalQuantity} lot</span>
+                      {pos.lockedQuantity > 0 && (
+                        <span className="locked">{pos.lockedQuantity} kilitli</span>
+                      )}
+                      <span className={dirOf(pos.profitLoss)}>{signed(pos.profitLoss)}</span>
+                    </>
+                  ) : (
+                    <span className="empty">{i.isActive ? 'pozisyon yok' : 'işleme kapalı'}</span>
                   )}
-                </td>
+                </div>
+              </button>
+            )
+          })}
+        </div>
+
+        <div className="section-head">
+          <h2>Emir Defteri</h2>
+          <span className="section-note">son 50 kayıt</span>
+        </div>
+
+        {orders.length === 0 ? (
+          <div className="empty-state">
+            Henüz emir yok. Tahtadan bir hisse seç, aşağıdan adet gir.
+          </div>
+        ) : (
+          <table className="ledger">
+            <thead>
+              <tr>
+                <th>Hisse</th>
+                <th className="hide-sm">Tip</th>
+                <th>Yön</th>
+                <th className="num">Adet</th>
+                <th className="num">Fiyat</th>
+                <th>Durum</th>
+                <th />
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {orders.map(o => (
+                <tr key={o.id}>
+                  <td className="sym">{o.symbol}</td>
+                  <td className="hide-sm">{o.orderType === 'Market' ? 'Piyasa' : 'Limit'}</td>
+                  <td className={o.direction === 'Buy' ? 'up' : 'down'}>
+                    {o.direction === 'Buy' ? 'Alış' : 'Satış'}
+                  </td>
+                  <td className="num">{o.quantity}</td>
+                  <td className="num">{o.price != null ? fmt(o.price) : '—'}</td>
+                  <td>
+                    <span className={`pill ${o.status.toLowerCase()}`}>
+                      {o.status === 'Pending' ? 'Bekliyor'
+                        : o.status === 'Filled' ? 'Gerçekleşti'
+                        : 'İptal'}
+                    </span>
+                  </td>
+                  <td className="num">
+                    {o.status === 'Pending' && (
+                      <button className="link-btn" onClick={() => cancelOrder(o.id)}>
+                        iptal et
+                      </button>
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+      </main>
+
+      <div className="ticket">
+        <div className="wrap ticket-in">
+          <div className="ticket-slot grow">
+            <span className="field-label">Enstrüman</span>
+            {chosen ? (
+              <div className="field-static">
+                {chosen.symbol}{' '}
+                <span style={{ fontFamily: 'var(--mono)', fontSize: 13, color: 'var(--mute)' }}>
+                  {fmt(chosen.currentPrice)}
+                </span>
+              </div>
+            ) : (
+              <div className="field-static none">Tahtadan seç</div>
+            )}
+          </div>
+
+          <div className="ticket-slot" style={{ minWidth: 'auto' }}>
+            <span className="field-label">Emir tipi</span>
+            <div className="seg">
+              <button aria-pressed={mode === 'market'} onClick={() => setMode('market')}>
+                Piyasa
+              </button>
+              <button aria-pressed={mode === 'limit'} onClick={() => setMode('limit')}>
+                Limit
+              </button>
+            </div>
+          </div>
+
+          <div className="ticket-slot" style={{ minWidth: 96 }}>
+            <label className="field-label" htmlFor="qty">Adet</label>
+            <input
+              id="qty"
+              className="field-input"
+              type="text"
+              inputMode="numeric"
+              value={qty}
+              onChange={e => {
+                const v = e.target.value
+                if (v === '' || /^\d+$/.test(v)) setQty(v)
+              }}
+            />
+          </div>
+
+          <div className="ticket-slot" style={{ minWidth: 120 }}>
+            <label className="field-label" htmlFor="lmt">Limit fiyatı</label>
+            <input
+              id="lmt"
+              className="field-input"
+              type="text"
+              inputMode="decimal"
+              placeholder={mode === 'limit' ? '0,00' : '—'}
+              disabled={mode !== 'limit'}
+              value={mode === 'limit' ? limitPrice : ''}
+              onChange={e => {
+                const v = e.target.value
+                if (v === '' || /^\d*[.,]?\d*$/.test(v)) setLimitPrice(v)
+              }}
+              onKeyDown={e => {
+                if (e.key === 'Enter') { e.preventDefault(); submit('Buy') }
+              }}
+            />
+          </div>
+
+          <button className="trade buy" disabled={!chosen || busy} onClick={() => submit('Buy')}>
+            Al
+          </button>
+          <button className="trade sell" disabled={!chosen || busy} onClick={() => submit('Sell')}>
+            Sat
+          </button>
+        </div>
+      </div>
     </div>
   )
 }
 
-function Sparkline({ data }: { data: number[] }) {
-  if (data.length < 2)
-    return <div className="h-10 text-xs text-slate-500 flex items-center">veri bekleniyor…</div>
+/** Filled area chart that sits behind the tile content. */
+function AreaSpark({ data }: { data: number[] }) {
+  if (data.length < 2) return null
 
   const min = Math.min(...data)
   const max = Math.max(...data)
   const range = max - min || 1
+  const last = data.length - 1
 
-  const points = data
-    .map((v, idx) => `${(idx / (data.length - 1)) * 100},${40 - ((v - min) / range) * 40}`)
-    .join(' ')
+  const pts = data.map((v, idx) => {
+    const x = (idx / last) * 100
+    const y = 30 - ((v - min) / range) * 26
+    return `${x.toFixed(2)},${y.toFixed(2)}`
+  })
 
-  const rising = data[data.length - 1] >= data[0]
+  const rising = data[last] >= data[0]
+  const stroke = rising ? 'var(--rise)' : 'var(--fall)'
+  const id = `g${rising ? 'u' : 'd'}`
 
   return (
-    <svg viewBox="0 0 100 40" preserveAspectRatio="none" className="w-full h-10">
+    <svg className="tile-spark" viewBox="0 0 100 30" preserveAspectRatio="none" aria-hidden="true">
+      <defs>
+        <linearGradient id={id} x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor={stroke} stopOpacity="0.34" />
+          <stop offset="100%" stopColor={stroke} stopOpacity="0" />
+        </linearGradient>
+      </defs>
+      <polygon points={`0,30 ${pts.join(' ')} 100,30`} fill={`url(#${id})`} />
       <polyline
-        points={points}
+        points={pts.join(' ')}
         fill="none"
-        strokeWidth="2"
+        stroke={stroke}
+        strokeWidth="1.5"
         vectorEffect="non-scaling-stroke"
-        className={rising ? 'stroke-green-400' : 'stroke-red-400'}
       />
     </svg>
   )
