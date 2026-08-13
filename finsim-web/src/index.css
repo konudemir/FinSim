@@ -221,10 +221,13 @@ input  { font-family: var(--mono); }
   display: flex;
   width: max-content;
   height: 100%;
-  animation: tape 48s linear infinite;
+  animation: tape 150s linear infinite;
 }
 
-.tape:hover .tape-run { animation-play-state: paused; }
+@keyframes tape {
+  from { transform: translateX(-50%); }
+  to   { transform: translateX(0); }
+}
 
 @keyframes tape {
   from { transform: translateX(0); }
@@ -240,11 +243,14 @@ input  { font-family: var(--mono); }
   font-size: 12px;
   white-space: nowrap;
   border-right: var(--rail);
+  background: transparent;
+  color: var(--tint, var(--mute));
+  transition: color 0.6s ease;
 }
 
-.tape-sym { color: var(--mute); letter-spacing: 0.06em; }
-.tape-px  { color: var(--bone); font-weight: 500; }
-.tape-dt  { font-size: 11px; }
+.tape-item .tape-sym { color: inherit; opacity: 0.62; letter-spacing: 0.06em; }
+.tape-item .tape-px  { color: inherit; font-weight: 500; }
+.tape-item .tape-dt  { color: inherit; font-size: 11px; opacity: 0.8; }
 
 .up   { color: var(--rise); }
 .down { color: var(--fall); }
@@ -438,6 +444,10 @@ input  { font-family: var(--mono); }
 @keyframes flash-down {
   from { background: var(--flash-down); }
   to   { background: transparent; }
+}
+@keyframes tape {
+  from { transform: translateX(-50%); }
+  to   { transform: translateX(0); }
 }
 
 .tile-px[data-tick="up"]   { animation: flash-up 0.9s ease-out; }

@@ -27,11 +27,22 @@ export function useAuth() {
     []
   )
 
+  const forgotPassword = useCallback(async (email: string) => {
+    await api.post('/api/auth/forgot-password', { email })
+  }, [])
+
+  const resetPassword = useCallback(
+    async (email: string, token: string, password: string) => {
+      await api.post('/api/auth/reset-password', { email, token, password })
+    },
+    []
+  )
+
   const logout = useCallback(() => {
     localStorage.removeItem('finsim_token')
     localStorage.removeItem('finsim_expiry')
     setLoggedIn(false)
   }, [])
 
-  return { loggedIn, login, register, logout }
+  return { loggedIn, login, register, forgotPassword, resetPassword, logout }
 }

@@ -41,5 +41,25 @@ namespace FinSim.Infrastructure.Repositories
         }
 
         public Task SaveChangesAsync(CancellationToken ct) => _db.SaveChangesAsync(ct);
+
+        public Task<User?> GetByEmailAsync(string email, CancellationToken ct)
+        {
+            return _users.FindByEmailAsync(email);
+        }
+
+        public Task<string> GeneratePasswordResetTokenAsync(User user, CancellationToken ct)
+        {
+            return _users.GeneratePasswordResetTokenAsync(user);
+        }
+
+        public async Task<IReadOnlyList<string>> ResetPasswordAsync(User user, string token, string newPassword, CancellationToken ct)
+        {
+            var result = await _users.ResetPasswordAsync(user, token, newPassword);
+            return result.Succeeded
+                ? []
+                : result.Errors.Select(e => e.Description).ToList();
+        }
+
+        
     }
 }

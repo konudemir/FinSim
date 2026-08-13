@@ -1,9 +1,11 @@
-import { useEffect, useRef, useState } from 'react'
+import { memo, useEffect, useRef, useState } from 'react'
 import * as signalR from '@microsoft/signalr'
 import api, { API } from './api'
 import { useAuth } from './auth'
 import Login from './Login'
 import { useTheme } from './theme'
+import ResetPassword from './ResetPassword'
+
 
 type Instrument = {
   id: string
@@ -74,6 +76,20 @@ function Money({ value }: { value: number }) {
 export default function App() {
   const { loggedIn, logout } = useAuth()
   const { theme, toggle } = useTheme()
+
+  const params = new URLSearchParams(window.location.search)
+  const resetEmail = params.get('email')
+  const resetToken = params.get('token')
+
+  if (resetEmail && resetToken) {
+    return (
+      <ResetPassword
+        email={resetEmail}
+        token={resetToken}
+        onDone={() => { window.location.href = '/' }}
+      />
+    )
+  }
 
   if (!loggedIn) {
     return <Login onSuccess={() => window.location.reload()} />
@@ -243,6 +259,7 @@ function Terminal({ onLogout, theme, onToggleTheme }: {
     return { ...i, pct }
   })
 
+
   return (
     <div className="shell">
       <header className="rail">
@@ -268,23 +285,7 @@ function Terminal({ onLogout, theme, onToggleTheme }: {
         </div>
       </header>
 
-      <div className="tape">
-        <div className="tape-run">
-          {[0, 1].map(copy => (
-            <div key={copy} style={{ display: 'flex' }}>
-              {tapeRow.map(i => (
-                <div className="tape-item" key={`${copy}-${i.id}`}>
-                  <span className="tape-sym">{i.symbol}</span>
-                  <span className="tape-px">{fmt(i.currentPrice)}</span>
-                  <span className={`tape-dt ${dirOf(i.pct)}`}>
-                    {i.pct >= 0 ? '▲' : '▼'} {Math.abs(i.pct).toFixed(2)}%
-                  </span>
-                </div>
-              ))}
-            </div>
-          ))}
-        </div>
-      </div>
+      <Tape items={tapeRow} />
 
       <section className="strip">
         <div className="cell">
@@ -530,3 +531,37 @@ function AreaSpark({ data }: { data: number[] }) {
     </svg>
   )
 }
+
+
+const Tape = memo(function Tape({ items }: { items: { id: string; symbol: string; currentPrice: number; pct: number }[] }) {
+  const tintOf = (pct: number) => {
+    if (Math.abs(pct) < 0.001) return 'var(--mute)'
+    const w = Math.min(100, 14 + Math.abs(pct) * 43)
+    const base = pct > 0 ? 'var(--rise)' : 'var(--fall)'
+    return `color-mix(in srgb, ${base} ${w.toFixed(0)}%, var(--mute))`
+  }
+
+  return (
+    <div className="tape">
+      <div className="tape-run">
+        {[0, 1].map(copy => (
+          <div key={copy} style={{ display: 'flex' }}>
+            {items.map(i => (
+              <div
+                className="tape-item"
+                key={`${copy}-${i.id}`}
+                style={{ ['--tint' as string]: tintOf(i.pct) }}
+              >
+                <span className="tape-sym">{i.symbol}</span>
+                <span className="tape-px">{fmt(i.currentPrice)}</span>
+                <span className="tape-dt">
+                  {i.pct >= 0 ? '▲' : '▼'} {Math.abs(i.pct).toFixed(2)}%
+                </span>
+              </div>
+            ))}
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+})

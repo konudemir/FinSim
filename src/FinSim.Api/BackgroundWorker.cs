@@ -4,14 +4,15 @@ using Microsoft.AspNetCore.SignalR;
 
 namespace FinSim.Api.Services
 {
-    public class BackgroundWorker : BackgroundService
+    public class MarketTickWorker : BackgroundService
     {
+        public const double Every = 3;
         private readonly IHubContext<PriceHub> _hub;
-        private readonly ILogger<BackgroundWorker> _logger;
+        private readonly ILogger<MarketTickWorker> _logger;
         private readonly IServiceScopeFactory _scopeFactory;
 
-        public BackgroundWorker(
-            ILogger<BackgroundWorker> logger,
+        public MarketTickWorker(
+            ILogger<MarketTickWorker> logger,
             IServiceScopeFactory scopeFactory,
             IHubContext<PriceHub> hub)
         {
@@ -22,7 +23,7 @@ namespace FinSim.Api.Services
 
         protected override async Task ExecuteAsync(CancellationToken stoppingToken)
         {
-            using var timer = new PeriodicTimer(TimeSpan.FromSeconds(3));
+            using var timer = new PeriodicTimer(TimeSpan.FromSeconds(Every));
 
             while (await timer.WaitForNextTickAsync(stoppingToken))
             {

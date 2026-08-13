@@ -33,5 +33,25 @@ namespace FinSim.Controllers
                 _                              => Ok("User created.")
             };
         }
+    
+    [HttpPost("forgot-password")]
+        public async Task<IActionResult> ForgotPassword(
+            [FromBody] ForgotPasswordRequest req, CancellationToken ct)
+        {
+            await _auth.ForgotPasswordAsync(req, ct);
+            return Ok("Bu adres kayıtlıysa sıfırlama bağlantısı gönderildi.");
+        }
+
+        [HttpPost("reset-password")]
+        public async Task<IActionResult> ResetPassword(
+            [FromBody] ResetPasswordRequest req, CancellationToken ct)
+        {
+            var (result, errors) = await _auth.ResetPasswordAsync(req, ct);
+            return result == ResetResult.Success
+                ? Ok("Parolan güncellendi.")
+                : BadRequest(errors);
+        }
+    
+    
     }
 }

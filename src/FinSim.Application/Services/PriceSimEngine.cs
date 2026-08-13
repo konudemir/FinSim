@@ -1,3 +1,4 @@
+using System.ComponentModel;
 using FinSim.Application.Interfaces;
 using FinSim.Domain.Models;
 

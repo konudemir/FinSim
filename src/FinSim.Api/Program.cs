@@ -21,7 +21,6 @@ builder.Services.AddOpenApi();
 builder.Services.AddDbContext<FinSimDbContext>(options =>
     options.UseNpgsql(builder.Configuration.GetConnectionString("BorsaDb")));
 
-builder.Services.AddControllers();
 builder.Services.AddControllers()
     .AddJsonOptions(o => o.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter()));
 
@@ -29,7 +28,8 @@ builder.Services.AddIdentityCore<User>()
     .AddEntityFrameworkStores<FinSimDbContext>()
     .AddDefaultTokenProviders();
 
-builder.Services.AddHostedService<BackgroundWorker>();
+builder.Services.AddHostedService<MarketTickWorker>();
+builder.Services.AddScoped<IEmailSender, EmailSender>();
 builder.Services.AddScoped<PriceSimEngine>();
 builder.Services.AddScoped<OrderCheckEngine>();
 builder.Services.AddScoped<IInstrumentRepository, InstrumentRepository>();

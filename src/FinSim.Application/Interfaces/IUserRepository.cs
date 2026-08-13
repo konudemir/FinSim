@@ -11,5 +11,8 @@ namespace FinSim.Application.Interfaces
         Task<bool> CheckPasswordAsync(User user, string password, CancellationToken ct);
         Task<IReadOnlyList<string>> CreateAsync(User user, string password, CancellationToken ct);
         Task SaveChangesAsync(CancellationToken ct);
+        Task<User?> GetByEmailAsync(string email,CancellationToken ct);
+        Task<string> GeneratePasswordResetTokenAsync(User user, CancellationToken ct);
+        Task<IReadOnlyList<string>> ResetPasswordAsync(User user, string token, string newPassword, CancellationToken ct);
     }
 }
