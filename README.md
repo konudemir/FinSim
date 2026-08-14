@@ -1,6 +1,7 @@
 # FinSim
-FinSim is a financial stock simulator that changes stock prices randomly and lets the user act as a trader in this simulation.
-FinSim does not mirror real life stock movements. It is completely random and not real.
+- FinSim is a financial stock simulator that changes stock prices randomly and lets the user act as a trader in this simulation.
+- FinSim does not mirror real life stock movements. It is completely random and not real.
+- FinSim has two different language settings easily configurable: English and Turkish. Just click on the EN / TUR button to switch.
 
 ## Tech Stack
 .NET 10.0 for backend

@@ -43,17 +43,17 @@
 
 /* gündüz — aydınlık tahta */
 [data-theme="day"] {
-  --ink:    #FAFAF8;   /* page — clean, almost white */
-  --sunk:   #ECECE8;
-  --panel:  #FFFFFF;   /* tiles, crisp */
-  --raise:  #F2F4F8;
-  --edge:   #C8CDD6;
-  --bone:   #0B0F14;   /* near-black text */
-  --mute:   #5B6672;
-  --faint:  #8B95A1;
+  --ink:    #FAFAF8; /*ANA*/
+  --sunk:   #ECECE8; /*DÖNENLER*/
+  --panel:  #FFFFFF; /*AL ADET LİMİTFİYATİ VE ÜST*/
+  --raise:  #F2F4F8; /*AL SAT PİYASA*/
+  --edge:   #C8CDD6; /*borders*/
+  --bone:   #0B0F14; /*stock prices VE FİN*/
+  --mute:   #5B6672; /*ÜSTEKİ UFAK YAZILAR*/
+  --faint:  #8B95A1; /*STOK FUL İSİM*/
   --rise:   #00875A;
   --fall:   #D0342C;
-  --amber:  #B45309;
+  --amber:  #B45309; /*SİM VE GİRİŞ*/
 
   --lift:   inset 0 1px 0 rgba(255, 255, 255, 1);
   --glow:   rgba(0, 0, 0, 0.03);

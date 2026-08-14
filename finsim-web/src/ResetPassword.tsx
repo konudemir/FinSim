@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useAuth } from './auth'
+import { useLang } from './lang'
 
 export default function ResetPassword({
   email,
@@ -11,6 +12,7 @@ export default function ResetPassword({
   onDone: () => void
 }) {
   const { resetPassword } = useAuth()
+  const { lang, toggle: toggleLang, t } = useLang()
   const [password, setPassword] = useState('')
   const [confirm, setConfirm] = useState('')
   const [note, setNote] = useState('')
@@ -23,7 +25,7 @@ export default function ResetPassword({
 
     if (password !== confirm) {
       setNoteOk(false)
-      setNote('Parolalar eşleşmiyor.')
+      setNote(t('reset.mismatch'))
       return
     }
 
@@ -31,7 +33,7 @@ export default function ResetPassword({
     try {
       await resetPassword(email, token, password)
       setNoteOk(true)
-      setNote('Parolan güncellendi. Girişe yönlendiriliyorsun…')
+      setNote(t('reset.done'))
       setTimeout(onDone, 1500)
     } catch (err: any) {
       const d = err.response?.data
@@ -39,7 +41,7 @@ export default function ResetPassword({
       setNote(
         typeof d === 'string' ? d
         : Array.isArray(d) ? d.join(' ')
-        : 'Bağlantı geçersiz veya süresi dolmuş.'
+        : t('reset.invalid')
       )
     } finally {
       setBusy(false)
@@ -49,19 +51,25 @@ export default function ResetPassword({
   return (
     <div className="gate">
       <div className="gate-card">
+        <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 12 }}>
+          <button className="ghost-btn" type="button" onClick={toggleLang} aria-label="Language">
+            {lang === 'tr' ? 'EN' : 'TR'}
+          </button>
+        </div>
+
         <div className="gate-mark">Fin<em>Sim</em></div>
-        <div className="gate-tag">Parola Sıfırlama</div>
+        <div className="gate-tag">{t('reset.tag')}</div>
 
         <form onSubmit={submit}>
           {note && <div className={`gate-note${noteOk ? ' ok' : ''}`}>{note}</div>}
 
           <div style={{ fontSize: 12, color: 'var(--mute)' }}>
-            <span style={{ color: 'var(--faint)' }}>Hesap: </span>
+            <span style={{ color: 'var(--faint)' }}>{t('reset.account')} </span>
             {email}
           </div>
 
           <div>
-            <label className="field-label" htmlFor="np">Yeni parola</label>
+            <label className="field-label" htmlFor="np">{t('reset.newPassword')}</label>
             <input
               id="np"
               className="field-input"
@@ -72,12 +80,12 @@ export default function ResetPassword({
               required
             />
             <div style={{ fontSize: 11, color: 'var(--faint)', marginTop: 6 }}>
-              En az 8 karakter, bir büyük harf, bir rakam ve bir sembol.
+              {t('gate.pwHint')}
             </div>
           </div>
 
           <div>
-            <label className="field-label" htmlFor="np2">Yeni parola (tekrar)</label>
+            <label className="field-label" htmlFor="np2">{t('reset.newPasswordAgain')}</label>
             <input
               id="np2"
               className="field-input"
@@ -90,11 +98,11 @@ export default function ResetPassword({
           </div>
 
           <button className="gate-submit" type="submit" disabled={busy}>
-            {busy ? '···' : 'Parolayı güncelle'}
+            {busy ? '···' : t('reset.submit')}
           </button>
 
           <button className="gate-switch" type="button" onClick={onDone}>
-            Girişe dön
+            {t('gate.toLogin')}
           </button>
         </form>
       </div>

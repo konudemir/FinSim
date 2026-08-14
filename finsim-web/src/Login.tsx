@@ -1,10 +1,12 @@
 import { useState } from 'react'
 import { useAuth } from './auth'
+import { useLang } from './lang'
 
 type Mode = 'login' | 'register' | 'forgot'
 
 export default function Login({ onSuccess }: { onSuccess: () => void }) {
   const { login, register, forgotPassword } = useAuth()
+  const { lang, toggle: toggleLang, t } = useLang()
   const [mode, setMode] = useState<Mode>('login')
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
@@ -19,7 +21,7 @@ export default function Login({ onSuccess }: { onSuccess: () => void }) {
     const d = e.response?.data
     if (typeof d === 'string') return d
     if (Array.isArray(d)) return d.join(' ')
-    return 'Bağlantı kurulamadı.'
+    return t('gate.noConnection')
   }
 
   const submit = async (e: React.FormEvent) => {
@@ -34,11 +36,11 @@ export default function Login({ onSuccess }: { onSuccess: () => void }) {
         await register(username, password, email, firstName, lastName)
         setMode('login')
         setNoteOk(true)
-        setNote('Hesap açıldı. Şimdi giriş yapabilirsin.')
+        setNote(t('gate.registered'))
       } else {
         await forgotPassword(email)
         setNoteOk(true)
-        setNote('Bu adres kayıtlıysa sıfırlama bağlantısı gönderildi.')
+        setNote(t('gate.resetSent'))
       }
     } catch (err: any) {
       setNoteOk(false)
@@ -57,28 +59,34 @@ export default function Login({ onSuccess }: { onSuccess: () => void }) {
   const showEmail = mode === 'register' || mode === 'forgot'
 
   const submitLabel =
-    mode === 'login' ? 'Giriş yap'
-    : mode === 'register' ? 'Hesap aç'
-    : 'Sıfırlama bağlantısı gönder'
+    mode === 'login' ? t('gate.login')
+    : mode === 'register' ? t('gate.register')
+    : t('gate.sendReset')
 
   return (
     <div className="gate">
       <div className="gate-card">
+        <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 12 }}>
+          <button className="ghost-btn" type="button" onClick={toggleLang} aria-label="Language">
+            {lang === 'tr' ? 'EN' : 'TR'}
+          </button>
+        </div>
+
         <div className="gate-mark">Fin<em>Sim</em></div>
-        <div className="gate-tag">Financial Terminal</div>
+        <div className="gate-tag">{t('gate.tag')}</div>
 
         <form onSubmit={submit}>
           {note && <div className={`gate-note${noteOk ? ' ok' : ''}`}>{note}</div>}
 
           {mode === 'forgot' && (
             <div style={{ fontSize: 12, color: 'var(--mute)', lineHeight: 1.5 }}>
-              Hesabının e-posta adresini gir, sıfırlama bağlantısını gönderelim.
+              {t('gate.forgotHint')}
             </div>
           )}
 
           {showCredentials && (
             <div>
-              <label className="field-label" htmlFor="u">Kullanıcı adı</label>
+              <label className="field-label" htmlFor="u">{t('gate.username')}</label>
               <input
                 id="u"
                 className="field-input"
@@ -92,7 +100,7 @@ export default function Login({ onSuccess }: { onSuccess: () => void }) {
 
           {showCredentials && (
             <div>
-              <label className="field-label" htmlFor="p">Parola</label>
+              <label className="field-label" htmlFor="p">{t('gate.password')}</label>
               <input
                 id="p"
                 className="field-input"
@@ -104,7 +112,7 @@ export default function Login({ onSuccess }: { onSuccess: () => void }) {
               />
               {mode === 'register' && (
                 <div style={{ fontSize: 11, color: 'var(--faint)', marginTop: 6 }}>
-                  En az 8 karakter, bir büyük harf, bir rakam ve bir sembol.
+                  {t('gate.pwHint')}
                 </div>
               )}
             </div>
@@ -112,7 +120,7 @@ export default function Login({ onSuccess }: { onSuccess: () => void }) {
 
           {showEmail && (
             <div>
-              <label className="field-label" htmlFor="e">E-posta</label>
+              <label className="field-label" htmlFor="e">{t('gate.email')}</label>
               <input
                 id="e"
                 className="field-input"
@@ -128,7 +136,7 @@ export default function Login({ onSuccess }: { onSuccess: () => void }) {
           {mode === 'register' && (
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
               <div>
-                <label className="field-label" htmlFor="fn">Ad</label>
+                <label className="field-label" htmlFor="fn">{t('gate.firstName')}</label>
                 <input
                   id="fn"
                   className="field-input"
@@ -138,7 +146,7 @@ export default function Login({ onSuccess }: { onSuccess: () => void }) {
                 />
               </div>
               <div>
-                <label className="field-label" htmlFor="ln">Soyad</label>
+                <label className="field-label" htmlFor="ln">{t('gate.lastName')}</label>
                 <input
                   id="ln"
                   className="field-input"
@@ -157,17 +165,17 @@ export default function Login({ onSuccess }: { onSuccess: () => void }) {
           {mode === 'login' && (
             <>
               <button className="gate-switch" type="button" onClick={() => go('register')}>
-                Hesabın yok mu? Hesap aç
+                {t('gate.toRegister')}
               </button>
               <button className="gate-switch" type="button" onClick={() => go('forgot')}>
-                Parolamı unuttum
+                {t('gate.toForgot')}
               </button>
             </>
           )}
 
           {mode !== 'login' && (
             <button className="gate-switch" type="button" onClick={() => go('login')}>
-              Girişe dön
+              {t('gate.toLogin')}
             </button>
           )}
         </form>

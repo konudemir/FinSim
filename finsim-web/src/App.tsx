@@ -4,6 +4,7 @@ import api, { API } from './api'
 import { useAuth } from './auth'
 import Login from './Login'
 import { useTheme } from './theme'
+import { useLang } from './lang'
 import ResetPassword from './ResetPassword'
 
 
@@ -103,6 +104,8 @@ function Terminal({ onLogout, theme, onToggleTheme }: {
   theme: 'night' | 'day'
   onToggleTheme: () => void
 }) {
+  const { lang, toggle: toggleLang, t } = useLang()
+
   const [indexValue, setIndexValue] = useState(0)
   const [instruments, setInstruments] = useState<Instrument[]>([])
   const [history, setHistory] = useState<Record<string, number[]>>({})
@@ -205,7 +208,7 @@ function Terminal({ onLogout, theme, onToggleTheme }: {
 
     const quantity = parseInt(qty, 10)
     if (!Number.isFinite(quantity) || quantity < 1) {
-      setNotice('Adet en az 1 olmalı.')
+      setNotice(t('err.minQty'))
       return
     }
 
@@ -215,7 +218,7 @@ function Terminal({ onLogout, theme, onToggleTheme }: {
     if (mode === 'limit') {
       const price = parseDecimal(limitPrice)
       if (!Number.isFinite(price) || price <= 0) {
-        setNotice('Limit fiyatı 0’dan büyük olmalı.')
+        setNotice(t('err.minPrice'))
         return
       }
       body = { ...body, price }
@@ -227,7 +230,7 @@ function Terminal({ onLogout, theme, onToggleTheme }: {
       await api.post(url, body)
       if (mode === 'limit') setLimitPrice('')
     } catch (e: any) {
-      setNotice(typeof e.response?.data === 'string' ? e.response.data : 'Emir geçmedi.')
+      setNotice(typeof e.response?.data === 'string' ? e.response.data : t('err.orderFailed'))
     } finally {
       setBusy(false)
     }
@@ -241,7 +244,7 @@ function Terminal({ onLogout, theme, onToggleTheme }: {
     try {
       await api.post(`/api/order/${id}/cancel`)
     } catch (e: any) {
-      setNotice(typeof e.response?.data === 'string' ? e.response.data : 'İptal geçmedi.')
+      setNotice(typeof e.response?.data === 'string' ? e.response.data : t('err.cancelFailed'))
     }
     loadBalance(); loadPortfolio(); loadOrders()
   }
@@ -265,10 +268,10 @@ function Terminal({ onLogout, theme, onToggleTheme }: {
       <header className="rail">
         <div className="wrap rail-in">
           <span className="mark">Fin<em>Sim</em></span>
-          <span className="mark-sub">Borsa Simülasyonu</span>
+          <span className="mark-sub">{t('app.tagline')}</span>
           <span className="rail-spacer" />
           <span style={{ fontFamily: 'var(--mono)', fontSize: 13 }}>
-            <span style={{ color: 'var(--faint)', letterSpacing: '0.08em' }}>Market </span>
+            <span style={{ color: 'var(--faint)', letterSpacing: '0.08em' }}>{t('app.market')} </span>
             {indexValue ? fmt(indexValue) : '—'}
             <span className={dirOf(marketMove)}>
               {' '}{marketMove >= 0 ? '▲' : '▼'} {(Math.abs(marketMove) * 100).toFixed(2)}%
@@ -277,11 +280,14 @@ function Terminal({ onLogout, theme, onToggleTheme }: {
           <button
             className="ghost-btn"
             onClick={onToggleTheme}
-            aria-label={theme === 'night' ? 'Gündüz moduna geç' : 'Gece moduna geç'}
+            aria-label={theme === 'night' ? t('app.toDay') : t('app.toNight')}
           >
             {theme === 'night' ? '☀' : '☾'}
           </button>
-          <button className="ghost-btn" onClick={onLogout}>Çıkış</button>
+          <button className="ghost-btn" onClick={toggleLang} aria-label="Language">
+            {lang === 'tr' ? 'EN' : 'TR'}
+          </button>
+          <button className="ghost-btn" onClick={onLogout}>{t('app.logout')}</button>
         </div>
       </header>
 
@@ -289,18 +295,18 @@ function Terminal({ onLogout, theme, onToggleTheme }: {
 
       <section className="strip">
         <div className="cell">
-          <div className="cell-label">Hesap Değeri</div>
+          <div className="cell-label">{t('strip.equity')}</div>
           <div className="cell-value">₺<Money value={equity} /></div>
           <div className={`cell-delta ${dirOf(openPL)}`}>
-            Açık pozisyon {signed(openPL)} ₺
+            {t('strip.openPL')} {signed(openPL)} ₺
           </div>
         </div>
         <div className="cell">
-          <div className="cell-label">Serbest</div>
+          <div className="cell-label">{t('strip.free')}</div>
           <div className="cell-value sm">{balance ? fmt(balance.freeCashBalance) : '—'}</div>
         </div>
         <div className="cell">
-          <div className="cell-label">Kilitli</div>
+          <div className="cell-label">{t('strip.locked')}</div>
           <div
             className="cell-value sm"
             style={{ color: (balance?.lockedCashBalance ?? 0) > 0 ? 'var(--amber)' : undefined }}
@@ -309,7 +315,7 @@ function Terminal({ onLogout, theme, onToggleTheme }: {
           </div>
         </div>
         <div className="cell">
-          <div className="cell-label">Pozisyon</div>
+          <div className="cell-label">{t('strip.position')}</div>
           <div className="cell-value sm">{fmt(holdingsValue)}</div>
         </div>
       </section>
@@ -318,13 +324,13 @@ function Terminal({ onLogout, theme, onToggleTheme }: {
         {notice && (
           <div className="notice">
             <span style={{ flex: 1 }}>{notice}</span>
-            <button onClick={() => setNotice('')} aria-label="Kapat">×</button>
+            <button onClick={() => setNotice('')} aria-label={t('app.close')}>×</button>
           </div>
         )}
 
         <div className="section-head">
-          <h2>Tahta</h2>
-          <span className="section-note">{instruments.length} enstrüman · emir için seç</span>
+          <h2>{t('board.title')}</h2>
+          <span className="section-note">{t('board.note', { n: instruments.length })}</span>
         </div>
 
         <div className="board">
@@ -350,14 +356,14 @@ function Terminal({ onLogout, theme, onToggleTheme }: {
                 <div className="tile-pos">
                   {pos ? (
                     <>
-                      <span>{pos.totalQuantity} lot</span>
+                      <span>{t('board.lots', { n: pos.totalQuantity })}</span>
                       {pos.lockedQuantity > 0 && (
-                        <span className="locked">{pos.lockedQuantity} kilitli</span>
+                        <span className="locked">{t('board.locked', { n: pos.lockedQuantity })}</span>
                       )}
                       <span className={dirOf(pos.profitLoss)}>{signed(pos.profitLoss)}</span>
                     </>
                   ) : (
-                    <span className="empty">{i.isActive ? 'pozisyon yok' : 'işleme kapalı'}</span>
+                    <span className="empty">{i.isActive ? t('board.noPosition') : t('board.closed')}</span>
                   )}
                 </div>
               </button>
@@ -366,24 +372,24 @@ function Terminal({ onLogout, theme, onToggleTheme }: {
         </div>
 
         <div className="section-head">
-          <h2>Emir Defteri</h2>
-          <span className="section-note">son 50 kayıt</span>
+          <h2>{t('ledger.title')}</h2>
+          <span className="section-note">{t('ledger.note')}</span>
         </div>
 
         {orders.length === 0 ? (
           <div className="empty-state">
-            Henüz emir yok. Tahtadan bir hisse seç, aşağıdan adet gir.
+            {t('ledger.empty')}
           </div>
         ) : (
           <table className="ledger">
             <thead>
               <tr>
-                <th>Hisse</th>
-                <th className="hide-sm">Tip</th>
-                <th>Yön</th>
-                <th className="num">Adet</th>
-                <th className="num">Fiyat</th>
-                <th>Durum</th>
+                <th>{t('ledger.symbol')}</th>
+                <th className="hide-sm">{t('ledger.type')}</th>
+                <th>{t('ledger.side')}</th>
+                <th className="num">{t('ledger.qty')}</th>
+                <th className="num">{t('ledger.price')}</th>
+                <th>{t('ledger.status')}</th>
                 <th />
               </tr>
             </thead>
@@ -391,23 +397,23 @@ function Terminal({ onLogout, theme, onToggleTheme }: {
               {orders.map(o => (
                 <tr key={o.id}>
                   <td className="sym">{o.symbol}</td>
-                  <td className="hide-sm">{o.orderType === 'Market' ? 'Piyasa' : 'Limit'}</td>
+                  <td className="hide-sm">{o.orderType === 'Market' ? t('order.market') : t('order.limit')}</td>
                   <td className={o.direction === 'Buy' ? 'up' : 'down'}>
-                    {o.direction === 'Buy' ? 'Alış' : 'Satış'}
+                    {o.direction === 'Buy' ? t('order.buy') : t('order.sell')}
                   </td>
                   <td className="num">{o.quantity}</td>
                   <td className="num">{o.price != null ? fmt(o.price) : '—'}</td>
                   <td>
                     <span className={`pill ${o.status.toLowerCase()}`}>
-                      {o.status === 'Pending' ? 'Bekliyor'
-                        : o.status === 'Filled' ? 'Gerçekleşti'
-                        : 'İptal'}
+                      {o.status === 'Pending' ? t('status.pending')
+                        : o.status === 'Filled' ? t('status.filled')
+                        : t('status.cancelled')}
                     </span>
                   </td>
                   <td className="num">
                     {o.status === 'Pending' && (
                       <button className="link-btn" onClick={() => cancelOrder(o.id)}>
-                        iptal et
+                        {t('ledger.cancel')}
                       </button>
                     )}
                   </td>
@@ -421,7 +427,7 @@ function Terminal({ onLogout, theme, onToggleTheme }: {
       <div className="ticket">
         <div className="wrap ticket-in">
           <div className="ticket-slot grow">
-            <span className="field-label">Enstrüman</span>
+            <span className="field-label">{t('ticket.instrument')}</span>
             {chosen ? (
               <div className="field-static">
                 {chosen.symbol}{' '}
@@ -430,24 +436,24 @@ function Terminal({ onLogout, theme, onToggleTheme }: {
                 </span>
               </div>
             ) : (
-              <div className="field-static none">Tahtadan seç</div>
+              <div className="field-static none">{t('ticket.pick')}</div>
             )}
           </div>
 
           <div className="ticket-slot" style={{ minWidth: 'auto' }}>
-            <span className="field-label">Emir tipi</span>
+            <span className="field-label">{t('ticket.orderType')}</span>
             <div className="seg">
               <button aria-pressed={mode === 'market'} onClick={() => setMode('market')}>
-                Piyasa
+                {t('order.market')}
               </button>
               <button aria-pressed={mode === 'limit'} onClick={() => setMode('limit')}>
-                Limit
+                {t('order.limit')}
               </button>
             </div>
           </div>
 
           <div className="ticket-slot" style={{ minWidth: 96 }}>
-            <label className="field-label" htmlFor="qty">Adet</label>
+            <label className="field-label" htmlFor="qty">{t('ticket.qty')}</label>
             <input
               id="qty"
               className="field-input"
@@ -462,7 +468,7 @@ function Terminal({ onLogout, theme, onToggleTheme }: {
           </div>
 
           <div className="ticket-slot" style={{ minWidth: 120 }}>
-            <label className="field-label" htmlFor="lmt">Limit fiyatı</label>
+            <label className="field-label" htmlFor="lmt">{t('ticket.limitPrice')}</label>
             <input
               id="lmt"
               className="field-input"
@@ -482,10 +488,10 @@ function Terminal({ onLogout, theme, onToggleTheme }: {
           </div>
 
           <button className="trade buy" disabled={!chosen || busy} onClick={() => submit('Buy')}>
-            Al
+            {t('ticket.buy')}
           </button>
           <button className="trade sell" disabled={!chosen || busy} onClick={() => submit('Sell')}>
-            Sat
+            {t('ticket.sell')}
           </button>
         </div>
       </div>
