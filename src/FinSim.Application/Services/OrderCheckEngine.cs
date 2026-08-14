@@ -55,6 +55,12 @@ namespace FinSim.Application.Services
 
                 if (o.Direction == OrderDirection.Buy)
                 {
+                    var locked = o.Price.Value * o.Quantity;
+                    var cost = Math.Round(market * o.Quantity, 2, MidpointRounding.AwayFromZero);
+
+                    user.LockedCashBalance -= locked;
+                    user.FreeCashBalance += locked - cost;   // limitten ucuza aldıysa fark iade
+
                     if (portItem is null)
                         _portfolio.Add(PortfolioItem.Open(o.UserId, o.InstrumentId, o.Quantity, market));
                     else

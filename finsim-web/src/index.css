@@ -237,7 +237,9 @@ input  { font-family: var(--mono); }
 .tape-item {
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: 10px;
+  width: 200px;
   padding: 0 22px;
   font-family: var(--mono);
   font-size: 12px;
