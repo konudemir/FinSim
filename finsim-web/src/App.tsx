@@ -6,6 +6,7 @@ import Login from './Login'
 import { useTheme } from './theme'
 import { useLang } from './lang'
 import ResetPassword from './ResetPassword'
+import { Logomark } from './icons'
 
 
 type Instrument = {
@@ -267,6 +268,7 @@ function Terminal({ onLogout }: { onLogout: () => void }) {
     <div className="shell">
       <header className="rail">
         <div className="wrap rail-in">
+          <Logomark size={26} />
           <span className="mark">Fin<em>Sim</em></span>
           <span className="mark-sub">{t('app.tagline')}</span>
           <span className="rail-spacer" />

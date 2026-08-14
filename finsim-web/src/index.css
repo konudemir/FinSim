@@ -107,7 +107,7 @@ body::after {
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)'/%3E%3C/svg%3E");
 }
 
-.shell, .gate { position: relative; z-index: 1; }
+.shell, .gate-shell { position: relative; z-index: 1; }
 
 button { font-family: inherit; cursor: pointer; }
 input  { font-family: var(--mono); }
@@ -170,6 +170,8 @@ input  { font-family: var(--mono); }
 }
 
 .mark, .mark-sub { position: relative; top: 9px; }
+
+.rail-in .logomark { position: relative; top: 12px; }
 
 .rail-spacer { flex: 1; }
 
@@ -657,40 +659,432 @@ input  { font-family: var(--mono); }
 .trade.sell { background: var(--fall); }
 
 /* ── auth ────────────────────────────────────────────────── */
+/* Split screen: a fixed-dark marketing rail (brand, always-dark
+   regardless of the app theme, like a poster) beside a themed
+   form pane. The rail collapses to a compact strip on narrow
+   viewports instead of disappearing outright. */
 
-.gate {
+.gate-shell {
   min-height: 100%;
   display: grid;
-  grid-template-columns: 1fr;
+  grid-template-columns: minmax(0, 1.18fr) minmax(392px, 0.82fr);
+}
+
+.gate-aside {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background:
+    radial-gradient(120% 90% at 8% -10%, var(--glow), transparent 60%),
+    radial-gradient(90% 70% at 105% 115%, var(--glow), transparent 55%),
+    linear-gradient(180deg, var(--panel), var(--ink));
+  color: var(--bone);
+  border-right: var(--rail);
+}
+
+/* fills all height left over above the tape, and centers its content —
+   so the panel reads as a composed poster at any viewport size instead
+   of a block of text stranded in the top-left corner. */
+.gate-aside-in {
+  position: relative;
+  z-index: 1;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  width: 100%;
+  max-width: 660px;
+  margin: 0 auto;
+  padding: 40px 56px;
+}
+
+.gate-brand {
+  display: flex;
   align-items: center;
-  justify-items: center;
-  padding: 32px 24px;
+  gap: 12px;
+  margin-bottom: 44px;
 }
 
-.gate-card { width: 100%; max-width: 360px; }
-
-.gate-mark {
+.gate-wordmark {
   font-family: var(--serif);
-  font-size: 42px;
-  line-height: 1;
-  margin-bottom: 6px;
+  font-size: 20px;
+  font-weight: 800;
+  font-stretch: 118%;
+  letter-spacing: -0.02em;
+  text-transform: uppercase;
+  line-height: 1.1;
 }
 
-.gate-mark em { font-style: normal; color: var(--amber); }
+.gate-wordmark em { font-style: normal; color: var(--amber); }
 
-.gate-tag {
+.gate-badge {
   font-family: var(--mono);
   font-size: 10px;
   letter-spacing: 0.2em;
   text-transform: uppercase;
   color: var(--faint);
+  margin-top: 2px;
+}
+
+.gate-headline {
+  font-family: var(--serif);
+  font-size: clamp(28px, 2.6vw, 44px);
+  font-weight: 800;
+  font-stretch: 112%;
+  line-height: 1.12;
+  letter-spacing: -0.01em;
+  margin: 0 0 16px;
+  max-width: 16ch;
+}
+
+.gate-sub {
+  font-size: 14.5px;
+  line-height: 1.65;
+  color: var(--mute);
+  max-width: 46ch;
+  margin: 0 0 34px;
+}
+
+.hero-panel {
+  position: relative;
+  border: var(--rail);
+  background: linear-gradient(180deg, var(--raise), var(--panel));
+  border-radius: 3px;
+  padding: 18px 20px 0;
   margin-bottom: 34px;
+  overflow: hidden;
+}
+
+.hero-index {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  font-family: var(--mono);
+  margin-bottom: 4px;
+}
+
+.hero-index-name {
+  font-size: 12px;
+  letter-spacing: 0.1em;
+  color: var(--faint);
+}
+
+.hero-index-value {
+  font-size: 22px;
+  font-weight: 500;
+  letter-spacing: -0.02em;
+  color: var(--bone);
+}
+
+.hero-index-delta {
+  font-size: 12.5px;
+}
+
+.hero-chart { display: block; width: 100%; height: auto; }
+
+.hero-grid { stroke: var(--edge); stroke-width: 1; }
+
+.hero-line {
+  stroke-width: 2.25;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  stroke-dasharray: 1600;
+  stroke-dashoffset: 1600;
+  animation: hero-draw 2.4s cubic-bezier(0.16, 0.84, 0.44, 1) 0.15s forwards;
+}
+
+@keyframes hero-draw { to { stroke-dashoffset: 0; } }
+
+@keyframes hero-pulse {
+  0%, 100% { transform: scale(1); opacity: 0.22; }
+  50%      { transform: scale(1.9); opacity: 0; }
+}
+
+.hero-dot-halo {
+  opacity: 0.18;
+  animation: hero-pulse 2.2s ease-in-out infinite;
+  transform-origin: center;
+  transform-box: fill-box;
+}
+
+.hero-wait {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  height: 220px;
+  font-family: var(--mono);
+  font-size: 12px;
+  letter-spacing: 0.04em;
+  color: var(--faint);
+}
+
+.hero-wait-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--amber);
+  animation: hero-wait-blink 1.4s ease-in-out infinite;
+}
+
+@keyframes hero-wait-blink {
+  0%, 100% { opacity: 0.25; }
+  50%      { opacity: 1; }
+}
+
+.gate-features {
+  list-style: none;
+  margin: 0 0 34px;
+  padding: 0;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px 20px;
+}
+
+.gate-feature {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  font-size: 13px;
+  color: var(--bone);
+}
+
+.gate-feature-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--rise) 16%, transparent);
+  color: var(--rise);
+  flex: none;
+}
+
+.gate-stats {
+  display: flex;
+  gap: 28px;
+  padding-top: 22px;
+  border-top: var(--rail);
+}
+
+.gate-stat { display: flex; flex-direction: column; gap: 4px; }
+
+.gate-stat-value {
+  font-family: var(--mono);
+  font-size: 15px;
+  font-weight: 500;
+  color: var(--bone);
+}
+
+.gate-stat-label {
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--faint);
+}
+
+.gate-tape {
+  position: relative;
+  z-index: 1;
+  flex: none;
+  border-top: var(--rail);
+  background: var(--sunk);
+  overflow: hidden;
+  height: 38px;
+}
+
+.gate-tape-run {
+  display: flex;
+  width: max-content;
+  height: 100%;
+  animation: tape 130s linear infinite;
+}
+
+.gate-tape-item {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  padding: 0 20px;
+  height: 100%;
+  font-family: var(--mono);
+  font-size: 11.5px;
+  white-space: nowrap;
+  color: var(--mute);
+  border-right: var(--rail);
+}
+
+.gate-tape-sym { opacity: 0.7; letter-spacing: 0.05em; }
+.gate-tape-px  { color: var(--bone); }
+
+@media (min-width: 1600px) {
+  .gate-aside-in { max-width: 760px; padding: 40px 64px; }
+}
+
+@media (max-width: 1180px) {
+  .gate-aside-in { padding: 40px 40px; }
+  .gate-features { grid-template-columns: 1fr; }
+}
+
+@media (max-width: 920px) {
+  .gate-shell { grid-template-columns: 1fr; align-content: start; }
+
+  .gate-aside {
+    border-right: none;
+    border-bottom: var(--rail);
+  }
+
+  .gate-aside-in { flex: none; padding: 28px 24px 20px; max-width: none; margin: 0; }
+  .gate-brand { margin-bottom: 20px; }
+  .gate-sub, .hero-panel, .gate-stats { display: none; }
+  .gate-headline { font-size: 24px; max-width: 26ch; margin-bottom: 18px; }
+  .gate-features { grid-template-columns: 1fr 1fr; margin-bottom: 0; }
+}
+
+@media (max-width: 560px) {
+  .gate-features { display: none; }
+}
+
+/* ── auth: form pane ─────────────────────────────────────── */
+
+.gate-main {
+  position: relative;
+  min-height: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 32px 24px 60px;
+  background: var(--ink);
+}
+
+.gate-toolbar {
+  position: absolute;
+  top: 20px;
+  right: 24px;
+  display: flex;
+  gap: 8px;
+}
+
+.gate-mobile-brand {
+  display: none;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 26px;
+}
+
+.gate-mobile-brand .gate-wordmark.sm { font-size: 18px; color: var(--bone); }
+.gate-mobile-brand .gate-wordmark.sm em { color: var(--amber); }
+
+@media (max-width: 920px) {
+  .gate-main { padding-top: 28px; }
+  .gate-mobile-brand { display: none; } /* aside brand row already visible above */
+}
+
+.gate-card {
+  width: 100%;
+  max-width: 372px;
+  border: 1px solid var(--edge);
+  background: var(--panel);
+  border-radius: 4px;
+  padding: 32px 30px 28px;
+  box-shadow: 0 24px 60px -24px rgba(0, 0, 0, 0.55), var(--lift);
+  animation: gate-in 0.5s cubic-bezier(0.16, 0.84, 0.44, 1) both;
+}
+
+@keyframes gate-in {
+  from { opacity: 0; transform: translateY(10px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.gate-card-head {
+  margin-bottom: 22px;
+}
+
+.gate-card-title {
+  font-family: var(--serif);
+  font-size: 21px;
+  font-weight: 700;
+  font-stretch: 112%;
+  letter-spacing: -0.01em;
+  margin: 0 0 4px;
+}
+
+.gate-card-hint {
+  font-size: 12.5px;
+  color: var(--faint);
+  line-height: 1.5;
+}
+
+.gate-tabs {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  border: var(--rail);
+  border-radius: 3px;
+  overflow: hidden;
+  margin-bottom: 22px;
+}
+
+.gate-tabs button {
+  background: none;
+  border: none;
+  color: var(--mute);
+  font-family: var(--mono);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  padding: 10px 0;
+  transition: background 0.15s, color 0.15s;
+}
+
+.gate-tabs button + button { border-left: var(--rail); }
+
+.gate-tabs button[aria-selected="true"] {
+  background: var(--raise);
+  color: var(--bone);
+  box-shadow: inset 0 -2px 0 var(--amber);
 }
 
 .gate-card form { display: grid; gap: 14px; }
 
+.field-shell { position: relative; }
+
+.field-icon {
+  position: absolute;
+  left: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--faint);
+  pointer-events: none;
+  display: flex;
+}
+
+.field-input.has-icon { padding-left: 32px; }
+.field-input.has-eye { padding-right: 34px; }
+
+.field-eye {
+  position: absolute;
+  right: 6px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  padding: 6px;
+  color: var(--faint);
+  display: flex;
+  border-radius: 2px;
+}
+
+.field-eye:hover { color: var(--mute); }
+
 .gate-note {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
   font-size: 12px;
+  line-height: 1.5;
   padding: 10px 12px;
   border-left: 2px solid var(--fall);
   background: var(--alarm-bg);
@@ -699,26 +1093,44 @@ input  { font-family: var(--mono); }
 
 .gate-note.ok {
   border-left-color: var(--rise);
-  border-left-color: var(--rise);
   background: var(--ok-bg);
   color: var(--ok-fg);
 }
 
 .gate-submit {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
   border: none;
   border-radius: 2px;
-  background: var(--bone);
-  color: var(--ink);
+  background: var(--amber);
+  color: var(--on-trade);
   font-family: var(--mono);
   font-size: 12px;
-  font-weight: 600;
+  font-weight: 700;
   letter-spacing: 0.14em;
   text-transform: uppercase;
-  padding: 11px;
+  padding: 12px;
   margin-top: 4px;
+  transition: filter 0.15s, transform 0.15s;
 }
 
+.gate-submit:hover:not(:disabled) { filter: brightness(1.08); }
+.gate-submit:active:not(:disabled) { transform: translateY(1px); }
+
+.gate-submit .arrow { transition: transform 0.15s; }
+.gate-submit:hover:not(:disabled) .arrow { transform: translateX(2px); }
+
 .gate-submit:disabled { background: var(--raise); color: var(--faint); }
+
+.gate-links {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  margin-top: 4px;
+}
 
 .gate-switch {
   background: none;
@@ -729,6 +1141,33 @@ input  { font-family: var(--mono); }
 }
 
 .gate-switch:hover { color: var(--bone); }
+
+.gate-back {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: none;
+  border: none;
+  color: var(--faint);
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  padding: 0;
+  margin-bottom: 18px;
+}
+
+.gate-back:hover { color: var(--mute); }
+.gate-back svg { transform: rotate(180deg); }
+
+/* logomark badge, shared by the app rail and the auth screens */
+
+.logomark { flex: none; }
+.logomark-bg { fill: var(--amber); fill-opacity: 0.14; stroke: var(--amber); stroke-opacity: 0.4; }
+.logomark-path { stroke: var(--amber); }
+
+@keyframes spin { to { transform: rotate(360deg); } }
+.spin { animation: spin 0.8s linear infinite; }
 
 /* ── responsive ──────────────────────────────────────────── */
 

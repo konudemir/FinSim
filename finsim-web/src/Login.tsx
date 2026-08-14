@@ -1,17 +1,18 @@
 import { useState } from 'react'
 import { useAuth } from './auth'
 import { useLang } from './lang'
-import { useTheme } from './theme'
+import GateLayout from './Gate'
+import { IconArrowRight, IconEye, IconEyeOff, IconLock, IconMail, IconSpinner, IconUser } from './icons'
 
 type Mode = 'login' | 'register' | 'forgot'
 
 export default function Login({ onSuccess }: { onSuccess: () => void }) {
   const { login, register, forgotPassword } = useAuth()
-  const { lang, toggle: toggleLang, t, tServer } = useLang()
-  const { theme, toggle: toggleTheme } = useTheme()
+  const { t, tServer } = useLang()
   const [mode, setMode] = useState<Mode>('login')
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
+  const [showPw, setShowPw] = useState(false)
   const [email, setEmail] = useState('')
   const [firstName, setFirstName] = useState('')
   const [lastName, setLastName] = useState('')
@@ -61,63 +62,79 @@ export default function Login({ onSuccess }: { onSuccess: () => void }) {
     : mode === 'register' ? t('gate.register')
     : t('gate.sendReset')
 
-  return (
-    <div className="gate">
-      <div className="gate-card">
-        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginBottom: 14 }}>
-          <button
-            className="ghost-btn"
-            type="button"
-            onClick={toggleTheme}
-            aria-label={theme === 'night' ? t('app.toDay') : t('app.toNight')}
-          >
-            {theme === 'night' ? '☀' : '☾'}
-          </button>
-          <button className="ghost-btn" type="button" onClick={toggleLang} aria-label="Language">
-            {lang === 'tr' ? 'EN' : 'TR'}
-          </button>
-        </div>
+  const title =
+    mode === 'login' ? t('gate.login')
+    : mode === 'register' ? t('gate.register')
+    : t('gate.toForgot')
 
-        <div className="gate-mark">Fin<em>Sim</em></div>
-        <div className="gate-tag">{t('gate.tag')}</div>
+  return (
+    <GateLayout>
+      <div className="gate-card">
+        <div className="gate-card-head">
+          {mode === 'forgot' ? (
+            <button className="gate-back" type="button" onClick={() => go('login')}>
+              <IconArrowRight size={13} /> {t('gate.toLogin')}
+            </button>
+          ) : (
+            <div className="gate-tabs" role="tablist">
+              <button type="button" role="tab" aria-selected={mode === 'login'} onClick={() => go('login')}>
+                {t('gate.login')}
+              </button>
+              <button type="button" role="tab" aria-selected={mode === 'register'} onClick={() => go('register')}>
+                {t('gate.register')}
+              </button>
+            </div>
+          )}
+
+          <h2 className="gate-card-title">{title}</h2>
+          {mode === 'forgot' && <p className="gate-card-hint">{t('gate.forgotHint')}</p>}
+        </div>
 
         <form onSubmit={submit}>
           {note && <div className={`gate-note${noteOk ? ' ok' : ''}`}>{note}</div>}
 
-          {mode === 'forgot' && (
-            <div style={{ fontSize: 12, color: 'var(--mute)', lineHeight: 1.5 }}>
-              {t('gate.forgotHint')}
-            </div>
-          )}
-
           {showCredentials && (
             <div>
               <label className="field-label" htmlFor="u">{t('gate.username')}</label>
-              <input
-                id="u"
-                className="field-input"
-                value={username}
-                onChange={e => setUsername(e.target.value)}
-                autoComplete="username"
-                required
-              />
+              <div className="field-shell">
+                <span className="field-icon"><IconUser /></span>
+                <input
+                  id="u"
+                  className="field-input has-icon"
+                  value={username}
+                  onChange={e => setUsername(e.target.value)}
+                  autoComplete="username"
+                  required
+                />
+              </div>
             </div>
           )}
 
           {showCredentials && (
             <div>
               <label className="field-label" htmlFor="p">{t('gate.password')}</label>
-              <input
-                id="p"
-                className="field-input"
-                type="password"
-                value={password}
-                onChange={e => setPassword(e.target.value)}
-                autoComplete={mode === 'login' ? 'current-password' : 'new-password'}
-                required
-              />
+              <div className="field-shell">
+                <span className="field-icon"><IconLock /></span>
+                <input
+                  id="p"
+                  className="field-input has-icon has-eye"
+                  type={showPw ? 'text' : 'password'}
+                  value={password}
+                  onChange={e => setPassword(e.target.value)}
+                  autoComplete={mode === 'login' ? 'current-password' : 'new-password'}
+                  required
+                />
+                <button
+                  type="button"
+                  className="field-eye"
+                  onClick={() => setShowPw(v => !v)}
+                  aria-label={showPw ? t('gate.hidePassword') : t('gate.showPassword')}
+                >
+                  {showPw ? <IconEyeOff /> : <IconEye />}
+                </button>
+              </div>
               {mode === 'register' && (
-                <div style={{ fontSize: 11, color: 'var(--faint)', marginTop: 6 }}>
+                <div className="gate-card-hint" style={{ marginTop: 6 }}>
                   {t('gate.pwHint')}
                 </div>
               )}
@@ -127,15 +144,18 @@ export default function Login({ onSuccess }: { onSuccess: () => void }) {
           {showEmail && (
             <div>
               <label className="field-label" htmlFor="e">{t('gate.email')}</label>
-              <input
-                id="e"
-                className="field-input"
-                type="email"
-                value={email}
-                onChange={e => setEmail(e.target.value)}
-                autoComplete="email"
-                required
-              />
+              <div className="field-shell">
+                <span className="field-icon"><IconMail /></span>
+                <input
+                  id="e"
+                  className="field-input has-icon"
+                  type="email"
+                  value={email}
+                  onChange={e => setEmail(e.target.value)}
+                  autoComplete="email"
+                  required
+                />
+              </div>
             </div>
           )}
 
@@ -165,27 +185,18 @@ export default function Login({ onSuccess }: { onSuccess: () => void }) {
           )}
 
           <button className="gate-submit" type="submit" disabled={busy}>
-            {busy ? '···' : submitLabel}
+            {busy ? <IconSpinner /> : <>{submitLabel}<IconArrowRight className="arrow" /></>}
           </button>
 
           {mode === 'login' && (
-            <>
-              <button className="gate-switch" type="button" onClick={() => go('register')}>
-                {t('gate.toRegister')}
-              </button>
+            <div className="gate-links">
               <button className="gate-switch" type="button" onClick={() => go('forgot')}>
                 {t('gate.toForgot')}
               </button>
-            </>
-          )}
-
-          {mode !== 'login' && (
-            <button className="gate-switch" type="button" onClick={() => go('login')}>
-              {t('gate.toLogin')}
-            </button>
+            </div>
           )}
         </form>
       </div>
-    </div>
+    </GateLayout>
   )
 }
