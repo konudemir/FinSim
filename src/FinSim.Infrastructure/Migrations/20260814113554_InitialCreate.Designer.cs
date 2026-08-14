@@ -12,7 +12,7 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace FinSim.Infrastructure.Migrations
 {
     [DbContext(typeof(FinSimDbContext))]
-    [Migration("20260813080819_InitialCreate")]
+    [Migration("20260814113554_InitialCreate")]
     partial class InitialCreate
     {
         /// <inheritdoc />
@@ -163,10 +163,100 @@ namespace FinSim.Infrastructure.Migrations
                         },
                         new
                         {
+                            Id = new Guid("eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee"),
+                            BasePrice = 220m,
+                            CurrentPrice = 220m,
+                            IsActive = true,
+                            Name = "Pegasus Hava Yolları",
+                            Symbol = "PGSUS"
+                        },
+                        new
+                        {
+                            Id = new Guid("ffffffff-ffff-ffff-ffff-ffffffffffff"),
+                            BasePrice = 95m,
+                            CurrentPrice = 95m,
+                            IsActive = true,
+                            Name = "Turkcell",
+                            Symbol = "TCELL"
+                        },
+                        new
+                        {
+                            Id = new Guid("10000000-0000-0000-0000-000000000001"),
+                            BasePrice = 14m,
+                            CurrentPrice = 14m,
+                            IsActive = true,
+                            Name = "İş Bankası (C)",
+                            Symbol = "ISCTR"
+                        },
+                        new
+                        {
+                            Id = new Guid("10000000-0000-0000-0000-000000000002"),
+                            BasePrice = 260m,
+                            CurrentPrice = 260m,
+                            IsActive = true,
+                            Name = "Tofaş Otomobil Fabrikası",
+                            Symbol = "TOASO"
+                        },
+                        new
+                        {
+                            Id = new Guid("10000000-0000-0000-0000-000000000003"),
+                            BasePrice = 140m,
+                            CurrentPrice = 140m,
+                            IsActive = true,
+                            Name = "Arçelik",
+                            Symbol = "ARCLK"
+                        },
+                        new
+                        {
+                            Id = new Guid("10000000-0000-0000-0000-000000000004"),
+                            BasePrice = 48m,
+                            CurrentPrice = 48m,
+                            IsActive = true,
+                            Name = "Türk Telekom",
+                            Symbol = "TTKOM"
+                        },
+                        new
+                        {
+                            Id = new Guid("10000000-0000-0000-0000-000000000005"),
+                            BasePrice = 27m,
+                            CurrentPrice = 27m,
+                            IsActive = true,
+                            Name = "VakıfBank",
+                            Symbol = "VAKBN"
+                        },
+                        new
+                        {
+                            Id = new Guid("10000000-0000-0000-0000-000000000006"),
+                            BasePrice = 21m,
+                            CurrentPrice = 21m,
+                            IsActive = true,
+                            Name = "Petkim",
+                            Symbol = "PETKM"
+                        },
+                        new
+                        {
+                            Id = new Guid("10000000-0000-0000-0000-000000000007"),
+                            BasePrice = 58m,
+                            CurrentPrice = 58m,
+                            IsActive = true,
+                            Name = "Enka İnşaat",
+                            Symbol = "ENKAI"
+                        },
+                        new
+                        {
+                            Id = new Guid("10000000-0000-0000-0000-000000000008"),
+                            BasePrice = 520m,
+                            CurrentPrice = 520m,
+                            IsActive = true,
+                            Name = "Migros Ticaret",
+                            Symbol = "MGROS"
+                        },
+                        new
+                        {
                             Id = new Guid("dddddddd-dddd-dddd-dddd-dddddddddddd"),
-                            BasePrice = 18m,
+                            BasePrice = 4m,
                             CurrentPrice = 18m,
-                            IsActive = false,
+                            IsActive = true,
                             Name = "Hektaş",
                             Symbol = "HEKTS"
                         });
@@ -200,6 +290,12 @@ namespace FinSim.Infrastructure.Migrations
 
                     b.Property<int>("Quantity")
                         .HasColumnType("integer");
+
+                    b.Property<uint>("RowVersion")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
 
                     b.Property<string>("Status")
                         .IsRequired()

@@ -12,6 +12,7 @@ using FinSim.Application.Interfaces;
 using FinSim.Infrastructure.Services;
 using Microsoft.AspNetCore.Identity;
 using FinSim.Domain.Models;
+using FinSim.Api.Middleware;
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
@@ -69,6 +70,14 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
 
 
 var app = builder.Build();
+app.UseFinSimExceptionHandler();
+app.UseStaticFiles();
+app.UseCors();
+app.UseAuthentication();
+app.UseAuthorization();
+app.MapControllers();
+app.MapHub<PriceHub>("/hubs/prices");
+app.Run();
 app.UseStaticFiles();
 app.UseCors();
 app.UseAuthentication();

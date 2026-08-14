@@ -116,6 +116,9 @@ const tr = {
   'reset.mismatch': 'Parolalar eşleşmiyor.',
   'reset.done': 'Parolan güncellendi. Girişe yönlendiriliyorsun…',
   'reset.invalid': 'Bağlantı geçersiz veya süresi dolmuş.',
+
+
+  'srv.ServerError': 'Sunucuda beklenmeyen bir hata oluştu.',
 }
 
 const en: typeof tr = {
@@ -231,6 +234,8 @@ const en: typeof tr = {
   'reset.mismatch': 'Passwords do not match.',
   'reset.done': 'Password updated. Redirecting to sign in…',
   'reset.invalid': 'This link is invalid or has expired.',
+
+  'srv.ServerError': 'Something went wrong on the server.',
 }
 
 export type LangKey = keyof typeof tr
@@ -280,6 +285,13 @@ export function LangProvider({ children }: { children: ReactNode }) {
 
     if (typeof data === 'string') return one(data)
     if (Array.isArray(data)) return data.map(c => one(String(c))).join(' ')
+
+      // our own middleware: { error: "ServerError", traceId: "..." }
+    const wrapped = (data as { error?: string; traceId?: string })
+    if (wrapped?.error) {
+      const text = one(wrapped.error)
+      return wrapped.traceId ? `${text} (${wrapped.traceId.slice(-8)})` : text
+    }
 
     // ASP.NET model validation: { errors: { Password: ["PasswordTooShort"] } }
     const errs = (data as { errors?: Record<string, string[]> })?.errors

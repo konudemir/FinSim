@@ -185,6 +185,7 @@ namespace FinSim.Infrastructure.Migrations
                 columns: table => new
                 {
                     Id = table.Column<Guid>(type: "uuid", nullable: false),
+                    xmin = table.Column<uint>(type: "xid", rowVersion: true, nullable: false),
                     UserId = table.Column<Guid>(type: "uuid", nullable: false),
                     InstrumentId = table.Column<Guid>(type: "uuid", nullable: false),
                     OrderType = table.Column<string>(type: "character varying(20)", maxLength: 20, nullable: false),
@@ -281,6 +282,14 @@ namespace FinSim.Infrastructure.Migrations
                 columns: new[] { "Id", "BasePrice", "CurrentPrice", "IsActive", "Name", "Symbol" },
                 values: new object[,]
                 {
+                    { new Guid("10000000-0000-0000-0000-000000000001"), 14m, 14m, true, "İş Bankası (C)", "ISCTR" },
+                    { new Guid("10000000-0000-0000-0000-000000000002"), 260m, 260m, true, "Tofaş Otomobil Fabrikası", "TOASO" },
+                    { new Guid("10000000-0000-0000-0000-000000000003"), 140m, 140m, true, "Arçelik", "ARCLK" },
+                    { new Guid("10000000-0000-0000-0000-000000000004"), 48m, 48m, true, "Türk Telekom", "TTKOM" },
+                    { new Guid("10000000-0000-0000-0000-000000000005"), 27m, 27m, true, "VakıfBank", "VAKBN" },
+                    { new Guid("10000000-0000-0000-0000-000000000006"), 21m, 21m, true, "Petkim", "PETKM" },
+                    { new Guid("10000000-0000-0000-0000-000000000007"), 58m, 58m, true, "Enka İnşaat", "ENKAI" },
+                    { new Guid("10000000-0000-0000-0000-000000000008"), 520m, 520m, true, "Migros Ticaret", "MGROS" },
                     { new Guid("11111111-1111-1111-1111-111111111111"), 100m, 100m, true, "Türk Hava Yolları", "THYAO" },
                     { new Guid("22222222-2222-2222-2222-222222222222"), 40m, 40m, true, "Aselsan", "ASELS" },
                     { new Guid("33333333-3333-3333-3333-333333333333"), 110m, 110m, true, "Garanti BBVA", "GARAN" },
@@ -293,7 +302,9 @@ namespace FinSim.Infrastructure.Migrations
                     { new Guid("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"), 95m, 95m, true, "Sabancı Holding", "SAHOL" },
                     { new Guid("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb"), 1100m, 1100m, true, "Ford Otosan", "FROTO" },
                     { new Guid("cccccccc-cccc-cccc-cccc-cccccccccccc"), 25m, 25m, true, "Yapı Kredi Bankası", "YKBNK" },
-                    { new Guid("dddddddd-dddd-dddd-dddd-dddddddddddd"), 18m, 18m, false, "Hektaş", "HEKTS" }
+                    { new Guid("dddddddd-dddd-dddd-dddd-dddddddddddd"), 4m, 18m, true, "Hektaş", "HEKTS" },
+                    { new Guid("eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee"), 220m, 220m, true, "Pegasus Hava Yolları", "PGSUS" },
+                    { new Guid("ffffffff-ffff-ffff-ffff-ffffffffffff"), 95m, 95m, true, "Turkcell", "TCELL" }
                 });
 
             migrationBuilder.CreateIndex(

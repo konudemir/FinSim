@@ -4,13 +4,13 @@
 - FinSim has two different language settings easily configurable: English and Turkish. Just click on the EN / TUR button to switch.
 
 ## Tech Stack
-.NET 10.0 for backend
-React and Vite for Frontend
-.NET BackgroundService for price movements and calculations done in intervals
-PostgreSQL for database
-Microsoft.AspNetCore.Identity for all types of password and security operations
-SignalR for real time communication between the frontend and the background service
-Docker for running without dependencies
+* .NET 10.0 for backend
+* React and Vite for Frontend
+* .NET BackgroundService for price movements and calculations done in intervals
+* PostgreSQL for database
+* Microsoft.AspNetCore.Identity for all types of password and security operations
+* SignalR for real time communication between the frontend and the background service
+* Docker for running without dependencies
 
 ## Architecture
 This project consists of 5 different folders.
@@ -176,3 +176,15 @@ the order and see `Pending`, without protection both would go on to complete the
 Each order carries a concurrency token, so every update is conditional on the row not having
 changed since it was read. Whichever side commits first wins; the other matches zero rows and is
 told the order is no longer pending. This way an order can't go on and be refunded at the same time even if it happens at a certain time.
+
+### Unit Testing
+
+You can run the tests with `dotnet test tests/FinSim.Tests`. There are 46 tests covering the cash
+checks, the cash and share reservations, the average cost calculation and the limit order matching engine.
+
+The test project references only Application and Domain.
+### Exception Handling
+
+Expected failures come back from the services as result enums, and the controllers turn them into
+short codes like `InsufficientFunds` rather than sentences. The frontend maps those codes to text. This leads to
+the user getting the error in their own selected language without the API knowing about it.
