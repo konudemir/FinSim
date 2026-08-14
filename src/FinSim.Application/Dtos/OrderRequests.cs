@@ -7,7 +7,7 @@ namespace FinSim.Domain.Dtos
     {
         [Required]public Guid InstrumentId { get; set; }
         [Required]public OrderDirection Direction { get; set; }
-        [Range(1, int.MaxValue, ErrorMessage = "At least 1 in quantity.")]
+        [Range(1, int.MaxValue, ErrorMessage = "InvalidQuantity")]
         public int Quantity { get; set; }
     }
 
@@ -15,9 +15,9 @@ namespace FinSim.Domain.Dtos
     {
         [Required]public Guid InstrumentId { get; set; }
         [Required]public OrderDirection Direction { get; set; }
-        [Range(1, int.MaxValue, ErrorMessage = "At least 1 in quantity.")]
+        [Range(1, int.MaxValue, ErrorMessage = "InvalidQuantity")]
         public int Quantity { get; set; }
-        [Range(0.01, double.MaxValue, ErrorMessage = "Fiyat 0'dan büyük olmalı.")]
+        [Range(0.01, double.MaxValue, ErrorMessage = "InvalidPrice")]
         public decimal Price { get; set; }
     }
     public class OrderResponse

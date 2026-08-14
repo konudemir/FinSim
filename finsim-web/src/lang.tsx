@@ -87,6 +87,8 @@ const tr = {
   'srv.DuplicateUserName': 'Bu kullanıcı adı alınmış.',
   'srv.DuplicateEmail': 'Bu e-posta adresi alınmış.',
   'srv.unknown': 'Bir hata oluştu.',
+  'srv.InvalidQuantity': 'Adet en az 1 olmalı.',
+  'srv.InvalidPrice': 'Fiyat 0’dan büyük olmalı.',
 
   'gate.tag': 'Financial Terminal',
   'gate.username': 'Kullanıcı adı',
@@ -199,6 +201,9 @@ const en: typeof tr = {
   'srv.DuplicateUserName': 'That username is taken.',
   'srv.DuplicateEmail': 'That email address is taken.',
   'srv.unknown': 'Something went wrong.',
+  'srv.InvalidQuantity': 'Quantity must be at least 1.',
+  'srv.InvalidPrice': 'Price must be greater than 0.',
+  
 
   'gate.tag': 'Financial Terminal',
   'gate.username': 'Username',

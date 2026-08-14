@@ -434,7 +434,6 @@ input  { font-family: var(--mono); }
 .tile-pos .locked { color: var(--amber); }
 .tile-pos .empty  { color: var(--faint); }
 
-.tile[data-selected="true"] .tile-pos { background: var(--raise); }
 
 @keyframes flash-up {
   from { background: var(--flash-up); }
