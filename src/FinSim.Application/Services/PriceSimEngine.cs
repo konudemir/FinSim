@@ -30,8 +30,8 @@ namespace FinSim.Application.Services
         {
             if (currVal <= 0) return 0.01m;
 
-            var idio = (decimal)(Random.Shared.NextDouble() * 2 - 1) * 0.03m;  // hisseye özgü
-            var pull = (baseVal - currVal) / baseVal * 0.002m;                  // ortalamaya dönüş
+            var idio = (decimal)(Random.Shared.NextDouble() * 2 - 0.995) * 0.03m;  // hisseye özgü, 0.95 uzun vadede artış için enflasyon
+            var pull = (baseVal - currVal) / baseVal * 0.0002m;                  // ortalamaya dönüş
 
             return Math.Round(currVal * (1 + marketMove + idio + pull), 2, MidpointRounding.AwayFromZero);
         }

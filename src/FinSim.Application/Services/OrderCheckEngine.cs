@@ -55,31 +55,10 @@ namespace FinSim.Application.Services
 
                 if (o.Direction == OrderDirection.Buy)
                 {
-                    var locked = o.Price.Value * o.Quantity;
-                    var cost = Math.Round(market * o.Quantity, 2, MidpointRounding.AwayFromZero);
-
-                    user.LockedCashBalance -= locked;
-                    user.FreeCashBalance += locked - cost;   // limitten ucuza aldıysa fark iade
-
                     if (portItem is null)
-                    {
-                        _portfolio.Add(new PortfolioItem
-                        {
-                            Id = Guid.NewGuid(),
-                            UserId = o.UserId,
-                            InstrumentId = o.InstrumentId,
-                            TotalQuantity = o.Quantity,
-                            LockedQuantity = 0,
-                            AverageCost = market
-                        });
-                    }
+                        _portfolio.Add(PortfolioItem.Open(o.UserId, o.InstrumentId, o.Quantity, market));
                     else
-                    {
-                        portItem.AverageCost =
-                            ((portItem.AverageCost * portItem.TotalQuantity) + market * o.Quantity)
-                            / (portItem.TotalQuantity + o.Quantity);
-                        portItem.TotalQuantity += o.Quantity;
-                    }
+                        portItem.ApplyBuy(o.Quantity, market);
                 }
                 else // sell
                 {

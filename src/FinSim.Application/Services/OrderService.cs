@@ -49,24 +49,9 @@ public class OrderService
             user.FreeCashBalance -= total;
 
             if (portItem is null)
-            {
-                _portfolio.Add(new PortfolioItem
-                {
-                    Id = Guid.NewGuid(),
-                    UserId = userId,
-                    InstrumentId = instrumentId,
-                    TotalQuantity = quantity,
-                    LockedQuantity = 0,
-                    AverageCost = price
-                });
-            }
+                _portfolio.Add(PortfolioItem.Open(userId, instrumentId, quantity, price));
             else
-            {
-                portItem.AverageCost =
-                    ((portItem.AverageCost * portItem.TotalQuantity) + price * quantity)
-                    / (portItem.TotalQuantity + quantity);
-                portItem.TotalQuantity += quantity;
-            }
+                portItem.ApplyBuy(quantity, price);
         }
         else // sell
         {
