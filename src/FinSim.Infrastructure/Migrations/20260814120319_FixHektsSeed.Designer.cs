@@ -12,8 +12,8 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace FinSim.Infrastructure.Migrations
 {
     [DbContext(typeof(FinSimDbContext))]
-    [Migration("20260814113554_InitialCreate")]
-    partial class InitialCreate
+    [Migration("20260814120319_FixHektsSeed")]
+    partial class FixHektsSeed
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -255,7 +255,7 @@ namespace FinSim.Infrastructure.Migrations
                         {
                             Id = new Guid("dddddddd-dddd-dddd-dddd-dddddddddddd"),
                             BasePrice = 4m,
-                            CurrentPrice = 18m,
+                            CurrentPrice = 4m,
                             IsActive = true,
                             Name = "Hektaş",
                             Symbol = "HEKTS"

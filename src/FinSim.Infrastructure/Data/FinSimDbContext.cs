@@ -266,7 +266,7 @@ namespace FinSim.Infrastructure.Data
                     Symbol = "HEKTS",
                     Name = "Hektaş",
                     BasePrice = 4m,
-                    CurrentPrice = 18m,
+                    CurrentPrice = 4m,
                     IsActive = true // Added an inactive one for testing scenarios
                 }
             );

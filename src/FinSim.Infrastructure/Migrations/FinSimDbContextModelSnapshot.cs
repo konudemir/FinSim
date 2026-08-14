@@ -252,7 +252,7 @@ namespace FinSim.Infrastructure.Migrations
                         {
                             Id = new Guid("dddddddd-dddd-dddd-dddd-dddddddddddd"),
                             BasePrice = 4m,
-                            CurrentPrice = 18m,
+                            CurrentPrice = 4m,
                             IsActive = true,
                             Name = "Hektaş",
                             Symbol = "HEKTS"

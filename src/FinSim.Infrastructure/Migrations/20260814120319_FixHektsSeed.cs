@@ -9,7 +9,7 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace FinSim.Infrastructure.Migrations
 {
     /// <inheritdoc />
-    public partial class InitialCreate : Migration
+    public partial class FixHektsSeed : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
@@ -302,7 +302,7 @@ namespace FinSim.Infrastructure.Migrations
                     { new Guid("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"), 95m, 95m, true, "Sabancı Holding", "SAHOL" },
                     { new Guid("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb"), 1100m, 1100m, true, "Ford Otosan", "FROTO" },
                     { new Guid("cccccccc-cccc-cccc-cccc-cccccccccccc"), 25m, 25m, true, "Yapı Kredi Bankası", "YKBNK" },
-                    { new Guid("dddddddd-dddd-dddd-dddd-dddddddddddd"), 4m, 18m, true, "Hektaş", "HEKTS" },
+                    { new Guid("dddddddd-dddd-dddd-dddd-dddddddddddd"), 4m, 4m, true, "Hektaş", "HEKTS" },
                     { new Guid("eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee"), 220m, 220m, true, "Pegasus Hava Yolları", "PGSUS" },
                     { new Guid("ffffffff-ffff-ffff-ffff-ffffffffffff"), 95m, 95m, true, "Turkcell", "TCELL" }
                 });
