@@ -1,0 +1,51 @@
+services:
+
+  db:
+    image: postgres:17
+    container_name: finsim-db
+    environment:
+      POSTGRES_DB: borsadb
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: yourpassword
+    ports:
+      - "5432:5432"
+    volumes:
+      - finsim-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d borsadb"]
+      interval: 3s
+      timeout: 3s
+      retries: 10
+
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: finsim-api
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      ConnectionStrings__BorsaDb: "Host=db;Port=5432;Database=borsadb;Username=postgres;Password=yourpassword"
+      Jwt__Issuer: "FinSim"
+      Jwt__Audience: "FinSim"
+      Jwt__Key: "replace-this-with-a-real-32-character-key"
+      Cors__Origin: "http://localhost:5173"
+    ports:
+      - "5209:8080"
+
+  web:
+    build:
+      context: ./finsim-web
+      dockerfile: Dockerfile
+      args:
+        VITE_API_URL: http://localhost:5209
+    container_name: finsim-web
+    depends_on:
+      - api
+    ports:
+      - "5173:80"
+
+volumes:
+  finsim-data:

@@ -1,0 +1,12 @@
+# Keeps the build context small and stops your local build output
+# from being copied into the image (which would break the container build).
+**/bin/
+**/obj/
+**/node_modules/
+**/dist/
+.git/
+.vs/
+.vscode/
+*.user
+finsim-web/
+tests/

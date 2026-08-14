@@ -32,6 +32,21 @@ It can reference Application and Domain.
 
 ## Getting Started
 
+### With Docker
+
+You only need Docker installed.
+
+```bash
+docker compose up --build
+```
+
+This starts PostgreSQL, applies the migrations, runs the API and serves the frontend.
+Open http://localhost:5173 and register an account.
+
+`docker compose down` stops everything. Add `-v` to also delete the database.
+
+### Without Docker
+
 ### Prerequisites
 
 - .NET 10 SDK
@@ -46,7 +61,7 @@ dotnet tool install --global dotnet-ef
 ### 1. Start PostgreSQL
 
 ```bash
-docker run -d --name borsa-db -p 5432:5432 -e POSTGRES_PASSWORD=yourpassword postgres:17
+docker compose up -d db
 ```
 
 ### 2. Configure the API

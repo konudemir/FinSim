@@ -46,7 +46,7 @@ builder.Services.AddScoped<OrderService>();
 builder.Services.AddSignalR();
 
 builder.Services.AddCors(o => o.AddDefaultPolicy(p =>
-    p.WithOrigins("http://localhost:5173")
+    p.WithOrigins(builder.Configuration["Cors__Origin"] ?? "http://localhost:5173")
      .AllowAnyHeader()
      .AllowAnyMethod()
      .AllowCredentials()));
@@ -70,6 +70,11 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
 
 
 var app = builder.Build();
+using (var scope = app.Services.CreateScope())
+{
+    var db = scope.ServiceProvider.GetRequiredService<FinSimDbContext>();
+    await db.Database.MigrateAsync();
+}
 app.UseFinSimExceptionHandler();
 app.UseStaticFiles();
 app.UseCors();
