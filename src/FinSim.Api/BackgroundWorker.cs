@@ -1,12 +1,13 @@
 using FinSim.Api.Hubs;
 using FinSim.Infrastructure.Data;
 using Microsoft.AspNetCore.SignalR;
+using FinSim.Application.Services;
 
 namespace FinSim.Api.Services
 {
     public class MarketTickWorker : BackgroundService
     {
-        public const double Every = 3;
+        public const double Every = 5;
         private readonly IHubContext<PriceHub> _hub;
         private readonly ILogger<MarketTickWorker> _logger;
         private readonly IServiceScopeFactory _scopeFactory;
@@ -33,8 +34,8 @@ namespace FinSim.Api.Services
                     var sp = scope.ServiceProvider;
 
                     var db      = sp.GetRequiredService<FinSimDbContext>();
-                    var prices  = sp.GetRequiredService<FinSim.Application.Services.PriceSimEngine>();
-                    var matcher = sp.GetRequiredService<FinSim.Application.Services.OrderCheckEngine>();
+                    var prices  = sp.GetRequiredService<PriceSimEngine>();
+                    var matcher = sp.GetRequiredService<OrderCheckEngine>();
 
                     await using var tx = await db.Database.BeginTransactionAsync(stoppingToken);
 
