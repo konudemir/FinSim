@@ -17,7 +17,10 @@ api.interceptors.request.use((config) => {
 api.interceptors.response.use(
   (res) => res,
   (err) => {
-    if (err.response?.status === 401) {
+    const isAuthCall = err.config?.url?.startsWith('/api/auth')
+    const hadSession = !!localStorage.getItem('finsim_token')
+
+    if (err.response?.status === 401 && hadSession && !isAuthCall) {
       localStorage.removeItem('finsim_token')
       localStorage.removeItem('finsim_expiry')
       window.location.reload()

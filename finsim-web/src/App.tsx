@@ -76,7 +76,6 @@ function Money({ value }: { value: number }) {
 
 export default function App() {
   const { loggedIn, logout } = useAuth()
-  const { theme, toggle } = useTheme()
 
   const params = new URLSearchParams(window.location.search)
   const resetEmail = params.get('email')
@@ -96,15 +95,12 @@ export default function App() {
     return <Login onSuccess={() => window.location.reload()} />
   }
 
-  return <Terminal onLogout={logout} theme={theme} onToggleTheme={toggle} />
+  return <Terminal onLogout={logout} />
 }
 
-function Terminal({ onLogout, theme, onToggleTheme }: {
-  onLogout: () => void
-  theme: 'night' | 'day'
-  onToggleTheme: () => void
-}) {
-  const { lang, toggle: toggleLang, t } = useLang()
+function Terminal({ onLogout }: { onLogout: () => void }) {
+  const { lang, toggle: toggleLang, t, tServer } = useLang()
+  const { theme, toggle: toggleTheme } = useTheme()
 
   const [indexValue, setIndexValue] = useState(0)
   const [instruments, setInstruments] = useState<Instrument[]>([])
@@ -123,6 +119,7 @@ function Terminal({ onLogout, theme, onToggleTheme }: {
 
   const [ticks, setTicks] = useState<Record<string, Tick>>({})
   const prevPrices = useRef<Record<string, number>>({})
+  const [online, setOnline] = useState(true)
 
   const loadOrders = () =>
     api.get<Order[]>('/api/order').then(r => setOrders(r.data)).catch(console.error)
@@ -154,7 +151,7 @@ function Terminal({ onLogout, theme, onToggleTheme }: {
   useEffect(() => {
     const conn = new signalR.HubConnectionBuilder()
       .withUrl(`${API}/hubs/prices`)
-      .withAutomaticReconnect()
+      .withAutomaticReconnect([0, 2000, 5000, 10000, 30000, 30000, 60000, 60000])
       .build()
 
     conn.on('PriceUpdate', (payload: PriceUpdate) => {
@@ -191,7 +188,10 @@ function Terminal({ onLogout, theme, onToggleTheme }: {
       loadOrders()
     })
 
-    conn.start().catch(console.error)
+    conn.onreconnecting(() => setOnline(false))
+    conn.onreconnected(() => setOnline(true))
+    conn.onclose(() => setOnline(false))
+    conn.start().then(() => setOnline(true)).catch(() => setOnline(false))
     return () => { conn.stop() }
   }, [])
 
@@ -230,7 +230,7 @@ function Terminal({ onLogout, theme, onToggleTheme }: {
       await api.post(url, body)
       if (mode === 'limit') setLimitPrice('')
     } catch (e: any) {
-      setNotice(typeof e.response?.data === 'string' ? e.response.data : t('err.orderFailed'))
+      setNotice(e.response ? tServer(e.response.data) : t('err.orderFailed'))
     } finally {
       setBusy(false)
     }
@@ -244,7 +244,7 @@ function Terminal({ onLogout, theme, onToggleTheme }: {
     try {
       await api.post(`/api/order/${id}/cancel`)
     } catch (e: any) {
-      setNotice(typeof e.response?.data === 'string' ? e.response.data : t('err.cancelFailed'))
+      setNotice(e.response ? tServer(e.response.data) : t('err.cancelFailed'))
     }
     loadBalance(); loadPortfolio(); loadOrders()
   }
@@ -277,9 +277,16 @@ function Terminal({ onLogout, theme, onToggleTheme }: {
               {' '}{marketMove >= 0 ? '▲' : '▼'} {(Math.abs(marketMove) * 100).toFixed(2)}%
             </span>
           </span>
+
+          {!online && (
+            <span style={{ fontFamily: 'var(--mono)', fontSize: 11, color: 'var(--fall)' }}>
+              ● {t('app.offline')}
+            </span>
+          )}
+
           <button
             className="ghost-btn"
-            onClick={onToggleTheme}
+            onClick={toggleTheme}
             aria-label={theme === 'night' ? t('app.toDay') : t('app.toNight')}
           >
             {theme === 'night' ? '☀' : '☾'}

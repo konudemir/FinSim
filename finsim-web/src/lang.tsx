@@ -11,6 +11,7 @@ const tr = {
   'app.toDay': 'Gündüz moduna geç',
   'app.toNight': 'Gece moduna geç',
   'app.close': 'Kapat',
+  'app.offline': 'connection lost',
 
   'strip.equity': 'Hesap Değeri',
   'strip.openPL': 'Açık pozisyon',
@@ -57,6 +58,36 @@ const tr = {
   'err.orderFailed': 'Emir geçmedi.',
   'err.cancelFailed': 'İptal geçmedi.',
 
+  // server codes
+  'srv.InvalidCredentials': 'Kullanıcı adı veya parola hatalı.',
+  'srv.UsernameTaken': 'Bu kullanıcı adı alınmış.',
+  'srv.EmailTaken': 'Bu e-posta adresi alınmış.',
+  'srv.AccountCreated': 'Hesap açıldı. Şimdi giriş yapabilirsin.',
+  'srv.ResetLinkSent': 'Bu adres kayıtlıysa sıfırlama bağlantısı gönderildi.',
+  'srv.PasswordUpdated': 'Parolan güncellendi.',
+  'srv.OrderCancelled': 'Emir iptal edildi.',
+  'srv.UserNotFound': 'Kullanıcı bulunamadı.',
+  'srv.InstrumentNotFound': 'Hisse bulunamadı.',
+  'srv.OrderNotFound': 'Emir bulunamadı.',
+  'srv.InstrumentInactive': 'Bu hisse işleme kapalı.',
+  'srv.InsufficientFunds': 'Yeterli bakiyen yok.',
+  'srv.NoPosition': 'Bu hissede pozisyonun yok.',
+  'srv.InsufficientShares': 'Yeterli lotun yok.',
+  'srv.NotCancellable': 'Sadece bekleyen emirler iptal edilebilir.',
+  'srv.OrderFailed': 'Emir işlenemedi.',
+  'srv.InvalidEmail': 'Geçerli bir e-posta adresi gir.',
+  'srv.PasswordTooShort': 'Parola en az 8 karakter olmalı.',
+  'srv.PasswordRequiresDigit': 'Parola en az bir rakam içermeli.',
+  'srv.PasswordRequiresUpper': 'Parola en az bir büyük harf içermeli.',
+  'srv.PasswordRequiresLower': 'Parola en az bir küçük harf içermeli.',
+  'srv.PasswordRequiresNonAlphanumeric': 'Parola en az bir sembol içermeli.',
+  'srv.PasswordRequiresUniqueChars': 'Parola daha fazla farklı karakter içermeli.',
+  'srv.PasswordMismatch': 'Mevcut parola hatalı.',
+  'srv.InvalidToken': 'Bağlantı geçersiz veya süresi dolmuş.',
+  'srv.DuplicateUserName': 'Bu kullanıcı adı alınmış.',
+  'srv.DuplicateEmail': 'Bu e-posta adresi alınmış.',
+  'srv.unknown': 'Bir hata oluştu.',
+
   'gate.tag': 'Financial Terminal',
   'gate.username': 'Kullanıcı adı',
   'gate.password': 'Parola',
@@ -92,6 +123,7 @@ const en: typeof tr = {
   'app.toDay': 'Switch to light mode',
   'app.toNight': 'Switch to dark mode',
   'app.close': 'Close',
+  'app.offline': 'connection lost',
 
   'strip.equity': 'Account Value',
   'strip.openPL': 'Open position',
@@ -138,6 +170,36 @@ const en: typeof tr = {
   'err.orderFailed': 'Order was rejected.',
   'err.cancelFailed': 'Cancel was rejected.',
 
+  // server codes
+  'srv.InvalidCredentials': 'Username or password is incorrect.',
+  'srv.UsernameTaken': 'That username is taken.',
+  'srv.EmailTaken': 'That email address is taken.',
+  'srv.AccountCreated': 'Account created. You can sign in now.',
+  'srv.ResetLinkSent': 'If that address is registered, a reset link has been sent.',
+  'srv.PasswordUpdated': 'Your password has been updated.',
+  'srv.OrderCancelled': 'Order cancelled.',
+  'srv.UserNotFound': 'User not found.',
+  'srv.InstrumentNotFound': 'Instrument not found.',
+  'srv.OrderNotFound': 'Order not found.',
+  'srv.InstrumentInactive': 'That instrument is not tradeable.',
+  'srv.InsufficientFunds': 'Not enough cash.',
+  'srv.NoPosition': 'You hold no position in that instrument.',
+  'srv.InsufficientShares': 'Not enough shares.',
+  'srv.NotCancellable': 'Only pending orders can be cancelled.',
+  'srv.OrderFailed': 'The order could not be processed.',
+  'srv.InvalidEmail': 'Enter a valid email address.',
+  'srv.PasswordTooShort': 'Password must be at least 8 characters.',
+  'srv.PasswordRequiresDigit': 'Password must contain a digit.',
+  'srv.PasswordRequiresUpper': 'Password must contain an uppercase letter.',
+  'srv.PasswordRequiresLower': 'Password must contain a lowercase letter.',
+  'srv.PasswordRequiresNonAlphanumeric': 'Password must contain a symbol.',
+  'srv.PasswordRequiresUniqueChars': 'Password must use more distinct characters.',
+  'srv.PasswordMismatch': 'Current password is incorrect.',
+  'srv.InvalidToken': 'This link is invalid or has expired.',
+  'srv.DuplicateUserName': 'That username is taken.',
+  'srv.DuplicateEmail': 'That email address is taken.',
+  'srv.unknown': 'Something went wrong.',
+
   'gate.tag': 'Financial Terminal',
   'gate.username': 'Username',
   'gate.password': 'Password',
@@ -180,6 +242,7 @@ type LangValue = {
   lang: Lang
   toggle: () => void
   t: (key: LangKey, vars?: Record<string, string | number>) => string
+  tServer: (data: unknown) => string
 }
 
 const LangContext = createContext<LangValue | null>(null)
@@ -202,10 +265,30 @@ export function LangProvider({ children }: { children: ReactNode }) {
     return out
   }
 
+  // Turns a server error payload into readable text.
+  // The API sends stable codes ("InsufficientFunds"), not sentences.
+  const tServer = (data: unknown): string => {
+    const one = (code: string) => {
+      const key = `srv.${code}` as LangKey
+      return key in dictionaries[lang] ? t(key) : t('srv.unknown')
+    }
+
+    if (typeof data === 'string') return one(data)
+    if (Array.isArray(data)) return data.map(c => one(String(c))).join(' ')
+
+    // ASP.NET model validation: { errors: { Password: ["PasswordTooShort"] } }
+    const errs = (data as { errors?: Record<string, string[]> })?.errors
+    if (errs && typeof errs === 'object') {
+      return Object.values(errs).flat().map(c => one(String(c))).join(' ')
+    }
+
+    return t('srv.unknown')
+  }
+
   const toggle = () => setLang(l => (l === 'tr' ? 'en' : 'tr'))
 
   return (
-    <LangContext.Provider value={{ lang, toggle, t }}>
+    <LangContext.Provider value={{ lang, toggle, t, tServer }}>
       {children}
     </LangContext.Provider>
   )

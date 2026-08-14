@@ -44,7 +44,7 @@ namespace FinSim.Controllers
         public async Task<IActionResult> CancelOrder(Guid id, CancellationToken ct)
         {
             var result = await _orders.CancelAsync(CurrentUserId, id, ct);
-            return result == OrderResult.Success ? Ok("Order cancelled.") : ToError(result);
+            return result == OrderResult.Success ? Ok("OrderCancelled") : ToError(result);
         }
 
         [HttpGet]
@@ -53,15 +53,15 @@ namespace FinSim.Controllers
 
         private IActionResult ToError(OrderResult result) => result switch
         {
-            OrderResult.UserNotFound        => NotFound("User not found."),
-            OrderResult.InstrumentNotFound  => NotFound("Instrument not found."),
-            OrderResult.OrderNotFound       => NotFound("Order not found."),
-            OrderResult.InstrumentInactive  => BadRequest("Instrument is not active."),
-            OrderResult.InsufficientFunds   => BadRequest("Not enough budget to buy."),
-            OrderResult.NoPosition          => BadRequest("User does not have the stock."),
-            OrderResult.InsufficientShares  => BadRequest("Not enough shares to sell."),
-            OrderResult.NotCancellable      => BadRequest("Only pending orders can be cancelled."),
-            _                               => BadRequest("Order could not be processed.")
+            OrderResult.UserNotFound        => NotFound("UserNotFound"),
+            OrderResult.InstrumentNotFound  => NotFound("InstrumentNotFound"),
+            OrderResult.OrderNotFound       => NotFound("OrderNotFound"),
+            OrderResult.InstrumentInactive  => BadRequest("InstrumentInactive"),
+            OrderResult.InsufficientFunds   => BadRequest("InsufficientFunds"),
+            OrderResult.NoPosition          => BadRequest("NoPosition"),
+            OrderResult.InsufficientShares  => BadRequest("InsufficientShares"),
+            OrderResult.NotCancellable      => BadRequest("NotCancellable"),
+            _                               => BadRequest("OrderFailed")
         };
     }
 }

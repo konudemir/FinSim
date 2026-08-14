@@ -37,7 +37,7 @@ namespace FinSim.Infrastructure.Repositories
             var result = await _users.CreateAsync(user, password);
             return result.Succeeded
                 ? []
-                : result.Errors.Select(e => e.Description).ToList();
+                : result.Errors.Select(e => e.Code).ToList();
         }
 
         public Task SaveChangesAsync(CancellationToken ct) => _db.SaveChangesAsync(ct);
@@ -57,7 +57,7 @@ namespace FinSim.Infrastructure.Repositories
             var result = await _users.ResetPasswordAsync(user, token, newPassword);
             return result.Succeeded
                 ? []
-                : result.Errors.Select(e => e.Description).ToList();
+                : result.Errors.Select(e => e.Code).ToList();
         }
 
         

@@ -45,7 +45,7 @@
 [data-theme="day"] {
   --ink:    #FAFAF8; /*ANA*/
   --sunk:   #ECECE8; /*DÖNENLER*/
-  --panel:  #FFFFFF; /*AL ADET LİMİTFİYATİ VE ÜST*/
+  --panel:  #f1f1ef; /*AL ADET LİMİTFİYATİ VE ÜST*/
   --raise:  #F2F4F8; /*AL SAT PİYASA*/
   --edge:   #C8CDD6; /*borders*/
   --bone:   #0B0F14; /*stock prices VE FİN*/

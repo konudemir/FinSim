@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useAuth } from './auth'
 import { useLang } from './lang'
+import { useTheme } from './theme'
 
 export default function ResetPassword({
   email,
@@ -12,7 +13,8 @@ export default function ResetPassword({
   onDone: () => void
 }) {
   const { resetPassword } = useAuth()
-  const { lang, toggle: toggleLang, t } = useLang()
+  const { lang, toggle: toggleLang, t, tServer } = useLang()
+  const { theme, toggle: toggleTheme } = useTheme()
   const [password, setPassword] = useState('')
   const [confirm, setConfirm] = useState('')
   const [note, setNote] = useState('')
@@ -33,16 +35,11 @@ export default function ResetPassword({
     try {
       await resetPassword(email, token, password)
       setNoteOk(true)
-      setNote(t('reset.done'))
+      setNote(t('srv.PasswordUpdated'))
       setTimeout(onDone, 1500)
     } catch (err: any) {
-      const d = err.response?.data
       setNoteOk(false)
-      setNote(
-        typeof d === 'string' ? d
-        : Array.isArray(d) ? d.join(' ')
-        : t('reset.invalid')
-      )
+      setNote(err.response ? tServer(err.response.data) : t('reset.invalid'))
     } finally {
       setBusy(false)
     }
@@ -51,7 +48,15 @@ export default function ResetPassword({
   return (
     <div className="gate">
       <div className="gate-card">
-        <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 12 }}>
+        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginBottom: 14 }}>
+          <button
+            className="ghost-btn"
+            type="button"
+            onClick={toggleTheme}
+            aria-label={theme === 'night' ? t('app.toDay') : t('app.toNight')}
+          >
+            {theme === 'night' ? '☀' : '☾'}
+          </button>
           <button className="ghost-btn" type="button" onClick={toggleLang} aria-label="Language">
             {lang === 'tr' ? 'EN' : 'TR'}
           </button>

@@ -1,12 +1,14 @@
 import { useState } from 'react'
 import { useAuth } from './auth'
 import { useLang } from './lang'
+import { useTheme } from './theme'
 
 type Mode = 'login' | 'register' | 'forgot'
 
 export default function Login({ onSuccess }: { onSuccess: () => void }) {
   const { login, register, forgotPassword } = useAuth()
-  const { lang, toggle: toggleLang, t } = useLang()
+  const { lang, toggle: toggleLang, t, tServer } = useLang()
+  const { theme, toggle: toggleTheme } = useTheme()
   const [mode, setMode] = useState<Mode>('login')
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
@@ -17,12 +19,8 @@ export default function Login({ onSuccess }: { onSuccess: () => void }) {
   const [noteOk, setNoteOk] = useState(false)
   const [busy, setBusy] = useState(false)
 
-  const fail = (e: any) => {
-    const d = e.response?.data
-    if (typeof d === 'string') return d
-    if (Array.isArray(d)) return d.join(' ')
-    return t('gate.noConnection')
-  }
+  const fail = (e: any) =>
+    e.response ? tServer(e.response.data) : t('gate.noConnection')
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -36,11 +34,11 @@ export default function Login({ onSuccess }: { onSuccess: () => void }) {
         await register(username, password, email, firstName, lastName)
         setMode('login')
         setNoteOk(true)
-        setNote(t('gate.registered'))
+        setNote(t('srv.AccountCreated'))
       } else {
         await forgotPassword(email)
         setNoteOk(true)
-        setNote(t('gate.resetSent'))
+        setNote(t('srv.ResetLinkSent'))
       }
     } catch (err: any) {
       setNoteOk(false)
@@ -66,7 +64,15 @@ export default function Login({ onSuccess }: { onSuccess: () => void }) {
   return (
     <div className="gate">
       <div className="gate-card">
-        <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 12 }}>
+        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginBottom: 14 }}>
+          <button
+            className="ghost-btn"
+            type="button"
+            onClick={toggleTheme}
+            aria-label={theme === 'night' ? t('app.toDay') : t('app.toNight')}
+          >
+            {theme === 'night' ? '☀' : '☾'}
+          </button>
           <button className="ghost-btn" type="button" onClick={toggleLang} aria-label="Language">
             {lang === 'tr' ? 'EN' : 'TR'}
           </button>

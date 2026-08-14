@@ -17,7 +17,7 @@ namespace FinSim.Controllers
         {
             var result = await _auth.LoginAsync(req, ct);
             return result is null
-                ? Unauthorized("User or password not correct.")
+                ? Unauthorized("InvalidCredentials")
                 : Ok(result);
         }
 
@@ -27,10 +27,10 @@ namespace FinSim.Controllers
             var (result, errors) = await _auth.RegisterAsync(req, ct);
             return result switch
             {
-                RegisterResult.UsernameTaken   => Conflict("Username already taken."),
-                RegisterResult.EmailTaken      => Conflict("E-mail already taken."),
+                RegisterResult.UsernameTaken   => Conflict("UsernameTaken"),
+                RegisterResult.EmailTaken      => Conflict("EmailTaken"),
                 RegisterResult.InvalidPassword => BadRequest(errors),
-                _                              => Ok("User created.")
+                _                              => Ok("AccountCreated")
             };
         }
     
@@ -39,7 +39,7 @@ namespace FinSim.Controllers
             [FromBody] ForgotPasswordRequest req, CancellationToken ct)
         {
             await _auth.ForgotPasswordAsync(req, ct);
-            return Ok("Bu adres kayıtlıysa sıfırlama bağlantısı gönderildi.");
+            return Ok("ResetLinkSent");
         }
 
         [HttpPost("reset-password")]
@@ -48,7 +48,7 @@ namespace FinSim.Controllers
         {
             var (result, errors) = await _auth.ResetPasswordAsync(req, ct);
             return result == ResetResult.Success
-                ? Ok("Parolan güncellendi.")
+                ? Ok("PasswordUpdated")
                 : BadRequest(errors);
         }
     
