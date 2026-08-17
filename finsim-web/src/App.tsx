@@ -288,6 +288,9 @@ function Terminal({ onLogout }: { onLogout: () => void }) {
     return { ...i, pct }
   })
 
+  const portfolioInstruments = instruments.filter(i => portfolio[i.symbol])
+  const otherInstruments = instruments.filter(i => !portfolio[i.symbol])
+
 
   return (
     <div className="shell">
@@ -353,45 +356,88 @@ function Terminal({ onLogout }: { onLogout: () => void }) {
           </div>
         )}
 
+        {portfolioInstruments.length > 0 && (
+          <>
+            <div className="section-head">
+              <h2>{t('board.portfolioTitle')}</h2>
+              <span className="section-note">{t('board.portfolioNote', { n: portfolioInstruments.length })}</span>
+            </div>
+
+            <div className="tiles">
+              {portfolioInstruments.map(i => {
+                const pos = portfolio[i.symbol]
+                return (
+                  <button
+                    key={i.id}
+                    className="tile"
+                    data-selected={selected === i.id}
+                    data-inactive={!i.isActive}
+                    onClick={() => pick(i)}
+                    disabled={!i.isActive}
+                  >
+                    <AreaSpark data={history[i.symbol] ?? []} className="tile-spark" />
+                    <div className="tile-top">
+                      <span className="tile-sym">{i.symbol}</span>
+                      <span className="tile-px" data-tick={ticks[i.symbol]} key={i.currentPrice}>
+                        {fmt(i.currentPrice)}
+                      </span>
+                    </div>
+                    <div className="tile-name">{i.name}</div>
+                    <div className="tile-pos">
+                      {pos ? (
+                        <>
+                          <span>{t('board.lots', { n: pos.totalQuantity })}</span>
+                          {pos.lockedQuantity > 0 && (
+                            <span className="locked">{t('board.locked', { n: pos.lockedQuantity })}</span>
+                          )}
+                          <span className="avg-cost">{t('board.avgCost', { n: fmt(pos.averageCost) })}</span>
+                          <span className={dirOf(pos.profitLoss)}>{signed(pos.profitLoss)}</span>
+                        </>
+                      ) : (
+                        <span className="empty">{i.isActive ? t('board.noPosition') : t('board.closed')}</span>
+                      )}
+                    </div>
+                  </button>
+                )
+              })}
+            </div>
+          </>
+        )}
+
         <div className="section-head">
-          <h2>{t('board.title')}</h2>
-          <span className="section-note">{t('board.note', { n: instruments.length })}</span>
+          <h2>{t('board.otherTitle')}</h2>
+          <span className="section-note">{t('board.otherNote', { n: otherInstruments.length })}</span>
         </div>
 
         <div className="board">
-          {instruments.map(i => {
-            const pos = portfolio[i.symbol]
+          {otherInstruments.map(i => {
+            const open = selected === i.id
             return (
-              <button
-                key={i.id}
-                className="tile"
-                data-selected={selected === i.id}
-                data-inactive={!i.isActive}
-                onClick={() => pick(i)}
-                disabled={!i.isActive}
-              >
-                <AreaSpark data={history[i.symbol] ?? []} />
-                <div className="tile-top">
-                  <span className="tile-sym">{i.symbol}</span>
-                  <span className="tile-px" data-tick={ticks[i.symbol]} key={i.currentPrice}>
+              <div className="row" key={i.id} data-open={open}>
+                <button
+                  type="button"
+                  className="row-head"
+                  data-selected={open}
+                  data-inactive={!i.isActive}
+                  aria-expanded={open}
+                  onClick={() => pick(i)}
+                  disabled={!i.isActive}
+                >
+                  <span className="row-sym">{i.symbol}</span>
+                  <span className="row-name">{i.name}</span>
+                  <span className="row-px" data-tick={ticks[i.symbol]} key={i.currentPrice}>
                     {fmt(i.currentPrice)}
                   </span>
-                </div>
-                <div className="tile-name">{i.name}</div>
-                <div className="tile-pos">
-                  {pos ? (
-                    <>
-                      <span>{t('board.lots', { n: pos.totalQuantity })}</span>
-                      {pos.lockedQuantity > 0 && (
-                        <span className="locked">{t('board.locked', { n: pos.lockedQuantity })}</span>
-                      )}
-                      <span className={dirOf(pos.profitLoss)}>{signed(pos.profitLoss)}</span>
-                    </>
-                  ) : (
+                  <div className="row-pos">
                     <span className="empty">{i.isActive ? t('board.noPosition') : t('board.closed')}</span>
-                  )}
+                  </div>
+                </button>
+                <div className="row-body">
+                  <div className="row-body-in">
+                    {open && <AreaSpark data={history[i.symbol] ?? []} className="row-spark" />}
+                  </div>
                 </div>
-              </button>
+              </div>
             )
           })}
         </div>
@@ -573,8 +619,8 @@ function Terminal({ onLogout }: { onLogout: () => void }) {
   )
 }
 
-/** Filled area chart that sits behind the tile content. */
-function AreaSpark({ data }: { data: number[] }) {
+/** Filled area chart — always-on inside a portfolio tile, or shown inside an expanded board row. */
+function AreaSpark({ data, className }: { data: number[]; className: string }) {
   if (data.length < 2) return null
 
   const min = Math.min(...data)
@@ -593,7 +639,7 @@ function AreaSpark({ data }: { data: number[] }) {
   const id = `g${rising ? 'u' : 'd'}`
 
   return (
-    <svg className="tile-spark" viewBox="0 0 100 30" preserveAspectRatio="none" aria-hidden="true">
+    <svg className={className} viewBox="0 0 100 30" preserveAspectRatio="none" aria-hidden="true">
       <defs>
         <linearGradient id={id} x1="0" y1="0" x2="0" y2="1">
           <stop offset="0%" stopColor={stroke} stopOpacity="0.34" />

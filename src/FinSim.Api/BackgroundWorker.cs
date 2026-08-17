@@ -10,7 +10,7 @@ namespace FinSim.Api.Services
     {
         private double _bias = 1.0;
         private int _ticksLeft;
-        public const double Every = 5;
+        public const double Every = 3;
         private readonly IHubContext<PriceHub> _hub;
         private readonly ILogger<MarketTickWorker> _logger;
         private readonly IServiceScopeFactory _scopeFactory;
