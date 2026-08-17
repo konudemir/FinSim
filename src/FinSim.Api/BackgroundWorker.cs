@@ -2,6 +2,7 @@ using FinSim.Api.Hubs;
 using FinSim.Infrastructure.Data;
 using Microsoft.AspNetCore.SignalR;
 using FinSim.Application.Services;
+using Microsoft.EntityFrameworkCore;
 
 namespace FinSim.Api.Services
 {
@@ -61,10 +62,21 @@ namespace FinSim.Api.Services
                     await using var tx = await db.Database.BeginTransactionAsync(stoppingToken);
 
                     var tick = await prices.TickAsync(_bias, stoppingToken);
-                    await matcher.MatchAsync(tick.Instruments, stoppingToken);
+                    var filled = await matcher.MatchAsync(tick.Instruments, stoppingToken);
 
-                    await db.SaveChangesAsync(stoppingToken);
-                    await tx.CommitAsync(stoppingToken);
+                    try
+                    {
+                        await db.SaveChangesAsync(stoppingToken);
+                        await tx.CommitAsync(stoppingToken);
+                    }
+                    catch (DbUpdateConcurrencyException)
+                    {
+                        // Someone cancelled or traded mid-tick. Roll back and let the
+                        // same orders get matched on the next pass.
+                        await tx.RollbackAsync(stoppingToken);
+                        _logger.LogWarning("Concurrency conflict during tick; retrying next tick.");
+                        continue;
+                    }
 
                     await _hub.Clients.All.SendAsync("PriceUpdate", new
                     {

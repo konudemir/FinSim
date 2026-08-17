@@ -31,4 +31,5 @@ public enum OrderResult
     NotCancellable,
     InvalidPrice,
     InvalidQuantity,
+    ConcurrencyConflict,
 }

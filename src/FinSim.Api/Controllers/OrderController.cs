@@ -63,6 +63,7 @@ namespace FinSim.Controllers
             OrderResult.NotCancellable      => BadRequest("NotCancellable"),
             OrderResult.InvalidPrice    => BadRequest("InvalidPrice"),
             OrderResult.InvalidQuantity => BadRequest("InvalidQuantity"),
+            OrderResult.ConcurrencyConflict => Conflict("ConcurrencyConflict"),
             _                               => BadRequest("OrderFailed")
         };
     }

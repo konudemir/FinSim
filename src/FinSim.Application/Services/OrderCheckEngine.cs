@@ -115,11 +115,6 @@ namespace FinSim.Application.Services
 
                 filled.Add(o);
             }
-            if (!await _orders.TrySaveChangesAsync(ct))
-            {
-                _logger.LogWarning("Concurrency conflict during matching; retrying next tick.");
-                return [];
-            }
             return filled;
         }
 

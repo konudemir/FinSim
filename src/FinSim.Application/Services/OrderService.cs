@@ -102,7 +102,8 @@ public class OrderService
             TransactionDate = DateTimeOffset.UtcNow
         });
 
-        await _orders.SaveChangesAsync(ct);
+        if (!await _orders.TrySaveChangesAsync(ct))
+            return (OrderResult.ConcurrencyConflict, null);
 
         return (OrderResult.Success,
                 new PlacedOrderDto(order.Id, order.Status.ToString(), price, total));
