@@ -27,7 +27,6 @@ namespace FinSim.Application.Services
             _logger = logger;
         }
 
-        /// <summary>Fills pending limit orders against the given prices. Does not save.</summary>
         public async Task<List<Order>> MatchAsync(
             IReadOnlyCollection<Instrument> instruments, CancellationToken ct)
         {

@@ -7,7 +7,9 @@ namespace FinSim.Api.Services
 {
     public class MarketTickWorker : BackgroundService
     {
-        public const double Every = 5;
+        private double _bias = 1.0;
+        private int _ticksLeft;
+        public const double Every = 2;
         private readonly IHubContext<PriceHub> _hub;
         private readonly ILogger<MarketTickWorker> _logger;
         private readonly IServiceScopeFactory _scopeFactory;
@@ -30,6 +32,25 @@ namespace FinSim.Api.Services
             {
                 try
                 {
+                    if (--_ticksLeft <= 0)
+                    {
+                        if (Random.Shared.NextDouble() < 0.2)
+                        {
+                            _bias = Random.Shared.NextDouble() < 0.6
+                                ? 0.94 + Random.Shared.NextDouble() * 0.04   // rally, 60% of events
+                                : 1.02 + Random.Shared.NextDouble() * 0.04;  // crash, 40%
+                            _ticksLeft = Random.Shared.Next(30, 90);         // event: 2.5–7.5 min
+                        }
+                        else
+                        {
+                            _bias = 1.0;                                     // calm
+                            _ticksLeft = Random.Shared.Next(120, 300);       // 10–25 min
+                        }
+
+                        _logger.LogInformation(
+                            "Market bias -> {Bias:F3} for {Ticks} ticks", _bias, _ticksLeft);
+                    }
+
                     using var scope = _scopeFactory.CreateScope();
                     var sp = scope.ServiceProvider;
 
@@ -39,7 +60,7 @@ namespace FinSim.Api.Services
 
                     await using var tx = await db.Database.BeginTransactionAsync(stoppingToken);
 
-                    var tick = await prices.TickAsync(stoppingToken);
+                    var tick = await prices.TickAsync(_bias, stoppingToken);
                     await matcher.MatchAsync(tick.Instruments, stoppingToken);
 
                     await db.SaveChangesAsync(stoppingToken);

@@ -11,17 +11,17 @@ namespace FinSim.Application.Services
         public PriceSimEngine(IInstrumentRepository instruments) => _instruments = instruments;
 
         /// <summary>Moves every active instrument's price one tick. Does not save.</summary>
-        public async Task<PriceTickResult> TickAsync(CancellationToken ct)
+        public async Task<PriceTickResult> TickAsync(double bias, CancellationToken ct)
         {
             var instruments = await _instruments.GetActiveAsync(ct);
 
-            var marketMove = (decimal)(Random.Shared.NextDouble() * 2 - 1) * 0.02m;
+            var marketMove = (decimal)(Random.Shared.NextDouble() * 2 - bias) * 0.02m;
 
             foreach (var i in instruments)
                 i.CurrentPrice = NextValue(i.CurrentPrice, i.BasePrice, marketMove);
 
             var index = Math.Round(
-            instruments.Sum(i => i.CurrentPrice / i.BasePrice) / instruments.Count * 10_000m, 2);
+                instruments.Sum(i => i.CurrentPrice / i.BasePrice) / instruments.Count * 10_000m, 2);
 
             return new PriceTickResult(marketMove, index, instruments);
         }
@@ -31,11 +31,11 @@ namespace FinSim.Application.Services
             if (currVal <= 0) return 0.01m;
 
             // hisseye özgü rastgele hareket, ortalaması sıfır
-            var idio = (decimal)(Random.Shared.NextDouble() * 2 - 1.01) * 0.03m;
+            var idio = (decimal)(Random.Shared.NextDouble() * 2 - 1.0) * 0.008m;
 
-            const decimal drift = 0.0003m;
+            const decimal drift = 0.00002m;
 
-            var pull = (baseVal - currVal) / baseVal * 0.0002m;
+            var pull = (baseVal - currVal) / baseVal * 0.002m;
 
             return Math.Round(
                 currVal * (1 + marketMove + idio + drift + pull),
