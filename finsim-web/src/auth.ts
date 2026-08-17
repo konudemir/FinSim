@@ -1,22 +1,22 @@
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useEffect } from 'react'
 import api from './api'
 
-type AuthResponse = { token: string; expiry: string }
-
-export function isLoggedIn(): boolean {
-  const token = localStorage.getItem('finsim_token')
-  const expiry = localStorage.getItem('finsim_expiry')
-  if (!token || !expiry) return false
-  return new Date(expiry) > new Date()
-}
-
 export function useAuth() {
-  const [loggedIn, setLoggedIn] = useState(isLoggedIn())
+  const [loggedIn, setLoggedIn] = useState(false)
+  const [checking, setChecking] = useState(true)
+
+  // on mount, ask the server whether the cookie is still good
+  useEffect(() => {
+    let cancelled = false
+    api.get('/api/auth/me')
+      .then(() => { if (!cancelled) setLoggedIn(true) })
+      .catch(() => { if (!cancelled) setLoggedIn(false) })
+      .finally(() => { if (!cancelled) setChecking(false) })
+    return () => { cancelled = true }
+  }, [])
 
   const login = useCallback(async (username: string, password: string) => {
-    const res = await api.post<AuthResponse>('/api/auth/login', { username, password })
-    localStorage.setItem('finsim_token', res.data.token)
-    localStorage.setItem('finsim_expiry', res.data.expiry)
+    await api.post('/api/auth/login', { username, password })
     setLoggedIn(true)
   }, [])
 
@@ -38,11 +38,10 @@ export function useAuth() {
     []
   )
 
-  const logout = useCallback(() => {
-    localStorage.removeItem('finsim_token')
-    localStorage.removeItem('finsim_expiry')
+  const logout = useCallback(async () => {
+    await api.post('/api/auth/logout')
     setLoggedIn(false)
   }, [])
 
-  return { loggedIn, login, register, forgotPassword, resetPassword, logout }
+  return { loggedIn, checking, login, register, forgotPassword, resetPassword, logout }
 }

@@ -7,6 +7,7 @@ import { useTheme } from './theme'
 import { useLang } from './lang'
 import ResetPassword from './ResetPassword'
 import { Logomark } from './icons'
+import GateLayout from './Gate'
 
 
 type Instrument = {
@@ -76,7 +77,7 @@ function Money({ value }: { value: number }) {
 
 
 export default function App() {
-  const { loggedIn, logout } = useAuth()
+  const { loggedIn, checking, logout } = useAuth()
 
   const params = new URLSearchParams(window.location.search)
   const resetEmail = params.get('email')
@@ -91,7 +92,9 @@ export default function App() {
       />
     )
   }
-
+  if (checking) {
+    return <GateLayout><div /></GateLayout>
+  }
   if (!loggedIn) {
     return <Login onSuccess={() => window.location.reload()} />
   }
