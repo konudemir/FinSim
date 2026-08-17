@@ -186,7 +186,7 @@ public class OrderService
         if (orders.Count == 0) return [];
 
         var instruments = (await _instruments.GetActiveAsync(ct)).ToDictionary(i => i.Id);
-
+        var totals = await _transactions.GetTotalsByOrderIdsAsync(orders.Select(o => o.Id), ct);
         return orders.Select(o => new OrderDto(
             o.Id,
             instruments.TryGetValue(o.InstrumentId, out var i) ? i.Symbol! : "?",
@@ -195,6 +195,10 @@ public class OrderService
             o.Quantity,
             o.Price,
             o.Status.ToString(),
-            o.CreatedAt)).ToList();
+            o.CreatedAt,
+            o.Status == OrderStatus.Pending && o.Direction == OrderDirection.Buy
+                ? o.Price!.Value * o.Quantity
+                : null,
+            totals.TryGetValue(o.Id, out var spent) ? spent : null)).ToList();
     }
 }

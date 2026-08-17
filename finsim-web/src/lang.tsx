@@ -15,8 +15,7 @@ const tr = {
 
   'strip.equity': 'Hesap Değeri',
   'strip.openPL': 'Açık pozisyon',
-  'strip.free': 'Serbest',
-  'strip.locked': 'Kilitli',
+  'strip.free': 'Hesap Bakiyesi',
   'strip.position': 'Pozisyon',
 
   'board.title': 'Tahta',
@@ -35,6 +34,7 @@ const tr = {
   'ledger.qty': 'Adet',
   'ledger.price': 'Fiyat',
   'ledger.status': 'Durum',
+  'ledger.locked': 'Kilitli',
   'ledger.cancel': 'iptal et',
 
   'order.market': 'Piyasa',
@@ -134,6 +134,7 @@ const tr = {
 
 
   'srv.ServerError': 'Sunucuda beklenmeyen bir hata oluştu.',
+  'ledger.spent': 'Tutar',
 }
 
 const en: typeof tr = {
@@ -147,8 +148,7 @@ const en: typeof tr = {
 
   'strip.equity': 'Account Value',
   'strip.openPL': 'Open position',
-  'strip.free': 'Free',
-  'strip.locked': 'Locked',
+  'strip.free': 'Account Balance',
   'strip.position': 'Holdings',
 
   'board.title': 'Board',
@@ -167,6 +167,7 @@ const en: typeof tr = {
   'ledger.qty': 'Qty',
   'ledger.price': 'Price',
   'ledger.status': 'Status',
+  'ledger.locked': 'Locked',
   'ledger.cancel': 'cancel',
 
   'order.market': 'Market',
@@ -266,6 +267,7 @@ const en: typeof tr = {
   'reset.invalid': 'This link is invalid or has expired.',
 
   'srv.ServerError': 'Something went wrong on the server.',
+  'ledger.spent': 'Amount',
 }
 
 export type LangKey = keyof typeof tr

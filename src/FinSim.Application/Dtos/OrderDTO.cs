@@ -8,7 +8,9 @@ public record OrderDto(
     int Quantity,
     decimal? Price,
     string Status,
-    DateTimeOffset CreatedAt);
+    DateTimeOffset CreatedAt,
+    decimal? LockedAmount,
+    decimal? ExecutedAmount);
 
 public record PlacedOrderDto(
     Guid Id,

@@ -89,6 +89,7 @@ using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<FinSimDbContext>();
     await db.Database.MigrateAsync();
+    await DbSeeder.SeedInstrumentsAsync(db);
 }
 app.UseFinSimExceptionHandler();
 app.UseStaticFiles();

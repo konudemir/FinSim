@@ -33,6 +33,8 @@ type Order = {
   price: number | null
   status: string
   createdAt: string
+  lockedAmount: number | null
+  executedAmount: number | null
 }
 
 type PortfolioItem = {
@@ -318,15 +320,6 @@ function Terminal({ onLogout }: { onLogout: () => void }) {
           <div className="cell-value sm">{balance ? fmt(balance.freeCashBalance) : '—'}</div>
         </div>
         <div className="cell">
-          <div className="cell-label">{t('strip.locked')}</div>
-          <div
-            className="cell-value sm"
-            style={{ color: (balance?.lockedCashBalance ?? 0) > 0 ? 'var(--amber)' : undefined }}
-          >
-            {balance ? fmt(balance.lockedCashBalance) : '—'}
-          </div>
-        </div>
-        <div className="cell">
           <div className="cell-label">{t('strip.position')}</div>
           <div className="cell-value sm">{fmt(holdingsValue)}</div>
         </div>
@@ -402,6 +395,8 @@ function Terminal({ onLogout }: { onLogout: () => void }) {
                 <th className="num">{t('ledger.qty')}</th>
                 <th className="num">{t('ledger.price')}</th>
                 <th>{t('ledger.status')}</th>
+                <th className="num">{t('ledger.locked')}</th>
+                <th className="num">{t('ledger.spent')}</th>
                 <th />
               </tr>
             </thead>
@@ -422,6 +417,8 @@ function Terminal({ onLogout }: { onLogout: () => void }) {
                         : t('status.cancelled')}
                     </span>
                   </td>
+                  <td className="num">{o.lockedAmount != null ? fmt(o.lockedAmount) : '—'}</td>
+                  <td className="num">{o.executedAmount != null ? fmt(o.executedAmount) : '—'}</td>
                   <td className="num">
                     {o.status === 'Pending' && (
                       <button className="link-btn" onClick={() => cancelOrder(o.id)}>

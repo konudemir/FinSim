@@ -264,7 +264,7 @@ input  { font-family: var(--mono); }
 
 .strip {
   display: grid;
-  grid-template-columns: 1.4fr 1fr 1fr 1fr;
+  grid-template-columns: 1.4fr 1fr 1fr;
   border-bottom: var(--rail);
   background: linear-gradient(180deg, var(--panel), var(--ink));
   box-shadow: var(--lift);
