@@ -136,6 +136,16 @@ const tr = {
   'srv.ServerError': 'Sunucuda beklenmeyen bir hata oluştu.',
   'ledger.spent': 'Tutar',
 
+  'tx.title': 'İşlem Geçmişi',
+  'tx.note': 'son 50 kayıt',
+  'tx.empty': 'Henüz gerçekleşmiş işlem yok.',
+  'tx.symbol': 'Hisse',
+  'tx.side': 'Yön',
+  'tx.qty': 'Adet',
+  'tx.price': 'Fiyat',
+  'tx.total': 'Tutar',
+  'tx.date': 'Tarih',
+
 }
 
 const en: typeof tr = {
@@ -269,6 +279,16 @@ const en: typeof tr = {
 
   'srv.ServerError': 'Something went wrong on the server.',
   'ledger.spent': 'Amount',
+
+  'tx.title': 'Transaction History',
+  'tx.note': 'last 50 records',
+  'tx.empty': 'No transactions yet.',
+  'tx.symbol': 'Symbol',
+  'tx.side': 'Side',
+  'tx.qty': 'Qty',
+  'tx.price': 'Price',
+  'tx.total': 'Amount',
+  'tx.date': 'Date',
 }
 
 export type LangKey = keyof typeof tr

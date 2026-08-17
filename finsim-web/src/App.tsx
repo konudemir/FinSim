@@ -37,6 +37,16 @@ type Order = {
   executedAmount: number | null
 }
 
+type Transaction = {
+  id: string
+  symbol: string
+  direction: string
+  executedQuantity: number
+  executedPrice: number
+  totalAmount: number
+  transactionDate: string
+}
+
 type PortfolioItem = {
   symbol: string
   name: string
@@ -65,6 +75,9 @@ const fmt = (n: number) =>
 const signed = (n: number) => (n >= 0 ? '+' : '−') + fmt(Math.abs(n))
 
 const dirOf = (n: number) => (n > 0 ? 'up' : n < 0 ? 'down' : 'flat')
+
+const fmtDate = (s: string) =>
+  new Date(s).toLocaleString('tr-TR', { dateStyle: 'short', timeStyle: 'short' })
 
 /** 1.234,56 with the kuruş set smaller — print-ledger habit. */
 function Money({ value }: { value: number }) {
@@ -114,6 +127,7 @@ function Terminal({ onLogout }: { onLogout: () => void }) {
   const [balance, setBalance] = useState<Balance | null>(null)
   const [portfolio, setPortfolio] = useState<Record<string, PortfolioItem>>({})
   const [orders, setOrders] = useState<Order[]>([])
+  const [transactions, setTransactions] = useState<Transaction[]>([])
   const [marketMove, setMarketMove] = useState(0)
 
   const [selected, setSelected] = useState<string | null>(null)
@@ -129,6 +143,9 @@ function Terminal({ onLogout }: { onLogout: () => void }) {
 
   const loadOrders = () =>
     api.get<Order[]>('/api/order').then(r => setOrders(r.data)).catch(console.error)
+
+  const loadTransactions = () =>
+    api.get<Transaction[]>('/api/transactions').then(r => setTransactions(r.data)).catch(console.error)
 
   const loadBalance = () =>
     api.get<Balance>('/api/users/balance').then(r => setBalance(r.data)).catch(console.error)
@@ -150,6 +167,7 @@ function Terminal({ onLogout }: { onLogout: () => void }) {
       })
       .catch(console.error)
     loadOrders()
+    loadTransactions()
     loadBalance()
     loadPortfolio()
   }, [])
@@ -192,6 +210,7 @@ function Terminal({ onLogout }: { onLogout: () => void }) {
       loadPortfolio()
       loadBalance()
       loadOrders()
+      loadTransactions()
     })
 
     conn.onreconnecting(() => setOnline(false))
@@ -243,6 +262,7 @@ function Terminal({ onLogout }: { onLogout: () => void }) {
     loadPortfolio()
     loadBalance()
     loadOrders()
+    loadTransactions()
   }
 
   const cancelOrder = async (id: string) => {
@@ -252,7 +272,7 @@ function Terminal({ onLogout }: { onLogout: () => void }) {
     } catch (e: any) {
       setNotice(e.response ? tServer(e.response.data) : t('err.cancelFailed'))
     }
-    loadBalance(); loadPortfolio(); loadOrders()
+    loadBalance(); loadPortfolio(); loadOrders(); loadTransactions()
   }
 
   const pick = (i: Instrument) => {
@@ -376,61 +396,105 @@ function Terminal({ onLogout }: { onLogout: () => void }) {
           })}
         </div>
 
-        <div className="section-head">
-          <h2>{t('ledger.title')}</h2>
-          <span className="section-note">{t('ledger.note')}</span>
-        </div>
+        <div className="panels">
+          <div className="panel">
+            <div className="section-head">
+              <h2>{t('ledger.title')}</h2>
+              <span className="section-note">{t('ledger.note')}</span>
+            </div>
 
-        {orders.length === 0 ? (
-          <div className="empty-state">
-            {t('ledger.empty')}
+            {orders.length === 0 ? (
+              <div className="empty-state">
+                {t('ledger.empty')}
+              </div>
+            ) : (
+              <table className="ledger">
+                <thead>
+                  <tr>
+                    <th>{t('ledger.symbol')}</th>
+                    <th className="hide-sm">{t('ledger.type')}</th>
+                    <th>{t('ledger.side')}</th>
+                    <th className="num">{t('ledger.qty')}</th>
+                    <th className="num">{t('ledger.price')}</th>
+                    <th>{t('ledger.status')}</th>
+                    <th className="num">{t('ledger.locked')}</th>
+                    <th className="num">{t('ledger.spent')}</th>
+                    <th />
+                  </tr>
+                </thead>
+                <tbody>
+                  {orders.map(o => (
+                    <tr key={o.id}>
+                      <td className="sym">{o.symbol}</td>
+                      <td className="hide-sm">{o.orderType === 'Market' ? t('order.market') : t('order.limit')}</td>
+                      <td className={o.direction === 'Buy' ? 'up' : 'down'}>
+                        {o.direction === 'Buy' ? t('order.buy') : t('order.sell')}
+                      </td>
+                      <td className="num">{o.quantity}</td>
+                      <td className="num">{o.price != null ? fmt(o.price) : '—'}</td>
+                      <td>
+                        <span className={`pill ${o.status.toLowerCase()}`}>
+                          {o.status === 'Pending' ? t('status.pending')
+                            : o.status === 'Filled' ? t('status.filled')
+                            : t('status.cancelled')}
+                        </span>
+                      </td>
+                      <td className="num">{o.lockedAmount != null ? fmt(o.lockedAmount) : '—'}</td>
+                      <td className="num">{o.executedAmount != null ? fmt(o.executedAmount) : '—'}</td>
+                      <td className="num">
+                        {o.status === 'Pending' && (
+                          <button className="link-btn" onClick={() => cancelOrder(o.id)}>
+                            {t('ledger.cancel')}
+                          </button>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
           </div>
-        ) : (
-          <table className="ledger">
-            <thead>
-              <tr>
-                <th>{t('ledger.symbol')}</th>
-                <th className="hide-sm">{t('ledger.type')}</th>
-                <th>{t('ledger.side')}</th>
-                <th className="num">{t('ledger.qty')}</th>
-                <th className="num">{t('ledger.price')}</th>
-                <th>{t('ledger.status')}</th>
-                <th className="num">{t('ledger.locked')}</th>
-                <th className="num">{t('ledger.spent')}</th>
-                <th />
-              </tr>
-            </thead>
-            <tbody>
-              {orders.map(o => (
-                <tr key={o.id}>
-                  <td className="sym">{o.symbol}</td>
-                  <td className="hide-sm">{o.orderType === 'Market' ? t('order.market') : t('order.limit')}</td>
-                  <td className={o.direction === 'Buy' ? 'up' : 'down'}>
-                    {o.direction === 'Buy' ? t('order.buy') : t('order.sell')}
-                  </td>
-                  <td className="num">{o.quantity}</td>
-                  <td className="num">{o.price != null ? fmt(o.price) : '—'}</td>
-                  <td>
-                    <span className={`pill ${o.status.toLowerCase()}`}>
-                      {o.status === 'Pending' ? t('status.pending')
-                        : o.status === 'Filled' ? t('status.filled')
-                        : t('status.cancelled')}
-                    </span>
-                  </td>
-                  <td className="num">{o.lockedAmount != null ? fmt(o.lockedAmount) : '—'}</td>
-                  <td className="num">{o.executedAmount != null ? fmt(o.executedAmount) : '—'}</td>
-                  <td className="num">
-                    {o.status === 'Pending' && (
-                      <button className="link-btn" onClick={() => cancelOrder(o.id)}>
-                        {t('ledger.cancel')}
-                      </button>
-                    )}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        )}
+
+          <div className="panel">
+            <div className="section-head">
+              <h2>{t('tx.title')}</h2>
+              <span className="section-note">{t('tx.note')}</span>
+            </div>
+
+            {transactions.length === 0 ? (
+              <div className="empty-state">
+                {t('tx.empty')}
+              </div>
+            ) : (
+              <table className="ledger">
+                <thead>
+                  <tr>
+                    <th>{t('tx.symbol')}</th>
+                    <th>{t('tx.side')}</th>
+                    <th className="num">{t('tx.qty')}</th>
+                    <th className="num">{t('tx.price')}</th>
+                    <th className="num">{t('tx.total')}</th>
+                    <th>{t('tx.date')}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {transactions.map(tx => (
+                    <tr key={tx.id}>
+                      <td className="sym">{tx.symbol}</td>
+                      <td className={tx.direction === 'Buy' ? 'up' : 'down'}>
+                        {tx.direction === 'Buy' ? t('order.buy') : t('order.sell')}
+                      </td>
+                      <td className="num">{tx.executedQuantity}</td>
+                      <td className="num">{fmt(tx.executedPrice)}</td>
+                      <td className="num">{fmt(tx.totalAmount)}</td>
+                      <td>{fmtDate(tx.transactionDate)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+          </div>
+        </div>
       </main>
 
       <div className="ticket">

@@ -54,6 +54,7 @@ namespace FinSim.Infrastructure.Data
             {
                 e.Property(t => t.ExecutedPrice).HasPrecision(18, 2);
                 e.Property(t => t.TotalAmount).HasPrecision(18, 2);
+                e.HasIndex(t => t.OrderId);
 
                 e.HasOne(t => t.Order)
                  .WithMany(o => o.Transactions)

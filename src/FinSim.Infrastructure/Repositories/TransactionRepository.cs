@@ -25,5 +25,13 @@ namespace FinSim.Infrastructure.Repositories
 
             return rows.ToDictionary(x => x.OrderId, x => x.Total);
         }
+
+        public Task<List<Transaction>> GetRecentByUserAsync(Guid userId, int take, CancellationToken ct) =>
+            _db.Transactions
+               .Include(t => t.Order)
+               .Where(t => t.UserId == userId)
+               .OrderByDescending(t => t.TransactionDate)
+               .Take(take)
+               .ToListAsync(ct);
     }
 }

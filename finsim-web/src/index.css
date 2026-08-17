@@ -456,6 +456,14 @@ input  { font-family: var(--mono); }
 .tile-px[data-tick="up"]   { animation: flash-up 0.9s ease-out; }
 .tile-px[data-tick="down"] { animation: flash-down 0.9s ease-out; }
 
+/* ── order book / transaction history panels ────────────────── */
+
+.panels {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0 32px;
+}
+
 /* ── orders table ────────────────────────────────────────── */
 
 .ledger {
@@ -1170,6 +1178,10 @@ input  { font-family: var(--mono); }
 .spin { animation: spin 0.8s linear infinite; }
 
 /* ── responsive ──────────────────────────────────────────── */
+
+@media (max-width: 900px) {
+  .panels { grid-template-columns: 1fr; gap: 34px 0; }
+}
 
 @media (max-width: 780px) {
   .strip { grid-template-columns: 1fr 1fr; }
