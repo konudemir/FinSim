@@ -92,7 +92,6 @@ using (var scope = app.Services.CreateScope())
     await DbSeeder.SeedInstrumentsAsync(db);
 }
 app.UseFinSimExceptionHandler();
-app.UseStaticFiles();
 app.UseCors();
 app.UseAuthentication();
 app.UseAuthorization();

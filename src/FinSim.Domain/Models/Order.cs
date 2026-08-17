@@ -14,6 +14,7 @@ namespace FinSim.Domain.Models
         public OrderDirection Direction { get; set; }
         public int Quantity { get; set; }
         public decimal? Price { get; set; }
+        public decimal LockedAmount { get; set; }
         public OrderStatus Status { get; set; } = OrderStatus.Pending;
         public DateTimeOffset CreatedAt { get; set; }
         public DateTimeOffset UpdatedAt { get; set; }

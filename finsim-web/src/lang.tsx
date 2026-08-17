@@ -135,6 +135,7 @@ const tr = {
 
   'srv.ServerError': 'Sunucuda beklenmeyen bir hata oluştu.',
   'ledger.spent': 'Tutar',
+
 }
 
 const en: typeof tr = {

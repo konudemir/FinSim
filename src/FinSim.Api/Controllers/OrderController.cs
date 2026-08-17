@@ -61,6 +61,8 @@ namespace FinSim.Controllers
             OrderResult.NoPosition          => BadRequest("NoPosition"),
             OrderResult.InsufficientShares  => BadRequest("InsufficientShares"),
             OrderResult.NotCancellable      => BadRequest("NotCancellable"),
+            OrderResult.InvalidPrice    => BadRequest("InvalidPrice"),
+            OrderResult.InvalidQuantity => BadRequest("InvalidQuantity"),
             _                               => BadRequest("OrderFailed")
         };
     }

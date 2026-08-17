@@ -28,5 +28,7 @@ public enum OrderResult
     NoPosition,
     InsufficientShares,
     OrderNotFound,
-    NotCancellable
+    NotCancellable,
+    InvalidPrice,
+    InvalidQuantity,
 }

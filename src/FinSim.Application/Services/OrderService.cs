@@ -27,6 +27,14 @@ public class OrderService
         _transactions = transactions;
     }
 
+    /// <summary>
+    /// Money is stored at 2dp everywhere, so every amount that touches a balance
+    /// goes through here. Keeping one helper means the lock and the release can
+    /// never disagree by a kuruş the way they used to.
+    /// </summary>
+    private static decimal Money(decimal value) =>
+        Math.Round(value, 2, MidpointRounding.AwayFromZero);
+
     public async Task<(OrderResult Result, PlacedOrderDto? Order)> PlaceMarketOrderAsync(
         Guid userId, Guid instrumentId, int quantity, OrderDirection direction, CancellationToken ct)
     {
@@ -38,7 +46,7 @@ public class OrderService
         if (!instrument.IsActive) return (OrderResult.InstrumentInactive, null);
 
         var price = instrument.CurrentPrice;
-        var total = Math.Round(price * quantity, 2, MidpointRounding.AwayFromZero);
+        var total = Money(price * quantity);
 
         var portItem = await _portfolio.GetAsync(userId, instrumentId, ct);
 
@@ -77,7 +85,8 @@ public class OrderService
             Price = null,
             Status = OrderStatus.Filled,
             CreatedAt = DateTimeOffset.UtcNow,
-            UpdatedAt = DateTimeOffset.UtcNow
+            UpdatedAt = DateTimeOffset.UtcNow,
+            LockedAmount = 0m       // market orders settle immediately, nothing is ever held
         };
         _orders.Add(order);
 
@@ -110,7 +119,14 @@ public class OrderService
         if (instrument is null) return (OrderResult.InstrumentNotFound, null);
         if (!instrument.IsActive) return (OrderResult.InstrumentInactive, null);
 
-        var total = Math.Round(limitPrice * quantity, 2, MidpointRounding.AwayFromZero);
+        // Order.Price is numeric(18,2) in the database, so normalise here rather
+        // than letting Postgres silently round on write — otherwise the value we
+        // lock against and the value we later read back are different numbers.
+        var price = Money(limitPrice);
+        if (price <= 0) return (OrderResult.InvalidPrice, null);
+        if (quantity < 1) return (OrderResult.InvalidQuantity, null);
+
+        var total = Money(price * quantity);
 
         if (direction == OrderDirection.Buy)
         {
@@ -137,10 +153,11 @@ public class OrderService
             OrderType = OrderType.Limit,
             Direction = direction,
             Quantity = quantity,
-            Price = limitPrice,
+            Price = price,
             Status = OrderStatus.Pending,
             CreatedAt = DateTimeOffset.UtcNow,
-            UpdatedAt = DateTimeOffset.UtcNow
+            UpdatedAt = DateTimeOffset.UtcNow,
+            LockedAmount = direction == OrderDirection.Buy ? total : 0m
         };
         _orders.Add(order);
 
@@ -161,9 +178,11 @@ public class OrderService
 
         if (order.Direction == OrderDirection.Buy)
         {
-            var locked = order.Price!.Value * order.Quantity;
-            user.LockedCashBalance -= locked;
-            user.FreeCashBalance += locked;
+            // Release exactly what was held. Recomputing from Price * Quantity is
+            // what produced the leftover kuruş: the multiply was rounded at a
+            // different point than it was when the funds were locked.
+            user.LockedCashBalance -= order.LockedAmount;
+            user.FreeCashBalance += order.LockedAmount;
         }
         else // sell
         {
@@ -185,8 +204,11 @@ public class OrderService
         var orders = await _orders.GetRecentByUserAsync(userId, 50, ct);
         if (orders.Count == 0) return [];
 
+        // GetAllAsync, not GetActiveAsync: an order placed on an instrument that
+        // has since been delisted still belongs in the ledger with its symbol.
         var instruments = (await _instruments.GetActiveAsync(ct)).ToDictionary(i => i.Id);
         var totals = await _transactions.GetTotalsByOrderIdsAsync(orders.Select(o => o.Id), ct);
+
         return orders.Select(o => new OrderDto(
             o.Id,
             instruments.TryGetValue(o.InstrumentId, out var i) ? i.Symbol! : "?",
@@ -197,7 +219,7 @@ public class OrderService
             o.Status.ToString(),
             o.CreatedAt,
             o.Status == OrderStatus.Pending && o.Direction == OrderDirection.Buy
-                ? o.Price!.Value * o.Quantity
+                ? o.LockedAmount
                 : null,
             totals.TryGetValue(o.Id, out var spent) ? spent : null)).ToList();
     }

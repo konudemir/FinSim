@@ -54,7 +54,7 @@ namespace FinSim.Application.Services
 
                 if (o.Direction == OrderDirection.Buy)
                 {
-                    var locked = o.Price.Value * o.Quantity;
+                    var locked = o.LockedAmount;
                     var cost = Math.Round(market * o.Quantity, 2, MidpointRounding.AwayFromZero);
 
                     user.LockedCashBalance -= locked;
