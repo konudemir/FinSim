@@ -145,6 +145,7 @@ const tr = {
   'tx.price': 'Fiyat',
   'tx.total': 'Tutar',
   'tx.date': 'Tarih',
+  'status.rejected': 'Reddedildi',
 
 }
 
@@ -289,6 +290,8 @@ const en: typeof tr = {
   'tx.price': 'Price',
   'tx.total': 'Amount',
   'tx.date': 'Date',
+  
+  'status.rejected': 'Rejected',
 }
 
 export type LangKey = keyof typeof tr

@@ -510,6 +510,7 @@ input  { font-family: var(--mono); }
   border-radius: 2px;
   border: 1px solid currentColor;
 }
+.pill.rejected  { color: var(--fall); }
 
 .pill.pending   { color: var(--amber); }
 .pill.filled    { color: var(--rise); }

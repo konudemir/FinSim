@@ -39,8 +39,19 @@ namespace FinSim.Application.Services
 
             foreach (var o in orders)
             {
-                if (!priceMap.TryGetValue(o.InstrumentId, out var market)) continue;
-                if (o.Price is null) continue;
+                if (!priceMap.TryGetValue(o.InstrumentId, out var market))
+                {
+                    Reject(o, await _users.GetByIdAsync(o.UserId, ct),
+                           await _portfolio.GetAsync(o.UserId, o.InstrumentId, ct),
+                           "instrument no longer trading");
+                    continue;
+                }
+                if (o.Price is null)
+                {
+                    Reject(o, await _users.GetByIdAsync(o.UserId, ct), null,
+                           "limit order has no price");
+                    continue;
+                }
 
                 bool matched = o.Direction == OrderDirection.Buy
                     ? market <= o.Price.Value
@@ -48,7 +59,11 @@ namespace FinSim.Application.Services
                 if (!matched) continue;
 
                 var user = await _users.GetByIdAsync(o.UserId, ct);
-                if (user is null) continue;
+                if (user is null)
+                {
+                    Reject(o, null, null, "user no longer exists");
+                    continue;
+                }
 
                 var portItem = await _portfolio.GetAsync(o.UserId, o.InstrumentId, ct);
 
@@ -69,7 +84,7 @@ namespace FinSim.Application.Services
                 {
                     if (portItem is null || portItem.LockedQuantity < o.Quantity)
                     {
-                        _logger.LogWarning("Sell order {OrderId} has no matching locked position.", o.Id);
+                        Reject(o, user, portItem, "no matching locked position");
                         continue;
                     }
 
@@ -106,6 +121,31 @@ namespace FinSim.Application.Services
                 return [];
             }
             return filled;
+        }
+
+        private void Reject(Order order, User? user, PortfolioItem? portItem, string reason)
+        {
+            // Give back whatever was held. A rejected order must leave the
+            // account exactly as it found it.
+            if (order.Direction == OrderDirection.Buy)
+            {
+                if (user is not null)
+                {
+                    user.LockedCashBalance -= order.LockedAmount;
+                    user.FreeCashBalance   += order.LockedAmount;
+                }
+            }
+            else if (portItem is not null)
+            {
+                // The lock may already be inconsistent — that is why we are here.
+                // Release what actually exists rather than going negative.
+                portItem.LockedQuantity -= Math.Min(portItem.LockedQuantity, order.Quantity);
+            }
+
+            order.Status    = OrderStatus.Rejected;
+            order.UpdatedAt = DateTimeOffset.UtcNow;
+
+            _logger.LogWarning("Order {OrderId} rejected: {Reason}", order.Id, reason);
         }
     }
 }

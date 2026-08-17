@@ -435,8 +435,9 @@ function Terminal({ onLogout }: { onLogout: () => void }) {
                       <td>
                         <span className={`pill ${o.status.toLowerCase()}`}>
                           {o.status === 'Pending' ? t('status.pending')
-                            : o.status === 'Filled' ? t('status.filled')
-                            : t('status.cancelled')}
+                        : o.status === 'Filled' ? t('status.filled')
+                        : o.status === 'Rejected' ? t('status.rejected')
+                        : t('status.cancelled')}
                         </span>
                       </td>
                       <td className="num">{o.lockedAmount != null ? fmt(o.lockedAmount) : '—'}</td>
