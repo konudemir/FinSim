@@ -32,15 +32,11 @@ services:
       Jwt__Audience: "FinSim"
       Jwt__Key: "replace-this-with-a-real-32-character-key"
       Cors__Origin: "http://localhost:5173"
-    ports:
-      - "5209:8080"
 
   web:
     build:
       context: ./finsim-web
       dockerfile: Dockerfile
-      args:
-        VITE_API_URL: http://localhost:5209
     container_name: finsim-web
     depends_on:
       - api
