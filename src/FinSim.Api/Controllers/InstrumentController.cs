@@ -1,10 +1,12 @@
 using FinSim.Application.Services;
 using Microsoft.AspNetCore.Mvc;
 using FinSim.Domain.Dtos;
+using Microsoft.AspNetCore.Authorization;
 namespace FinSim.Controllers
 {
     [ApiController]
     [Route("api/instruments")]
+    [Authorize]
     public class InstrumentController : ControllerBase
     {
         private readonly InstrumentService _inst;
@@ -14,6 +16,7 @@ namespace FinSim.Controllers
         }
 
         [HttpGet]
+        [AllowAnonymous]
         public async Task<IActionResult> GetAll(CancellationToken ct)
         {
             var result = await _inst.GetAllAsync(ct);
@@ -23,6 +26,7 @@ namespace FinSim.Controllers
         }
 
         [HttpGet("by-id/{id:guid}")]
+        [AllowAnonymous]
         public async Task<IActionResult> GetById(Guid id, CancellationToken ct)
         {
             var result = await _inst.GetByIdAsync(id, ct);
@@ -32,6 +36,7 @@ namespace FinSim.Controllers
         }
 
         [HttpGet("{symbol}")]
+        [AllowAnonymous]
         public async Task<IActionResult> GetBySymbol(string symbol, CancellationToken ct)
         {
             var result = await _inst.GetBySymbolAsync(symbol, ct);

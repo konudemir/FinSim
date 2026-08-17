@@ -13,6 +13,7 @@ using FinSim.Infrastructure.Services;
 using Microsoft.AspNetCore.Identity;
 using FinSim.Domain.Models;
 using FinSim.Api.Middleware;
+using Microsoft.AspNetCore.Authorization;
 var builder = WebApplication.CreateBuilder(args);
 
 // Add services to the container.
@@ -67,6 +68,11 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
                 Encoding.UTF8.GetBytes(builder.Configuration["Jwt:Key"]!))
         };
     });
+
+builder.Services.AddAuthorizationBuilder()
+    .SetFallbackPolicy(new AuthorizationPolicyBuilder()
+        .RequireAuthenticatedUser()
+        .Build());
 
 
 var app = builder.Build();
