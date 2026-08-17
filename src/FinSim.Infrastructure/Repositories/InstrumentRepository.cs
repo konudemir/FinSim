@@ -19,5 +19,16 @@ namespace FinSim.Infrastructure.Repositories
 
         public Task<Instrument?> GetBySymbolAsync(string symbol, CancellationToken ct) =>
             _db.Instruments.FirstOrDefaultAsync(i => i.Symbol == symbol.ToUpper(), ct);
+        
+        public async Task AddAsync(Instrument instrument, CancellationToken ct)
+        {
+            _db.Instruments.Add(instrument);
+            await _db.SaveChangesAsync(ct);
+        }
+        public async Task UpdateAsync(Instrument instrument, CancellationToken ct)
+        {
+            _db.Instruments.Update(instrument);
+            await _db.SaveChangesAsync(ct);
+        }
     }
 }
