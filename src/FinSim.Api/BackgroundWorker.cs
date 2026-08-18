@@ -3,6 +3,7 @@ using FinSim.Infrastructure.Data;
 using Microsoft.AspNetCore.SignalR;
 using FinSim.Application.Services;
 using Microsoft.EntityFrameworkCore;
+using FinSim.Domain.Models;
 
 namespace FinSim.Api.Services
 {
@@ -10,6 +11,7 @@ namespace FinSim.Api.Services
     {
         private double _bias = 1.0;
         private int _ticksLeft;
+        private int _sinceCleanup;
         public const double Every = 60;
         private readonly IHubContext<PriceHub> _hub;
         private readonly ILogger<MarketTickWorker> _logger;
@@ -63,11 +65,28 @@ namespace FinSim.Api.Services
                     await using var tx = await db.Database.BeginTransactionAsync(stoppingToken);
 
                     var tick    = await prices.TickAsync(_bias, stoppingToken);
-                    var touched = await matcher.MatchAsync(tick.Instruments, stoppingToken);//touched instead of filled
+                    var touched = await matcher.MatchAsync(tick.Instruments, stoppingToken);
+
+                    var stamp = DateTime.UtcNow;
+                    db.PriceHistory.AddRange(tick.Instruments.Select(i => new PriceHistory
+                    {
+                        InstrumentId = i.Id,
+                        Price        = i.CurrentPrice,
+                        Timestamp    = stamp
+                    }));
                     try
                     {
                         await db.SaveChangesAsync(stoppingToken);
                         await tx.CommitAsync(stoppingToken);
+                        if (++_sinceCleanup >= 1440)   // ~24 saat @ 60sn
+                        {
+                            _sinceCleanup = 0;
+                            var cutoff = DateTime.UtcNow.AddDays(-30);
+                            var deleted = await db.PriceHistory
+                                .Where(p => p.Timestamp < cutoff)
+                                .ExecuteDeleteAsync(stoppingToken);
+                            _logger.LogInformation("Pruned {Count} price history rows", deleted);
+                        }
                     }
                     catch (DbUpdateConcurrencyException)
                     {

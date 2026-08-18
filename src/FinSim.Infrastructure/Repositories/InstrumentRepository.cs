@@ -30,5 +30,14 @@ namespace FinSim.Infrastructure.Repositories
             _db.Instruments.Update(instrument);
             await _db.SaveChangesAsync(ct);
         }
+        public Task<List<PriceHistory>> GetHistoryAsync(
+        Guid instrumentId, DateTime from, DateTime to, CancellationToken ct) =>
+        _db.PriceHistory
+        .AsNoTracking()
+        .Where(p => p.InstrumentId == instrumentId
+                    && p.Timestamp >= from
+                    && p.Timestamp <= to)
+        .OrderBy(p => p.Timestamp)
+        .ToListAsync(ct);
     }
 }

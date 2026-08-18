@@ -17,6 +17,10 @@ type Instrument = {
   currentPrice: number
   isActive: boolean
 }
+type PricePoint = {
+  timestamp: string
+  price: number
+}
 
 type Balance = {
   freeCashBalance: number
@@ -131,13 +135,16 @@ function Terminal({ onLogout }: { onLogout: () => void }) {
 
   const [indexValue, setIndexValue] = useState(0)
   const [instruments, setInstruments] = useState<Instrument[]>([])
-  const [history, setHistory] = useState<Record<string, number[]>>({})
   const [balance, setBalance] = useState<Balance | null>(null)
   const [portfolio, setPortfolio] = useState<Record<string, PortfolioItem>>({})
   const [orders, setOrders] = useState<Order[]>([])
   const [transactions, setTransactions] = useState<Transaction[]>([])
   const [marketMove, setMarketMove] = useState(0)
-
+const TICK_SECONDS = 60
+const WINDOW_HOURS = 2
+const MAX_POINTS = (WINDOW_HOURS * 3600) / TICK_SECONDS
+const [history, setHistory] = useState<Record<string, number[]>>({})
+const seeded = useRef<Set<string>>(new Set())
   const [selected, setSelected] = useState<string | null>(null)
   const [mode, setMode] = useState<'market' | 'limit'>('market')
   const [qty, setQty] = useState('1')
@@ -182,6 +189,12 @@ function Terminal({ onLogout }: { onLogout: () => void }) {
   }, [])
 
   useEffect(() => {
+    for (const i of instruments) {
+      if (portfolio[i.symbol]) loadHistory(i)
+    }
+  }, [instruments, portfolio])
+
+  useEffect(() => {
     const conn = new signalR.HubConnectionBuilder()
       .withUrl(`${API}/hubs/prices`)
       .withAutomaticReconnect([0, 2000, 5000, 10000, 30000, 30000, 60000, 60000])
@@ -211,7 +224,7 @@ function Terminal({ onLogout }: { onLogout: () => void }) {
       setHistory(prev => {
         const next = { ...prev }
         for (const u of payload.prices) {
-          next[u.symbol] = [...(prev[u.symbol] ?? []), u.currentPrice].slice(-24)
+          next[u.symbol] = [...(prev[u.symbol] ?? []), u.currentPrice].slice(-MAX_POINTS)
         }
         return next
       })
@@ -337,10 +350,27 @@ function Terminal({ onLogout }: { onLogout: () => void }) {
   }
 
   const pick = (i: Instrument) => {
-    if (!i.isActive) return
-    setSelected(prev => (prev === i.id ? null : i.id))
-    setLimitPrice(prev => (prev === '' ? i.currentPrice.toFixed(2).replace('.', ',') : prev))
-  }
+  if (!i.isActive) return
+  setSelected(prev => (prev === i.id ? null : i.id))
+  setLimitPrice(prev => (prev === '' ? i.currentPrice.toFixed(2).replace('.', ',') : prev))
+  loadHistory(i)
+}
+
+const loadHistory = (i: Instrument) => {
+  if (seeded.current.has(i.symbol)) return
+  seeded.current.add(i.symbol)
+
+  api.get<PricePoint[]>(`/api/instruments/${i.id}/history`)
+    .then(r => {
+      const prices = r.data.map(p => p.price)
+      setHistory(prev => ({
+        ...prev,
+        // canlı tick'ler bu arada gelmiş olabilir; geçmişi öne ekle
+        [i.symbol]: [...prices, ...(prev[i.symbol] ?? [])].slice(-MAX_POINTS)
+      }))
+    })
+    .catch(() => seeded.current.delete(i.symbol))   // hata olursa tekrar denenebilsin
+}
 
   const tapeRow = instruments.map(i => {
     const h = history[i.symbol] ?? []

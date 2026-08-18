@@ -5,6 +5,7 @@ namespace FinSim.Domain.Dtos
 {
     public class InstrumentDto
     {
+        public record PricePointDto(DateTime Timestamp, decimal Price);
         public Guid Id { get; set; }
         public string Symbol { get; set; } = "";
         public string Name { get; set; } = "";

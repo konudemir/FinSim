@@ -14,6 +14,20 @@ namespace FinSim.Controllers
         {
             _inst = inst;
         }
+        
+        [HttpGet("{id:guid}/history")]
+        [AllowAnonymous]
+        public async Task<IActionResult> GetHistory(
+            Guid id,
+            [FromQuery] DateTime? from,
+            [FromQuery] DateTime? to,
+            CancellationToken ct)
+        {
+            var result = await _inst.GetHistoryAsync(id, from, to, ct);
+            return result is null
+                ? NotFound("Could not get the instrument with the specified id.")
+                : Ok(result);
+        }
 
         [HttpGet]
         [AllowAnonymous]

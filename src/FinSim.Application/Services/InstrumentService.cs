@@ -68,6 +68,29 @@ public class InstrumentService
         });
     }
 
+    public async Task<List<PricePointDto>?> GetHistoryAsync(
+        Guid id, DateTime? from, DateTime? to, CancellationToken ct)
+    {
+        if (await _instruments.GetByIdAsync(id, ct) is null)
+            return null;
+
+        var toUtc   = to   ?? DateTime.UtcNow;
+        var fromUtc = from ?? toUtc.AddHours(-24);
+
+        if (fromUtc > toUtc) (fromUtc, toUtc) = (toUtc, fromUtc);
+        if (toUtc - fromUtc > TimeSpan.FromDays(30))
+            fromUtc = toUtc.AddDays(-30);
+
+        var rows = await _instruments.GetHistoryAsync(id, fromUtc, toUtc, ct);
+
+        const int maxPoints = 500;
+        var step = rows.Count <= maxPoints ? 1 : (rows.Count / maxPoints) + 1;
+
+        return rows.Where((_, idx) => idx % step == 0 || idx == rows.Count - 1)
+                .Select(p => new PricePointDto(p.Timestamp, p.Price))
+                .ToList();
+    }
+
     public async Task<InstrumentDto?> SetActiveAsync(Guid id, bool isActive, CancellationToken ct)
     {
         var instrument = await _instruments.GetByIdAsync(id, ct);

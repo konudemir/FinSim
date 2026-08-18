@@ -11,6 +11,7 @@ namespace FinSim.Infrastructure.Data
         : base(options)
         {
         }
+        public DbSet<PriceHistory> PriceHistory => Set<PriceHistory>();
 
         public DbSet<Instrument> Instruments => Set<Instrument>();
         public DbSet<PortfolioItem> PortfolioItems => Set<PortfolioItem>();
@@ -20,7 +21,17 @@ namespace FinSim.Infrastructure.Data
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             base.OnModelCreating(modelBuilder);
+            modelBuilder.Entity<PriceHistory>(e =>
+            {
+                e.Property(p => p.Price).HasPrecision(18, 2);
 
+                e.HasIndex(p => new { p.InstrumentId, p.Timestamp });
+
+                e.HasOne(p => p.Instrument)
+                .WithMany()
+                .HasForeignKey(p => p.InstrumentId)
+                .OnDelete(DeleteBehavior.Cascade);
+            });
             modelBuilder.Entity<User>(e =>
             {
                 e.Property(u => u.FreeCashBalance).HasPrecision(18, 2);
