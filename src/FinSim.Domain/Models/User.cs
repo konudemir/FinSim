@@ -9,6 +9,7 @@ namespace FinSim.Domain.Models
         public string? LastName { get; set; }
         public decimal FreeCashBalance { get; set; }
         public decimal LockedCashBalance { get; set; }
+        public decimal RealizedProfitLoss { get; set; }
         public DateTimeOffset CreatedAt { get; set; }
     }
 }

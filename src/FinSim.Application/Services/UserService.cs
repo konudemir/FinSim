@@ -27,6 +27,7 @@ public class UserService
         return new BalanceDto(
             user.FreeCashBalance,
             user.LockedCashBalance,
+            user.RealizedProfitLoss,
             user.FreeCashBalance + user.LockedCashBalance);
     }
 

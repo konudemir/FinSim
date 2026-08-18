@@ -9,6 +9,7 @@ namespace FinSim.Domain.Models
         public int ExecutedQuantity { get; set; }
         public decimal ExecutedPrice { get; set; }
         public decimal TotalAmount { get; set; }
+        public decimal? RealizedPnL { get; set; }
         public DateTimeOffset TransactionDate { get; set; }
 
         public Order Order { get; set; } = null!;

@@ -25,6 +25,7 @@ namespace FinSim.Infrastructure.Data
             {
                 e.Property(u => u.FreeCashBalance).HasPrecision(18, 2);
                 e.Property(u => u.LockedCashBalance).HasPrecision(18, 2);
+                e.Property(u => u.RealizedProfitLoss).HasPrecision(18, 2);
                 e.Property<uint>("Version")
                  .IsRowVersion()
                  .HasColumnName("xmin");
@@ -59,6 +60,7 @@ namespace FinSim.Infrastructure.Data
                 e.Property(t => t.ExecutedPrice).HasPrecision(18, 2);
                 e.Property(t => t.TotalAmount).HasPrecision(18, 2);
                 e.HasIndex(t => t.OrderId);
+                e.Property(t => t.RealizedPnL).HasPrecision(18, 2);
 
                 e.HasOne(t => t.Order)
                  .WithMany(o => o.Transactions)

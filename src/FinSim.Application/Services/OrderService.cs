@@ -49,6 +49,7 @@ public class OrderService
         var total = Money(price * quantity);
 
         var portItem = await _portfolio.GetAsync(userId, instrumentId, ct);
+        decimal? realized = null;
 
         if (direction == OrderDirection.Buy)
         {
@@ -67,7 +68,8 @@ public class OrderService
             if (portItem.TotalQuantity - portItem.LockedQuantity < quantity)
                 return (OrderResult.InsufficientShares, null);
 
-            portItem.TotalQuantity -= quantity;
+            realized = portItem.ApplySell(quantity, price);
+            user.RealizedProfitLoss += realized.Value;
             user.FreeCashBalance += total;
 
             if (portItem.TotalQuantity == 0)
@@ -99,6 +101,7 @@ public class OrderService
             ExecutedQuantity = quantity,
             ExecutedPrice = price,
             TotalAmount = total,
+            RealizedPnL = realized,
             TransactionDate = DateTimeOffset.UtcNow
         });
 

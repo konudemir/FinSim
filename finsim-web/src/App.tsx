@@ -21,6 +21,7 @@ type Instrument = {
 type Balance = {
   freeCashBalance: number
   lockedCashBalance: number
+  realizedProfitLoss: number
   total: number
 }
 
@@ -405,6 +406,10 @@ function Terminal({ onLogout }: { onLogout: () => void }) {
         <div className="cell">
           <div className="cell-label">{t('strip.position')}</div>
           <div className="cell-value sm">{fmt(holdingsValue)}</div>
+        </div>
+        <div className="cell">
+          <div className="cell-label">{t('strip.realized')}</div>
+          <div className="cell-value sm">{balance ? `${signed(balance.realizedProfitLoss)} ₺` : '—'}</div>
         </div>
       </section>
 

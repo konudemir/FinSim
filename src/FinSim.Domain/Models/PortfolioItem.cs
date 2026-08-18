@@ -19,6 +19,12 @@ namespace FinSim.Domain.Models
                           / (TotalQuantity + quantity);
             TotalQuantity += quantity;
         }
+        public decimal ApplySell(int quantity, decimal price)
+        {
+            var realized = (price - AverageCost) * quantity;
+            TotalQuantity -= quantity;
+            return Math.Round(realized, 2, MidpointRounding.AwayFromZero);
+        }
 
         public User User { get; set; } = null!;
         public Instrument Instrument { get; set; } = null!;

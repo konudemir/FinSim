@@ -13,4 +13,5 @@ public record PortfolioItemDto(
 public record BalanceDto(
     decimal FreeCashBalance,
     decimal LockedCashBalance,
+    decimal RealizedProfitLoss,
     decimal Total);

@@ -17,6 +17,7 @@ const tr = {
   'strip.openPL': 'Açık pozisyon',
   'strip.free': 'Hesap Bakiyesi',
   'strip.position': 'Pozisyon',
+  'strip.realized': 'Kâr/Zarar',
 
   'board.title': 'Tahta',
   'board.note': '{n} enstrüman · emir için seç',
@@ -172,6 +173,7 @@ const en: typeof tr = {
   'strip.openPL': 'Open position',
   'strip.free': 'Account Balance',
   'strip.position': 'Holdings',
+  'strip.realized': 'Realized P/L',
 
   'board.title': 'Board',
   'board.note': '{n} instruments · select one to trade',

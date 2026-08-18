@@ -71,6 +71,7 @@ namespace FinSim.Application.Services
 
                 var portItem = await _portfolio.GetAsync(o.UserId, o.InstrumentId, ct);
                 var amount = Math.Round(market * o.Quantity, 2, MidpointRounding.AwayFromZero);
+                decimal? realized = null;
 
                 if (o.Direction == OrderDirection.Buy)
                 {
@@ -93,7 +94,8 @@ namespace FinSim.Application.Services
                     }
 
                     portItem.LockedQuantity -= o.Quantity;
-                    portItem.TotalQuantity  -= o.Quantity;
+                    realized = portItem.ApplySell(o.Quantity, market);
+                    user.RealizedProfitLoss += realized.Value;
                     user.FreeCashBalance    += amount;
 
                     if (portItem.TotalQuantity == 0)
@@ -112,6 +114,7 @@ namespace FinSim.Application.Services
                     ExecutedQuantity = o.Quantity,
                     ExecutedPrice = market,
                     TotalAmount = amount,
+                    RealizedPnL = realized,
                     TransactionDate = DateTimeOffset.UtcNow
                 });
 
@@ -161,29 +164,5 @@ namespace FinSim.Application.Services
                 o.CreatedAt,
                 null,
                 executedAmount);
-        private void Reject(Order order, User? user, PortfolioItem? portItem, string reason)
-        {
-            // Give back whatever was held. A rejected order must leave the
-            // account exactly as it found it.
-            if (order.Direction == OrderDirection.Buy)
-            {
-                if (user is not null)
-                {
-                    user.LockedCashBalance -= order.LockedAmount;
-                    user.FreeCashBalance   += order.LockedAmount;
-                }
-            }
-            else if (portItem is not null)
-            {
-                // The lock may already be inconsistent — that is why we are here.
-                // Release what actually exists rather than going negative.
-                portItem.LockedQuantity -= Math.Min(portItem.LockedQuantity, order.Quantity);
-            }
-
-            order.Status    = OrderStatus.Rejected;
-            order.UpdatedAt = DateTimeOffset.UtcNow;
-
-            _logger.LogWarning("Order {OrderId} rejected: {Reason}", order.Id, reason);
-        }
     }
 }
