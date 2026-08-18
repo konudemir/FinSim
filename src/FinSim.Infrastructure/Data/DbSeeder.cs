@@ -1,10 +1,13 @@
 using FinSim.Domain.Models;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
 
 namespace FinSim.Infrastructure.Data;
 
 public static class DbSeeder
 {
+    private const string AdminRole = "Admin";
     private static readonly (string Symbol, string Name, decimal Price, bool Active)[] Instruments =
     [
         ("THYAO", "Türk Hava Yolları",            100m,  true),
@@ -55,5 +58,37 @@ public static class DbSeeder
 
         db.Instruments.AddRange(missing);
         await db.SaveChangesAsync(ct);
+    }
+
+    /// <summary>
+    /// Grants the Admin role to whichever account is registered under Seed:AdminEmail.
+    /// Runs on every startup, so if that account doesn't exist yet (fresh database,
+    /// admin hasn't registered), this is a no-op — it picks them up on a later restart
+    /// rather than fabricating an account with no password.
+    /// </summary>
+    public static async Task SeedAdminAsync(
+        RoleManager<IdentityRole<Guid>> roles,
+        UserManager<User> users,
+        IConfiguration config,
+        CancellationToken ct = default)
+    {
+        if (!await roles.RoleExistsAsync(AdminRole))
+        {
+            await roles.CreateAsync(new IdentityRole<Guid>
+            {
+                Id = Guid.NewGuid(),
+                Name = AdminRole,
+                NormalizedName = AdminRole.ToUpperInvariant()
+            });
+        }
+
+        var adminEmail = config["Seed:AdminEmail"];
+        if (string.IsNullOrWhiteSpace(adminEmail)) return;
+
+        var user = await users.FindByEmailAsync(adminEmail);
+        if (user is null) return;
+
+        if (!await users.IsInRoleAsync(user, AdminRole))
+            await users.AddToRoleAsync(user, AdminRole);
     }
 }

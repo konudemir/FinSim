@@ -17,6 +17,7 @@ namespace FinSim.Infrastructure.Data
         public DbSet<PortfolioItem> PortfolioItems => Set<PortfolioItem>();
         public DbSet<Order> Orders => Set<Order>();
         public DbSet<Transaction> Transactions => Set<Transaction>();
+        public DbSet<AdminAdjustment> AdminAdjustments => Set<AdminAdjustment>();
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -79,7 +80,27 @@ namespace FinSim.Infrastructure.Data
                  .OnDelete(DeleteBehavior.Restrict);
             });
 
-            
+            modelBuilder.Entity<AdminAdjustment>(e =>
+            {
+                e.Property(a => a.CashDelta).HasPrecision(18, 2);
+                e.Property(a => a.Price).HasPrecision(18, 2);
+                e.Property(a => a.Type).HasConversion<string>().HasMaxLength(20);
+
+                e.HasOne(a => a.AdminUser)
+                 .WithMany()
+                 .HasForeignKey(a => a.AdminUserId)
+                 .OnDelete(DeleteBehavior.Restrict);
+
+                e.HasOne(a => a.TargetUser)
+                 .WithMany()
+                 .HasForeignKey(a => a.TargetUserId)
+                 .OnDelete(DeleteBehavior.Restrict);
+
+                e.HasOne(a => a.Instrument)
+                 .WithMany()
+                 .HasForeignKey(a => a.InstrumentId)
+                 .OnDelete(DeleteBehavior.Restrict);
+            });
         }
     }
 }

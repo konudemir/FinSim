@@ -158,6 +158,44 @@ const tr = {
   'tx.date': 'Tarih',
   'status.rejected': 'Reddedildi',
 
+  'srv.ConcurrencyConflict': 'Piyasa aynı anda güncellendi, tekrar dene.',
+  'srv.AlreadyInactive': 'Bu hisse zaten işleme kapalı.',
+  'srv.InvalidAmount': 'Geçersiz tutar.',
+
+  'admin.panelButton': 'Yönetim',
+  'admin.title': 'Yönetim Paneli',
+  'admin.instrumentsTitle': 'Enstrümanlar',
+  'admin.symbol': 'Sembol',
+  'admin.name': 'İsim',
+  'admin.basePrice': 'Taban Fiyat',
+  'admin.create': 'Oluştur',
+  'admin.active': 'Aktif',
+  'admin.inactive': 'Pasif',
+  'admin.deactivate': 'devre dışı bırak',
+  'admin.reactivate': 'yeniden etkinleştir',
+  'admin.confirmDeactivateTitle': 'Enstrümanı devre dışı bırak',
+  'admin.confirmDeactivateBody':
+    '{symbol} devre dışı bırakılacak. {users} kullanıcının elindeki toplam {shares} lot, {price} fiyatından zorla satılacak. Bu işlem geri alınamaz.',
+  'admin.confirmDeactivateNoHoldings':
+    '{symbol} devre dışı bırakılacak. Hiçbir kullanıcının pozisyonu yok.',
+  'admin.confirm': 'Onayla',
+  'admin.cancel': 'Vazgeç',
+  'admin.instrumentCreated': 'Enstrüman oluşturuldu.',
+  'admin.deactivated': 'Enstrüman devre dışı bırakıldı.',
+  'admin.reactivated': 'Enstrüman yeniden etkinleştirildi.',
+  'admin.usersTitle': 'Kullanıcılar',
+  'admin.free': 'Serbest',
+  'admin.locked': 'Kilitli',
+  'admin.realized': 'Gerçekleşen K/Z',
+  'admin.noHoldings': 'pozisyon yok',
+  'admin.cashDelta': 'Tutar (+/-)',
+  'admin.reason': 'Açıklama',
+  'admin.applyCash': 'Bakiyeyi güncelle',
+  'admin.shareInstrument': 'Enstrüman',
+  'admin.shareQty': 'Adet (+/-)',
+  'admin.applyShares': 'Payları güncelle',
+  'admin.cashApplied': 'Bakiye güncellendi.',
+  'admin.sharesApplied': 'Paylar güncellendi.',
 }
 
 const en: typeof tr = {
@@ -312,8 +350,47 @@ const en: typeof tr = {
   'tx.price': 'Price',
   'tx.total': 'Amount',
   'tx.date': 'Date',
-  
+
   'status.rejected': 'Rejected',
+
+  'srv.ConcurrencyConflict': 'The market updated at the same moment, try again.',
+  'srv.AlreadyInactive': 'That instrument is already inactive.',
+  'srv.InvalidAmount': 'Invalid amount.',
+
+  'admin.panelButton': 'Admin',
+  'admin.title': 'Admin Panel',
+  'admin.instrumentsTitle': 'Instruments',
+  'admin.symbol': 'Symbol',
+  'admin.name': 'Name',
+  'admin.basePrice': 'Base Price',
+  'admin.create': 'Create',
+  'admin.active': 'Active',
+  'admin.inactive': 'Inactive',
+  'admin.deactivate': 'deactivate',
+  'admin.reactivate': 'reactivate',
+  'admin.confirmDeactivateTitle': 'Deactivate instrument',
+  'admin.confirmDeactivateBody':
+    '{symbol} will be deactivated. {shares} shares held by {users} users will be force-sold at {price}. This cannot be undone.',
+  'admin.confirmDeactivateNoHoldings':
+    '{symbol} will be deactivated. No user currently holds a position in it.',
+  'admin.confirm': 'Confirm',
+  'admin.cancel': 'Cancel',
+  'admin.instrumentCreated': 'Instrument created.',
+  'admin.deactivated': 'Instrument deactivated.',
+  'admin.reactivated': 'Instrument reactivated.',
+  'admin.usersTitle': 'Users',
+  'admin.free': 'Free',
+  'admin.locked': 'Locked',
+  'admin.realized': 'Realized P/L',
+  'admin.noHoldings': 'no holdings',
+  'admin.cashDelta': 'Amount (+/-)',
+  'admin.reason': 'Reason',
+  'admin.applyCash': 'Update balance',
+  'admin.shareInstrument': 'Instrument',
+  'admin.shareQty': 'Quantity (+/-)',
+  'admin.applyShares': 'Update shares',
+  'admin.cashApplied': 'Balance updated.',
+  'admin.sharesApplied': 'Shares updated.',
 }
 
 export type LangKey = keyof typeof tr

@@ -30,6 +30,9 @@ services:
       Jwt__Audience: "FinSim"
       Jwt__Key: "replace-this-with-a-real-32-character-key"
       Cors__Origin: "http://localhost:5173"
+      # Must match the email of an already-registered account; the seeder grants
+      # the Admin role to it on startup and no-ops if that account doesn't exist yet.
+      Seed__AdminEmail: "konu.demir@gmail.com"
     ports:
       - "5209:8080"
   web:

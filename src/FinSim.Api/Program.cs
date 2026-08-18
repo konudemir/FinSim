@@ -27,6 +27,7 @@ builder.Services.AddControllers()
     .AddJsonOptions(o => o.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter()));
 
 builder.Services.AddIdentityCore<User>()
+    .AddRoles<IdentityRole<Guid>>()
     .AddEntityFrameworkStores<FinSimDbContext>()
     .AddDefaultTokenProviders();
 
@@ -45,6 +46,10 @@ builder.Services.AddScoped<TransactionService>();
 builder.Services.AddScoped<AuthService>();
 builder.Services.AddScoped<ITokenService, JwtTokenService>();
 builder.Services.AddScoped<OrderService>();
+builder.Services.AddScoped<IUnitOfWork, FinSim.Infrastructure.Data.UnitOfWork>();
+builder.Services.AddScoped<IAdminAuditRepository, AdminAuditRepository>();
+builder.Services.AddScoped<IRealtimeNotifier, RealtimeNotifier>();
+builder.Services.AddScoped<AdminService>();
 builder.Services.AddSignalR();
 
 
@@ -91,6 +96,10 @@ using (var scope = app.Services.CreateScope())
     var db = scope.ServiceProvider.GetRequiredService<FinSimDbContext>();
     await db.Database.MigrateAsync();
     await DbSeeder.SeedInstrumentsAsync(db);
+
+    var roleManager = scope.ServiceProvider.GetRequiredService<RoleManager<IdentityRole<Guid>>>();
+    var userManager = scope.ServiceProvider.GetRequiredService<UserManager<User>>();
+    await DbSeeder.SeedAdminAsync(roleManager, userManager, builder.Configuration);
 }
 if (app.Environment.IsDevelopment())
     app.UseCors("dev");

@@ -38,4 +38,17 @@ namespace FinSim.Domain.Dtos
         InvalidPrice,
         DuplicateSymbol
     }
+
+    public record LiquidationPreviewDto(int AffectedUsers, int TotalShares, decimal Price);
+
+    public record DeactivateOutcome(
+        InstrumentDto Instrument, int AffectedUsers, int TotalSharesLiquidated, decimal Price);
+
+    public enum DeactivateResult
+    {
+        Success,
+        NotFound,
+        AlreadyInactive,
+        ConcurrencyConflict
+    }
 }

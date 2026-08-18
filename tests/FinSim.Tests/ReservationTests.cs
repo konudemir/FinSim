@@ -20,7 +20,7 @@ public class ReservationTests
         _ctx.GivenInstrument(price: 100m);
 
         var (result, _) = await _ctx.Service.PlaceLimitOrderAsync(
-            _ctx.UserId, _ctx.InstrumentId, 3, 90m, OrderDirection.Buy, _ct);
+            _ctx.UserId, _ctx.InstrumentId, 3, 90m, null, OrderDirection.Buy, _ct);
 
         Assert.Equal(OrderResult.Success, result);
         Assert.Equal(730m, user.FreeCashBalance);     // 1000 - 270
@@ -35,7 +35,7 @@ public class ReservationTests
         _ctx.GivenInstrument(price: 100m);
 
         var (result, _) = await _ctx.Service.PlaceLimitOrderAsync(
-            _ctx.UserId, _ctx.InstrumentId, 5, 90m, OrderDirection.Buy, _ct);
+            _ctx.UserId, _ctx.InstrumentId, 5, 90m, null, OrderDirection.Buy, _ct);
 
         Assert.Equal(OrderResult.InsufficientFunds, result);
         Assert.Equal(100m, user.FreeCashBalance);
@@ -50,7 +50,7 @@ public class ReservationTests
         var position = _ctx.GivenPosition(quantity: 10, averageCost: 80m);
 
         var (result, _) = await _ctx.Service.PlaceLimitOrderAsync(
-            _ctx.UserId, _ctx.InstrumentId, 4, 150m, OrderDirection.Sell, _ct);
+            _ctx.UserId, _ctx.InstrumentId, 4, 150m, null, OrderDirection.Sell, _ct);
 
         Assert.Equal(OrderResult.Success, result);
         Assert.Equal(4, position.LockedQuantity);
@@ -66,7 +66,7 @@ public class ReservationTests
         var position = _ctx.GivenPosition(quantity: 10, averageCost: 80m, locked: 8);
 
         var (result, _) = await _ctx.Service.PlaceLimitOrderAsync(
-            _ctx.UserId, _ctx.InstrumentId, 5, 150m, OrderDirection.Sell, _ct);
+            _ctx.UserId, _ctx.InstrumentId, 5, 150m, null, OrderDirection.Sell, _ct);
 
         Assert.Equal(OrderResult.InsufficientShares, result);
         Assert.Equal(8, position.LockedQuantity);     // unchanged
@@ -80,7 +80,7 @@ public class ReservationTests
         _ctx.GivenNoPosition();
 
         var (result, _) = await _ctx.Service.PlaceLimitOrderAsync(
-            _ctx.UserId, _ctx.InstrumentId, 1, 150m, OrderDirection.Sell, _ct);
+            _ctx.UserId, _ctx.InstrumentId, 1, 150m, null, OrderDirection.Sell, _ct);
 
         Assert.Equal(OrderResult.NoPosition, result);
     }
@@ -136,7 +136,7 @@ public class ReservationTests
         _ctx.GivenInstrument(price: 100m);
 
         await _ctx.Service.PlaceLimitOrderAsync(
-            _ctx.UserId, _ctx.InstrumentId, 7, 88.50m, OrderDirection.Buy, _ct);
+            _ctx.UserId, _ctx.InstrumentId, 7, 88.50m, null, OrderDirection.Buy, _ct);
 
         var order = _ctx.GivenPendingOrder(OrderDirection.Buy, quantity: 7, price: 88.50m);
         await _ctx.Service.CancelAsync(_ctx.UserId, order.Id, _ct);

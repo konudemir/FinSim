@@ -14,4 +14,5 @@ public record BalanceDto(
     decimal FreeCashBalance,
     decimal LockedCashBalance,
     decimal RealizedProfitLoss,
-    decimal Total);
+    decimal Total,
+    bool IsAdmin = false);

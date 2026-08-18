@@ -21,7 +21,7 @@ namespace FinSim.Controllers
         public async Task<IActionResult> GetBalance(CancellationToken ct)
         {
             var result = await _users.GetBalanceAsync(CurrentUserId, ct);
-            return result is null ? NotFound() : Ok(result);
+            return result is null ? NotFound() : Ok(result with { IsAdmin = User.IsInRole("Admin") });
         }
 
         [HttpGet("portfolio")]

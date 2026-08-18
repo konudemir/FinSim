@@ -8,6 +8,8 @@ import { useLang } from './lang'
 import ResetPassword from './ResetPassword'
 import { Logomark } from './icons'
 import GateLayout from './Gate'
+import Admin from './Admin'
+import { fmt } from './format'
 
 
 type Instrument = {
@@ -27,6 +29,7 @@ type Balance = {
   lockedCashBalance: number
   realizedProfitLoss: number
   total: number
+  isAdmin: boolean
 }
 
 type Order = {
@@ -80,9 +83,6 @@ type OrderUpdate = {
 
 // "42,5" -> 42.5 ; "" / "42." / "abc" -> NaN
 const parseDecimal = (s: string) => parseFloat(s.replace(',', '.'))
-
-const fmt = (n: number) =>
-  n.toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 
 const signed = (n: number) => (n >= 0 ? '+' : '−') + fmt(Math.abs(n))
 
@@ -156,6 +156,7 @@ const seeded = useRef<Set<string>>(new Set())
   const [ticks, setTicks] = useState<Record<string, Tick>>({})
   const prevPrices = useRef<Record<string, number>>({})
   const [online, setOnline] = useState(true)
+  const [showAdmin, setShowAdmin] = useState(false)
 
   const loadOrders = () =>
     api.get<Order[]>('/api/order').then(r => setOrders(r.data)).catch(console.error)
@@ -415,6 +416,15 @@ const loadHistory = (i: Instrument) => {
           <button className="ghost-btn" onClick={toggleLang} aria-label="Language">
             {lang === 'tr' ? 'EN' : 'TR'}
           </button>
+          {balance?.isAdmin && (
+            <button
+              className="ghost-btn"
+              aria-pressed={showAdmin}
+              onClick={() => setShowAdmin(v => !v)}
+            >
+              {t('admin.panelButton')}
+            </button>
+          )}
           <button className="ghost-btn" onClick={onLogout}>{t('app.logout')}</button>
         </div>
       </header>
@@ -444,6 +454,8 @@ const loadHistory = (i: Instrument) => {
       </section>
 
       <main className="wrap">
+        {showAdmin ? <Admin onClose={() => setShowAdmin(false)} /> : (
+        <>
         {notice && (
           <div className="notice">
             <span style={{ flex: 1 }}>{notice}</span>
@@ -644,8 +656,11 @@ const loadHistory = (i: Instrument) => {
             )}
           </div>
         </div>
+        </>
+        )}
       </main>
 
+      {!showAdmin && (
       <div className="ticket">
         <div className="wrap ticket-in">
           <div className="ticket-slot grow">
@@ -737,6 +752,7 @@ const loadHistory = (i: Instrument) => {
           </button>
         </div>
       </div>
+      )}
     </div>
   )
 }

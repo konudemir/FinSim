@@ -1,5 +1,5 @@
 using FinSim.Domain.Models;
 public interface ITokenService
 {
-    (string Token, DateTimeOffset Expiry) Create(User user);
+    Task<(string Token, DateTimeOffset Expiry)> CreateAsync(User user, CancellationToken ct);
 }

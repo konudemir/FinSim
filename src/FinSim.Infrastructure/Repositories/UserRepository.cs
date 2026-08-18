@@ -2,6 +2,7 @@ using FinSim.Application.Interfaces;
 using FinSim.Domain.Models;
 using FinSim.Infrastructure.Data;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.EntityFrameworkCore;
 
 namespace FinSim.Infrastructure.Repositories
 {
@@ -18,6 +19,9 @@ namespace FinSim.Infrastructure.Repositories
 
         public Task<User?> GetByIdAsync(Guid id, CancellationToken ct) =>
             _users.FindByIdAsync(id.ToString());
+
+        public Task<List<User>> GetAllAsync(CancellationToken ct) =>
+            _users.Users.ToListAsync(ct);
 
         public Task<User?> GetByUsernameAsync(string username, CancellationToken ct) =>
             _users.FindByNameAsync(username);

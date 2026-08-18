@@ -14,7 +14,7 @@ namespace FinSim.Controllers
         {
             _inst = inst;
         }
-        
+
         [HttpGet("{id:guid}/history")]
         [AllowAnonymous]
         public async Task<IActionResult> GetHistory(
@@ -59,7 +59,18 @@ namespace FinSim.Controllers
                 : Ok(result);
         }
 
+        [HttpGet("{id:guid}/liquidation-preview")]
+        [Authorize(Roles = "Admin")]
+        public async Task<IActionResult> GetLiquidationPreview(Guid id, CancellationToken ct)
+        {
+            var preview = await _inst.GetLiquidationPreviewAsync(id, ct);
+            return preview is null
+                ? NotFound("InstrumentNotFound")
+                : Ok(preview);
+        }
+
         [HttpPost("create")]
+        [Authorize(Roles = "Admin")]
         public async Task<IActionResult> CreateInstrument(
         [FromBody] CreateInstrumentRequest request, CancellationToken ct)
         {
@@ -71,14 +82,27 @@ namespace FinSim.Controllers
         }
 
         [HttpPut("{id:guid}/active")]
+        [Authorize(Roles = "Admin")]
         public async Task<IActionResult> SetActive(
             Guid id, [FromBody] SetInstrumentActiveRequest request, CancellationToken ct)
         {
-            var instrument = await _inst.SetActiveAsync(id, request.IsActive, ct);
+            if (request.IsActive)
+            {
+                var instrument = await _inst.SetActiveAsync(id, true, ct);
+                return instrument is null
+                    ? NotFound("InstrumentNotFound")
+                    : Ok(instrument);
+            }
 
-            return instrument is null
-                ? NotFound("Could not get the instrument with the specified id.")
-                : Ok(instrument);
+            var (result, outcome) = await _inst.DeactivateAsync(id, ct);
+            return result switch
+            {
+                DeactivateResult.Success            => Ok(outcome),
+                DeactivateResult.NotFound            => NotFound("InstrumentNotFound"),
+                DeactivateResult.AlreadyInactive     => BadRequest("AlreadyInactive"),
+                DeactivateResult.ConcurrencyConflict => Conflict("ConcurrencyConflict"),
+                _                                     => StatusCode(500)
+            };
         }
 
         private IActionResult ToError(CreateInstrumentResult result) => result switch
@@ -89,7 +113,7 @@ namespace FinSim.Controllers
             CreateInstrumentResult.DuplicateSymbol => Conflict(new { error = "An instrument with this symbol already exists." }),
             _                                      => StatusCode(500)
         };
-    
+
 
     }
 }

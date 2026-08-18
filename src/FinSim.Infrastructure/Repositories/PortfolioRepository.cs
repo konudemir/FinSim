@@ -19,5 +19,11 @@ namespace FinSim.Infrastructure.Repositories
         
         public Task<List<PortfolioItem>> GetByUserAsync(Guid userId, CancellationToken ct) =>
             _db.PortfolioItems.Where(p => p.UserId == userId).ToListAsync(ct);
+
+        public Task<List<PortfolioItem>> GetByInstrumentAsync(Guid instrumentId, CancellationToken ct) =>
+            _db.PortfolioItems.Where(p => p.InstrumentId == instrumentId).ToListAsync(ct);
+
+        public Task<List<PortfolioItem>> GetAllAsync(CancellationToken ct) =>
+            _db.PortfolioItems.ToListAsync(ct);
     }
 }

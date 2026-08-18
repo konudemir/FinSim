@@ -25,7 +25,7 @@ public class AuthService
 
         if (!await _users.CheckPasswordAsync(user, req.Password, ct)) return null;
 
-        var (token, expiry) = _tokens.Create(user);
+        var (token, expiry) = await _tokens.CreateAsync(user, ct);
         return new AuthResponse { Token = token, Expiry = expiry };
     }
 
