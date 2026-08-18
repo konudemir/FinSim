@@ -111,7 +111,7 @@ public class OrderService
 
     public async Task<(OrderResult Result, PlacedOrderDto? Order)> PlaceLimitOrderAsync(
         Guid userId, Guid instrumentId, int quantity, decimal limitPrice,
-        OrderDirection direction, CancellationToken ct)
+        decimal? stopPrice, OrderDirection direction, CancellationToken ct)
     {
         var user = await _users.GetByIdAsync(userId, ct);
         if (user is null) return (OrderResult.UserNotFound, null);
@@ -126,6 +126,16 @@ public class OrderService
         var price = Money(limitPrice);
         if (price <= 0) return (OrderResult.InvalidPrice, null);
         if (quantity < 1) return (OrderResult.InvalidQuantity, null);
+
+        decimal? stop = null;
+        if (stopPrice is decimal raw)
+        {
+            if (direction != OrderDirection.Sell) return (OrderResult.InvalidStopPrice, null);
+
+            stop = Money(raw);
+            if (stop <= 0 || stop >= price || stop >= instrument.CurrentPrice)
+                return (OrderResult.InvalidStopPrice, null);
+        }
 
         var total = Money(price * quantity);
 
@@ -155,6 +165,7 @@ public class OrderService
             Direction = direction,
             Quantity = quantity,
             Price = price,
+            StopPrice = stop,
             Status = OrderStatus.Pending,
             CreatedAt = DateTimeOffset.UtcNow,
             UpdatedAt = DateTimeOffset.UtcNow,
@@ -211,17 +222,18 @@ public class OrderService
         var totals = await _transactions.GetTotalsByOrderIdsAsync(orders.Select(o => o.Id), ct);
 
         return orders.Select(o => new OrderDto(
-            o.Id,
-            instruments.TryGetValue(o.InstrumentId, out var i) ? i.Symbol! : "?",
-            o.OrderType.ToString(),
-            o.Direction.ToString(),
-            o.Quantity,
-            o.Price,
-            o.Status.ToString(),
-            o.CreatedAt,
-            o.Status == OrderStatus.Pending && o.Direction == OrderDirection.Buy
-                ? o.LockedAmount
-                : null,
-            totals.TryGetValue(o.Id, out var spent) ? spent : null)).ToList();
+        o.Id,
+        instruments.TryGetValue(o.InstrumentId, out var i) ? i.Symbol! : "?",
+        o.OrderType.ToString(),
+        o.Direction.ToString(),
+        o.Quantity,
+        o.Price,
+        o.StopPrice,
+        o.Status.ToString(),
+        o.CreatedAt,
+        o.Status == OrderStatus.Pending && o.Direction == OrderDirection.Buy
+            ? o.LockedAmount
+            : null,
+        totals.TryGetValue(o.Id, out var spent) ? spent : null)).ToList();
     }
 }

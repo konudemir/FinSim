@@ -57,8 +57,8 @@ namespace FinSim.Application.Services
                 var market = instrument.CurrentPrice;
 
                 bool matched = o.Direction == OrderDirection.Buy
-                    ? market <= o.Price.Value
-                    : market >= o.Price.Value;
+                ? market <= o.Price.Value
+                : market >= o.Price.Value || (o.StopPrice is decimal stop && market <= stop);
                 if (!matched) continue;
 
                 var user = await _users.GetByIdAsync(o.UserId, ct);
@@ -156,9 +156,10 @@ namespace FinSim.Application.Services
                 o.Direction.ToString(),
                 o.Quantity,
                 o.Price,
+                o.StopPrice,
                 o.Status.ToString(),
                 o.CreatedAt,
-                null,               // artık Pending değil, kilitli tutar yok
+                null,
                 executedAmount);
         private void Reject(Order order, User? user, PortfolioItem? portItem, string reason)
         {

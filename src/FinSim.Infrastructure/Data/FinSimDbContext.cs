@@ -44,6 +44,7 @@ namespace FinSim.Infrastructure.Data
             modelBuilder.Entity<Order>(e =>
             {
                 e.Property(o => o.Price).HasPrecision(18, 2);
+                e.Property(o => o.StopPrice).HasPrecision(18, 2);
 
                 e.Property(o => o.OrderType).HasConversion<string>().HasMaxLength(20);
                 e.Property(o => o.Direction).HasConversion<string>().HasMaxLength(20);

@@ -7,6 +7,7 @@ public record OrderDto(
     string Direction,
     int Quantity,
     decimal? Price,
+    decimal? StopPrice,
     string Status,
     DateTimeOffset CreatedAt,
     decimal? LockedAmount,
@@ -32,4 +33,5 @@ public enum OrderResult
     InvalidPrice,
     InvalidQuantity,
     ConcurrencyConflict,
+    InvalidStopPrice,
 }

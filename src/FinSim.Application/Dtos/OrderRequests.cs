@@ -13,12 +13,13 @@ namespace FinSim.Domain.Dtos
 
     public class CreateLimitOrderRequest
     {
-        [Required]public Guid InstrumentId { get; set; }
-        [Required]public OrderDirection Direction { get; set; }
+        [Required] public Guid InstrumentId { get; set; }
+        [Required] public OrderDirection Direction { get; set; }
         [Range(1, int.MaxValue, ErrorMessage = "InvalidQuantity")]
         public int Quantity { get; set; }
         [Range(0.01, double.MaxValue, ErrorMessage = "InvalidPrice")]
         public decimal Price { get; set; }
+        public decimal? StopPrice { get; set; }
     }
     public class OrderResponse
     {

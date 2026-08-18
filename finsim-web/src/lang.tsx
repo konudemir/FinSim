@@ -55,11 +55,15 @@ const tr = {
   'ticket.orderType': 'Emir tipi',
   'ticket.qty': 'Adet',
   'ticket.limitPrice': 'Limit fiyatı',
+  'ticket.stopPrice': 'Stop fiyatı',
+  'ticket.stopHint': 'satışta, ops.',
   'ticket.buy': 'Al',
   'ticket.sell': 'Sat',
 
   'err.minQty': 'Adet en az 1 olmalı.',
   'err.minPrice': 'Limit fiyatı 0’dan büyük olmalı.',
+  'err.minStop': 'Stop fiyatı 0’dan büyük olmalı.',
+  'err.stopTooHigh': 'Stop fiyatı hem limit fiyatının hem de güncel fiyatın altında olmalı.',
   'err.orderFailed': 'Emir geçmedi.',
   'err.cancelFailed': 'İptal geçmedi.',
 
@@ -94,6 +98,7 @@ const tr = {
   'srv.unknown': 'Bir hata oluştu.',
   'srv.InvalidQuantity': 'Adet en az 1 olmalı.',
   'srv.InvalidPrice': 'Fiyat 0’dan büyük olmalı.',
+  'srv.InvalidStopPrice': 'Stop fiyatı geçersiz. Yalnızca satışta, limit ve güncel fiyatın altında olabilir.',
 
   'gate.tag': 'Financial Terminal',
   'gate.username': 'Kullanıcı adı',
@@ -205,11 +210,15 @@ const en: typeof tr = {
   'ticket.orderType': 'Order type',
   'ticket.qty': 'Quantity',
   'ticket.limitPrice': 'Limit price',
+  'ticket.stopPrice': 'Stop price',
+  'ticket.stopHint': 'sell only, opt.',
   'ticket.buy': 'Buy',
   'ticket.sell': 'Sell',
 
   'err.minQty': 'Quantity must be at least 1.',
   'err.minPrice': 'Limit price must be greater than 0.',
+  'err.minStop': 'Stop price must be greater than 0.',
+  'err.stopTooHigh': 'Stop price must be below both the limit price and the current price.',
   'err.orderFailed': 'Order was rejected.',
   'err.cancelFailed': 'Cancel was rejected.',
 
@@ -244,6 +253,7 @@ const en: typeof tr = {
   'srv.unknown': 'Something went wrong.',
   'srv.InvalidQuantity': 'Quantity must be at least 1.',
   'srv.InvalidPrice': 'Price must be greater than 0.',
+  'srv.InvalidStopPrice': 'Invalid stop price. Sell orders only, below the limit and current price.',
   
 
   'gate.tag': 'Financial Terminal',

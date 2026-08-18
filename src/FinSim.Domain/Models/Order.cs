@@ -14,6 +14,7 @@ namespace FinSim.Domain.Models
         public OrderDirection Direction { get; set; }
         public int Quantity { get; set; }
         public decimal? Price { get; set; }
+        public decimal? StopPrice { get; set; }//low limit to panic sell
         public decimal LockedAmount { get; set; }
         public OrderStatus Status { get; set; } = OrderStatus.Pending;
         public DateTimeOffset CreatedAt { get; set; }

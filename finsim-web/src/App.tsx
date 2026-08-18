@@ -31,6 +31,7 @@ type Order = {
   direction: string
   quantity: number
   price: number | null
+  stopPrice: number | null
   status: string
   createdAt: string
   lockedAmount: number | null
@@ -140,6 +141,7 @@ function Terminal({ onLogout }: { onLogout: () => void }) {
   const [mode, setMode] = useState<'market' | 'limit'>('market')
   const [qty, setQty] = useState('1')
   const [limitPrice, setLimitPrice] = useState('')
+  const [stopPrice, setStopPrice] = useState('')
   const [notice, setNotice] = useState('')
   const [busy, setBusy] = useState(false)
 
@@ -291,12 +293,27 @@ function Terminal({ onLogout }: { onLogout: () => void }) {
       }
       body = { ...body, price }
       url = '/api/order/limit'
+
+      // Stop yalnizca satista anlamli: fiyat asagi gecerse panik satis.
+      if (direction === 'Sell' && stopPrice !== '') {
+        const stop = parseDecimal(stopPrice)
+        if (!Number.isFinite(stop) || stop <= 0) {
+          setNotice(t('err.minStop'))
+          return
+        }
+        // Sunucu da ayni kontrolu yapiyor; burada tutmak bir gidis-donusten kurtariyor.
+        if (stop >= price || stop >= chosen.currentPrice) {
+          setNotice(t('err.stopTooHigh'))
+          return
+        }
+        body = { ...body, stopPrice: stop }
+      }
     }
 
     setBusy(true)
     try {
       await api.post(url, body)
-      if (mode === 'limit') setLimitPrice('')
+      if (mode === 'limit') { setLimitPrice(''); setStopPrice('') }
     } catch (e: any) {
       setNotice(e.response ? tServer(e.response.data) : t('err.orderFailed'))
     } finally {
@@ -520,7 +537,14 @@ function Terminal({ onLogout }: { onLogout: () => void }) {
                         {o.direction === 'Buy' ? t('order.buy') : t('order.sell')}
                       </td>
                       <td className="num">{o.quantity}</td>
-                      <td className="num">{o.price != null ? fmt(o.price) : '—'}</td>
+                      <td className="num">
+                        {o.price != null ? fmt(o.price) : '—'}
+                        {o.stopPrice != null && (
+                          <span className="down" style={{ fontSize: 11, marginLeft: 4 }}>
+                            ↓{fmt(o.stopPrice)}
+                          </span>
+                        )}
+                      </td>
                       <td>
                         <span className={`pill ${o.status.toLowerCase()}`}>
                           {o.status === 'Pending' ? t('status.pending')
@@ -646,6 +670,26 @@ function Terminal({ onLogout }: { onLogout: () => void }) {
               }}
               onKeyDown={e => {
                 if (e.key === 'Enter') { e.preventDefault(); submit('Buy') }
+              }}
+            />
+          </div>
+
+          <div className="ticket-slot" style={{ minWidth: 120 }}>
+            <label className="field-label" htmlFor="stp">{t('ticket.stopPrice')}</label>
+            <input
+              id="stp"
+              className="field-input"
+              type="text"
+              inputMode="decimal"
+              placeholder={mode === 'limit' ? t('ticket.stopHint') : '—'}
+              disabled={mode !== 'limit'}
+              value={mode === 'limit' ? stopPrice : ''}
+              onChange={e => {
+                const v = e.target.value
+                if (v === '' || /^\d*[.,]?\d*$/.test(v)) setStopPrice(v)
+              }}
+              onKeyDown={e => {
+                if (e.key === 'Enter') { e.preventDefault(); submit('Sell') }
               }}
             />
           </div>

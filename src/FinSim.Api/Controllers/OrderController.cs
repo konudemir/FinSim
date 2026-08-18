@@ -35,7 +35,7 @@ namespace FinSim.Controllers
         {
             var (result, order) = await _orders.PlaceLimitOrderAsync(
                 CurrentUserId, request.InstrumentId, request.Quantity,
-                request.Price, request.Direction, ct);
+                request.Price, request.StopPrice, request.Direction, ct);
 
             return result == OrderResult.Success ? Ok(order) : ToError(result);
         }
@@ -53,6 +53,7 @@ namespace FinSim.Controllers
 
         private IActionResult ToError(OrderResult result) => result switch
         {
+            OrderResult.InvalidStopPrice => BadRequest("InvalidStopPrice"),
             OrderResult.UserNotFound        => NotFound("UserNotFound"),
             OrderResult.InstrumentNotFound  => NotFound("InstrumentNotFound"),
             OrderResult.OrderNotFound       => NotFound("OrderNotFound"),
