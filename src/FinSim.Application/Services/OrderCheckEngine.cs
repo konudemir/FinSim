@@ -2,6 +2,7 @@ using FinSim.Application.Interfaces;
 using FinSim.Domain.Models;
 using FinSim.Domain.Models.Enums;
 using Microsoft.Extensions.Logging;
+using FinSim.Application.Dtos;
 
 namespace FinSim.Application.Services
 {
@@ -27,31 +28,33 @@ namespace FinSim.Application.Services
             _logger = logger;
         }
 
-        public async Task<List<Order>> MatchAsync(
+        public async Task<List<OrderOutcome>> MatchAsync(
             IReadOnlyCollection<Instrument> instruments, CancellationToken ct)
         {
-            var filled = new List<Order>();
+            var touched = new List<OrderOutcome>();
 
             var orders = await _orders.GetPendingLimitOrdersAsync(ct);
-            if (orders.Count == 0) return filled;
+            if (orders.Count == 0) return touched;
 
-            var priceMap = instruments.ToDictionary(i => i.Id, i => i.CurrentPrice);
+            var map = instruments.ToDictionary(i => i.Id);
 
             foreach (var o in orders)
             {
-                if (!priceMap.TryGetValue(o.InstrumentId, out var market))
+                if (!map.TryGetValue(o.InstrumentId, out var instrument))
                 {
-                    Reject(o, await _users.GetByIdAsync(o.UserId, ct),
-                           await _portfolio.GetAsync(o.UserId, o.InstrumentId, ct),
-                           "instrument no longer trading");
+                    touched.Add(Reject(o, await _users.GetByIdAsync(o.UserId, ct),
+                                    await _portfolio.GetAsync(o.UserId, o.InstrumentId, ct),
+                                    null, "instrument no longer trading"));
                     continue;
                 }
                 if (o.Price is null)
                 {
-                    Reject(o, await _users.GetByIdAsync(o.UserId, ct), null,
-                           "limit order has no price");
+                    touched.Add(Reject(o, await _users.GetByIdAsync(o.UserId, ct), null,
+                                    instrument, "limit order has no price"));
                     continue;
                 }
+
+                var market = instrument.CurrentPrice;
 
                 bool matched = o.Direction == OrderDirection.Buy
                     ? market <= o.Price.Value
@@ -61,19 +64,20 @@ namespace FinSim.Application.Services
                 var user = await _users.GetByIdAsync(o.UserId, ct);
                 if (user is null)
                 {
-                    Reject(o, null, null, "user no longer exists");
+                    // Sahibi yok; kimseye push edilemez, sadece durumu kapat.
+                    Reject(o, null, null, instrument, "user no longer exists");
                     continue;
                 }
 
                 var portItem = await _portfolio.GetAsync(o.UserId, o.InstrumentId, ct);
+                var amount = Math.Round(market * o.Quantity, 2, MidpointRounding.AwayFromZero);
 
                 if (o.Direction == OrderDirection.Buy)
                 {
                     var locked = o.LockedAmount;
-                    var cost = Math.Round(market * o.Quantity, 2, MidpointRounding.AwayFromZero);
 
                     user.LockedCashBalance -= locked;
-                    user.FreeCashBalance += locked - cost;   // limitten ucuza aldıysa fark iade
+                    user.FreeCashBalance += locked - amount;   // limitten ucuza aldıysa fark iade
 
                     if (portItem is null)
                         _portfolio.Add(PortfolioItem.Open(o.UserId, o.InstrumentId, o.Quantity, market));
@@ -84,15 +88,13 @@ namespace FinSim.Application.Services
                 {
                     if (portItem is null || portItem.LockedQuantity < o.Quantity)
                     {
-                        Reject(o, user, portItem, "no matching locked position");
+                        touched.Add(Reject(o, user, portItem, instrument, "no matching locked position"));
                         continue;
                     }
 
-                    var proceeds = Math.Round(market * o.Quantity, 2, MidpointRounding.AwayFromZero);
-
                     portItem.LockedQuantity -= o.Quantity;
-                    portItem.TotalQuantity -= o.Quantity;
-                    user.FreeCashBalance += proceeds;
+                    portItem.TotalQuantity  -= o.Quantity;
+                    user.FreeCashBalance    += amount;
 
                     if (portItem.TotalQuantity == 0)
                         _portfolio.Remove(portItem);
@@ -109,15 +111,55 @@ namespace FinSim.Application.Services
                     InstrumentId = o.InstrumentId,
                     ExecutedQuantity = o.Quantity,
                     ExecutedPrice = market,
-                    TotalAmount = Math.Round(market * o.Quantity, 2, MidpointRounding.AwayFromZero),
+                    TotalAmount = amount,
                     TransactionDate = DateTimeOffset.UtcNow
                 });
 
-                filled.Add(o);
+                touched.Add(new OrderOutcome(o.UserId, ToDto(o, instrument, amount)));
             }
-            return filled;
+
+            return touched;
         }
 
+        private OrderOutcome Reject(
+            Order order, User? user, PortfolioItem? portItem, Instrument? instrument, string reason)
+        {
+            if (order.Direction == OrderDirection.Buy)
+            {
+                if (user is not null)
+                {
+                    user.LockedCashBalance -= order.LockedAmount;
+                    user.FreeCashBalance   += order.LockedAmount;
+                }
+            }
+            else if (portItem is not null)
+            {
+                portItem.LockedQuantity -= Math.Min(portItem.LockedQuantity, order.Quantity);
+            }
+
+            order.Status    = OrderStatus.Rejected;
+            order.UpdatedAt = DateTimeOffset.UtcNow;
+
+            _logger.LogWarning("Order {OrderId} rejected: {Reason}", order.Id, reason);
+
+            return new OrderOutcome(order.UserId, ToDto(order, instrument, null));
+        }
+
+        /// <summary>
+        /// GetRecentAsync ile aynı alanları üretir; ikisi ayrışırsa istemci
+        /// push ile fetch arasında farklı satır görür.
+        /// </summary>
+        private static OrderDto ToDto(Order o, Instrument? instrument, decimal? executedAmount) =>
+            new(o.Id,
+                instrument?.Symbol ?? "?",
+                o.OrderType.ToString(),
+                o.Direction.ToString(),
+                o.Quantity,
+                o.Price,
+                o.Status.ToString(),
+                o.CreatedAt,
+                null,               // artık Pending değil, kilitli tutar yok
+                executedAmount);
         private void Reject(Order order, User? user, PortfolioItem? portItem, string reason)
         {
             // Give back whatever was held. A rejected order must leave the

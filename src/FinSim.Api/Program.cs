@@ -47,12 +47,6 @@ builder.Services.AddScoped<ITokenService, JwtTokenService>();
 builder.Services.AddScoped<OrderService>();
 builder.Services.AddSignalR();
 
-builder.Services.AddCors(o => o.AddDefaultPolicy(p =>
-    p.WithOrigins(builder.Configuration["Cors__Origin"] ?? "http://localhost:5173")
-     .AllowAnyHeader()
-     .AllowAnyMethod()
-     .AllowCredentials()));
-
 
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
@@ -84,6 +78,12 @@ builder.Services.AddAuthorizationBuilder()
         .RequireAuthenticatedUser()
         .Build());
 
+builder.Services.AddCors(o => o.AddPolicy("dev", p => p
+    .WithOrigins("http://localhost:5173")
+    .AllowAnyHeader()
+    .AllowAnyMethod()
+    .AllowCredentials()));
+
 
 var app = builder.Build();
 using (var scope = app.Services.CreateScope())
@@ -92,9 +92,12 @@ using (var scope = app.Services.CreateScope())
     await db.Database.MigrateAsync();
     await DbSeeder.SeedInstrumentsAsync(db);
 }
+if (app.Environment.IsDevelopment())
+    app.UseCors("dev");
+
 app.UseFinSimExceptionHandler();
-app.UseCors();
 app.UseAuthentication();
+app.UseCors();
 app.UseAuthorization();
 app.MapControllers();
 app.MapHub<PriceHub>("/hubs/prices");

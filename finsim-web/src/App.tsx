@@ -1,4 +1,4 @@
-import { memo, useEffect, useRef, useState } from 'react'
+import { memo, useEffect, useMemo, useRef, useState } from 'react'
 import * as signalR from '@microsoft/signalr'
 import api, { API } from './api'
 import { useAuth } from './auth'
@@ -65,6 +65,12 @@ type PriceUpdate = {
 }
 
 type Tick = 'up' | 'down'
+
+type OrderUpdate = {
+  orders: Order[]
+  balance: Balance
+  portfolio: PortfolioItem[]
+}
 
 // "42,5" -> 42.5 ; "" / "42." / "abc" -> NaN
 const parseDecimal = (s: string) => parseFloat(s.replace(',', '.'))
@@ -206,23 +212,60 @@ function Terminal({ onLogout }: { onLogout: () => void }) {
         }
         return next
       })
+    })
 
-      loadPortfolio()
-      loadBalance()
-      loadOrders()
-      loadTransactions()
+    conn.on('OrderUpdate', (p: OrderUpdate) => {
+      // Bir emrin durumu yalnızca eşleşme motoru dokunduğunda değişir; gelen
+      // satırları id'ye göre birleştir, defterin geri kalanını yerinde bırak.
+      setOrders(prev => {
+        const byId = new Map(prev.map(o => [o.id, o]))
+        for (const o of p.orders) byId.set(o.id, o)
+        return [...byId.values()]
+          .sort((a, b) => +new Date(b.createdAt) - +new Date(a.createdAt))
+      })
+
+      setBalance(p.balance)
+
+      const map: Record<string, PortfolioItem> = {}
+      for (const item of p.portfolio) map[item.symbol] = item
+      setPortfolio(map)
+
+      // İşlem defteri yalnızca gerçekleşen bir emirle büyür; ret satır üretmez.
+      if (p.orders.some(o => o.status === 'Filled')) loadTransactions()
     })
 
     conn.onreconnecting(() => setOnline(false))
-    conn.onreconnected(() => setOnline(true))
+    conn.onreconnected(() => {
+      // Kopukken kaçırılan OrderUpdate'ler geri gelmez; bir kez telafi et.
+      setOnline(true)
+      loadOrders(); loadBalance(); loadPortfolio(); loadTransactions()
+    })
     conn.onclose(() => setOnline(false))
     conn.start().then(() => setOnline(true)).catch(() => setOnline(false))
     return () => { conn.stop() }
   }, [])
 
   const chosen = instruments.find(i => i.id === selected) ?? null
+    // Positions only change when an order executes; their value moves with every
+  // tick. Recompute locally rather than asking the server sixty times a minute.
+  const livePortfolio = useMemo(() => {
+    const priceBySymbol: Record<string, number> = {}
+    for (const i of instruments) priceBySymbol[i.symbol] = i.currentPrice
 
-  const holdings = Object.values(portfolio)
+    const out: Record<string, PortfolioItem> = {}
+    for (const [symbol, p] of Object.entries(portfolio)) {
+      const price = priceBySymbol[symbol] ?? p.currentPrice
+      out[symbol] = {
+        ...p,
+        currentPrice: price,
+        marketValue: price * p.totalQuantity,
+        profitLoss:  (price - p.averageCost) * p.totalQuantity,
+      }
+    }
+    return out
+  }, [portfolio, instruments])
+
+  const holdings = Object.values(livePortfolio)
   const holdingsValue = holdings.reduce((s, p) => s + p.marketValue, 0)
   const openPL = holdings.reduce((s, p) => s + p.profitLoss, 0)
   const equity = (balance?.total ?? 0) + holdingsValue
@@ -365,7 +408,7 @@ function Terminal({ onLogout }: { onLogout: () => void }) {
 
             <div className="tiles">
               {portfolioInstruments.map(i => {
-                const pos = portfolio[i.symbol]
+                const pos = livePortfolio[i.symbol]
                 return (
                   <button
                     key={i.id}

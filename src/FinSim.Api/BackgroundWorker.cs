@@ -58,12 +58,12 @@ namespace FinSim.Api.Services
                     var db      = sp.GetRequiredService<FinSimDbContext>();
                     var prices  = sp.GetRequiredService<PriceSimEngine>();
                     var matcher = sp.GetRequiredService<OrderCheckEngine>();
+                    var users   = sp.GetRequiredService<UserService>();
 
                     await using var tx = await db.Database.BeginTransactionAsync(stoppingToken);
 
-                    var tick = await prices.TickAsync(_bias, stoppingToken);
-                    var filled = await matcher.MatchAsync(tick.Instruments, stoppingToken);
-
+                    var tick    = await prices.TickAsync(_bias, stoppingToken);
+                    var touched = await matcher.MatchAsync(tick.Instruments, stoppingToken);//touched instead of filled
                     try
                     {
                         await db.SaveChangesAsync(stoppingToken);
@@ -84,6 +84,18 @@ namespace FinSim.Api.Services
                         indexValue = tick.IndexValue,
                         prices = tick.Instruments.Select(i => new { i.Symbol, i.CurrentPrice })
                     }, stoppingToken);
+                    foreach (var group in touched.GroupBy(o => o.UserId))
+                    {
+                        var balance   = await users.GetBalanceAsync(group.Key, stoppingToken);
+                        var portfolio = await users.GetPortfolioAsync(group.Key, stoppingToken);
+
+                        await _hub.Clients.User(group.Key.ToString()).SendAsync("OrderUpdate", new
+                        {
+                            orders = group.Select(g => g.Order),
+                            balance,
+                            portfolio
+                        }, stoppingToken);
+                    }
                 }
                 catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
                 {
