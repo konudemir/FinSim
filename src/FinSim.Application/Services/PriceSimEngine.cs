@@ -31,7 +31,7 @@ namespace FinSim.Application.Services
             if (currVal <= 0) return 0.01m;
 
             // hisseye özgü rastgele hareket, ortalaması sıfır
-            var idio = (decimal)(Random.Shared.NextDouble() * 2 - 1.0) * 0.008m;
+            var idio = (decimal)(Random.Shared.NextDouble() * 2 - 1.0) * 0.02m;
 
             const decimal drift = 0.00002m;
 
