@@ -241,7 +241,7 @@ const seeded = useRef<Set<string>>(new Set())
           .sort((a, b) => +new Date(b.createdAt) - +new Date(a.createdAt))
       })
 
-      setBalance(p.balance)
+      setBalance(prev => ({ ...p.balance, isAdmin: prev?.isAdmin ?? false }))
 
       const map: Record<string, PortfolioItem> = {}
       for (const item of p.portfolio) map[item.symbol] = item
