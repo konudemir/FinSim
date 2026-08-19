@@ -27,6 +27,28 @@ public class LiquidationTests
     }
 
     [Fact]
+    public async Task Deactivate_ForceCoversAShortHolding_ReleasesMarginAndCreditsRealizedPnL()
+    {
+        _ctx.GivenInstrument(price: 90m);
+        var user = _ctx.GivenUser(free: 500m);
+        user.LockedCashBalance = 1_500m;   // 1000 proceeds + 500 initial margin, from opening the short
+        user.MarginUsed = 500m;
+        _ctx.GivenPosition(user.Id, quantity: -10, averageCost: 100m);
+
+        var (result, outcome) = await _ctx.Service.DeactivateAsync(_ctx.InstrumentId, _ct);
+
+        // covering at 90 against a 100 entry is a gain: (100 - 90) x 10 = 100
+        // margin: the full 500 comes back; buyback cost: 10 x 90 = 900
+        Assert.Equal(DeactivateResult.Success, result);
+        Assert.Equal(100m, user.RealizedProfitLoss);
+        Assert.Equal(1_000m, user.FreeCashBalance);     // 500 + 500 released margin
+        Assert.Equal(100m, user.LockedCashBalance);      // 1500 - 900 - 500
+        Assert.Equal(0m, user.MarginUsed);
+        Assert.Equal(1, outcome!.AffectedUsers);
+        Assert.Equal(10, outcome.TotalSharesLiquidated);
+    }
+
+    [Fact]
     public async Task Deactivate_CancelsOpenBuyOrder_ReturnsLockedAmountToFreeCash()
     {
         _ctx.GivenInstrument(price: 100m);

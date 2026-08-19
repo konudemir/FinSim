@@ -10,6 +10,7 @@ namespace FinSim.Domain.Models
         public decimal FreeCashBalance { get; set; }
         public decimal LockedCashBalance { get; set; }
         public decimal RealizedProfitLoss { get; set; }
+        public decimal MarginUsed { get; set; }
         public DateTimeOffset CreatedAt { get; set; }
     }
 }

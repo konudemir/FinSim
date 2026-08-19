@@ -28,7 +28,8 @@ public class UserService
             user.FreeCashBalance,
             user.LockedCashBalance,
             user.RealizedProfitLoss,
-            user.FreeCashBalance + user.LockedCashBalance);
+            user.FreeCashBalance + user.LockedCashBalance,
+            user.MarginUsed);
     }
 
     public async Task<List<PortfolioItemDto>> GetPortfolioAsync(Guid userId, CancellationToken ct)
@@ -52,7 +53,8 @@ public class UserService
                     p.AverageCost,
                     i.CurrentPrice,
                     i.CurrentPrice * p.TotalQuantity,
-                    (i.CurrentPrice - p.AverageCost) * p.TotalQuantity);
+                    (i.CurrentPrice - p.AverageCost) * p.TotalQuantity,
+                    p.IsShort);
             })
             .ToList();
     }

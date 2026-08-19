@@ -73,16 +73,21 @@ public class ReservationTests
     }
 
     [Fact]
-    public async Task LimitSell_WithNoPosition_IsRejected()
+    public async Task LimitSell_WithNoPosition_ReservesMarginToOpenAShort()
     {
-        _ctx.GivenUser();
+        var user = _ctx.GivenUser(free: 1_000m);
         _ctx.GivenInstrument(price: 100m);
         _ctx.GivenNoPosition();
 
         var (result, _) = await _ctx.Service.PlaceLimitOrderAsync(
             _ctx.UserId, _ctx.InstrumentId, 1, 150m, null, OrderDirection.Sell, _ct);
 
-        Assert.Equal(OrderResult.NoPosition, result);
+        // margin: 50% x (1 x 150) = 75
+        Assert.Equal(OrderResult.Success, result);
+        Assert.Equal(925m, user.FreeCashBalance);
+        Assert.Equal(75m, user.LockedCashBalance);
+        Assert.Equal(75m, user.MarginUsed);
+        Assert.Equal(75m, _ctx.PlacedOrder!.LockedAmount);
     }
 
     [Fact]
@@ -112,6 +117,23 @@ public class ReservationTests
         Assert.Equal(OrderResult.Success, result);
         Assert.Equal(1_000m, user.FreeCashBalance);
         Assert.Equal(0m, user.LockedCashBalance);
+        Assert.Equal(OrderStatus.Cancelled, order.Status);
+    }
+
+    [Fact]
+    public async Task CancellingAShortSellLimitOrder_ReleasesReservedMarginNotShares()
+    {
+        var user = _ctx.GivenUser(free: 500m, locked: 500m);
+        user.MarginUsed = 500m;
+        // opening a short needs no existing position, so there is deliberately none set up here
+        var order = _ctx.GivenPendingOrder(OrderDirection.Sell, quantity: 10, price: 100m, lockedAmount: 500m);
+
+        var result = await _ctx.Service.CancelAsync(_ctx.UserId, order.Id, _ct);
+
+        Assert.Equal(OrderResult.Success, result);
+        Assert.Equal(1_000m, user.FreeCashBalance);
+        Assert.Equal(0m, user.LockedCashBalance);
+        Assert.Equal(0m, user.MarginUsed);
         Assert.Equal(OrderStatus.Cancelled, order.Status);
     }
 

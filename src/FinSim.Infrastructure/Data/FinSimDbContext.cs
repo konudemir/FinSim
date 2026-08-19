@@ -38,6 +38,7 @@ namespace FinSim.Infrastructure.Data
                 e.Property(u => u.FreeCashBalance).HasPrecision(18, 2);
                 e.Property(u => u.LockedCashBalance).HasPrecision(18, 2);
                 e.Property(u => u.RealizedProfitLoss).HasPrecision(18, 2);
+                e.Property(u => u.MarginUsed).HasPrecision(18, 2);
                 e.Property<uint>("Version")
                  .IsRowVersion()
                  .HasColumnName("xmin");

@@ -26,6 +26,28 @@ namespace FinSim.Domain.Models
             return Math.Round(realized, 2, MidpointRounding.AwayFromZero);
         }
 
+        public bool IsShort => TotalQuantity < 0;
+
+        /// <summary>Adds to an existing short. AverageCost is the weighted average ENTRY price.</summary>
+        public void ApplyShortOpen(int quantity, decimal price)
+        {
+            var existingQuantity = -TotalQuantity;
+            AverageCost = ((AverageCost * existingQuantity) + price * quantity)
+                          / (existingQuantity + quantity);
+            TotalQuantity -= quantity;
+        }
+
+        /// <summary>
+        /// Buys back part or all of a short. Must not touch AverageCost — the entry
+        /// price of the shares still short does not change just because some covered.
+        /// </summary>
+        public decimal ApplyShortCover(int quantity, decimal price)
+        {
+            var realized = (AverageCost - price) * quantity;
+            TotalQuantity += quantity;
+            return Math.Round(realized, 2, MidpointRounding.AwayFromZero);
+        }
+
         public User User { get; set; } = null!;
         public Instrument Instrument { get; set; } = null!;
         public Guid Id { get; set; }

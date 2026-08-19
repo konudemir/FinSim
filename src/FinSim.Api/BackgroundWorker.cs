@@ -60,12 +60,15 @@ namespace FinSim.Api.Services
                     var db      = sp.GetRequiredService<FinSimDbContext>();
                     var prices  = sp.GetRequiredService<PriceSimEngine>();
                     var matcher = sp.GetRequiredService<OrderCheckEngine>();
+                    var margin  = sp.GetRequiredService<MarginEngine>();
                     var users   = sp.GetRequiredService<UserService>();
 
                     await using var tx = await db.Database.BeginTransactionAsync(stoppingToken);
 
-                    var tick    = await prices.TickAsync(_bias, stoppingToken);
-                    var touched = await matcher.MatchAsync(tick.Instruments, stoppingToken);
+                    var tick      = await prices.TickAsync(_bias, stoppingToken);
+                    var touched   = await matcher.MatchAsync(tick.Instruments, stoppingToken);
+                    var liquidated = await margin.CheckAsync(tick.Instruments, stoppingToken);
+                    touched.AddRange(liquidated);
 
                     var stamp = DateTime.UtcNow;
                     db.PriceHistory.AddRange(tick.Instruments.Select(i => new PriceHistory

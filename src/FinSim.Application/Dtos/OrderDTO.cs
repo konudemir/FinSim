@@ -11,7 +11,8 @@ public record OrderDto(
     string Status,
     DateTimeOffset CreatedAt,
     decimal? LockedAmount,
-    decimal? ExecutedAmount);
+    decimal? ExecutedAmount,
+    bool Liquidated = false);
 
 public record PlacedOrderDto(
     Guid Id,
@@ -34,4 +35,6 @@ public enum OrderResult
     InvalidQuantity,
     ConcurrencyConflict,
     InvalidStopPrice,
+    CrossingNotAllowed,
+    InsufficientMargin,
 }

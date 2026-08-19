@@ -295,9 +295,10 @@ input  { font-family: var(--mono); }
 .tape-item .tape-px  { color: inherit; font-weight: 500; }
 .tape-item .tape-dt  { color: inherit; font-size: 11px; opacity: 0.8; }
 
-.up   { color: var(--rise); }
-.down { color: var(--fall); }
-.flat { color: var(--mute); }
+.up    { color: var(--rise); }
+.down  { color: var(--fall); }
+.flat  { color: var(--mute); }
+.amber { color: var(--amber); }
 
 /* ── account strip ───────────────────────────────────────── */
 
@@ -413,6 +414,21 @@ input  { font-family: var(--mono); }
 }
 
 .tile[data-inactive="true"] { opacity: 0.35; }
+
+.tile[data-short="true"] { box-shadow: inset 3px 0 0 var(--fall); }
+.tile[data-short="true"][data-selected="true"] { box-shadow: inset 3px 0 0 var(--fall), inset 0 0 0 999px color-mix(in srgb, var(--fall) 5%, transparent); }
+
+.short-badge {
+  font-family: var(--mono);
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  color: var(--fall);
+  border: 1px solid currentColor;
+  border-radius: 2px;
+  padding: 1px 5px;
+  margin-right: auto;
+}
 
 .tile-spark {
   position: absolute;
@@ -615,10 +631,37 @@ input  { font-family: var(--mono); }
 
 /* ── order book / transaction history panels ────────────────── */
 
-.panels {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 0 32px;
+.panels { grid-template-columns: repeat(3, 1fr); }
+
+.panel-scroll {
+  max-height: 420px;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: var(--edge) transparent;
+}
+
+.panel-scroll::-webkit-scrollbar {
+  width: 6px;
+}
+
+.panel-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.panel-scroll::-webkit-scrollbar-thumb {
+  background: var(--edge);
+  border-radius: 3px;
+}
+
+.panel-scroll::-webkit-scrollbar-thumb:hover {
+  background: var(--faint);
+}
+
+.panel-scroll thead th {
+  position: sticky;
+  top: 0;
+  background: var(--ink);
+  z-index: 1;
 }
 
 /* ── orders table ────────────────────────────────────────── */
@@ -719,6 +762,82 @@ input  { font-family: var(--mono); }
 }
 
 .notice button:hover { opacity: 1; }
+
+.notice.warn {
+  border-left-color: var(--amber);
+  background: color-mix(in srgb, var(--amber) 12%, var(--alarm-bg));
+  color: var(--bone);
+}
+
+/* ── margin-call liquidation toasts ─────────────────────────
+   Deliberately louder than .notice: this is a forced position
+   close, not a validation error, and it must not read the same. */
+
+.liq-stack {
+  position: fixed;
+  top: 16px;
+  right: 16px;
+  z-index: 60;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  max-width: 380px;
+}
+
+.liq-toast {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 14px 16px;
+  background: var(--panel);
+  border: 1px solid var(--fall);
+  border-left: 4px solid var(--fall);
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.35), var(--lift);
+  animation: liq-in 0.22s ease-out;
+}
+
+@keyframes liq-in {
+  from { opacity: 0; transform: translateY(-8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.liq-icon {
+  font-size: 18px;
+  color: var(--fall);
+  line-height: 1.1;
+}
+
+.liq-body {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex: 1;
+}
+
+.liq-body strong {
+  font-family: var(--mono);
+  font-size: 12px;
+  letter-spacing: 0.06em;
+  color: var(--fall);
+}
+
+.liq-body span {
+  font-size: 13px;
+  color: var(--bone);
+  line-height: 1.4;
+}
+
+.liq-toast button {
+  background: none;
+  border: none;
+  color: var(--faint);
+  opacity: 0.7;
+  font-size: 16px;
+  line-height: 1;
+  padding: 0 2px;
+}
+
+.liq-toast button:hover { opacity: 1; color: var(--fall); }
 
 /* ── order ticket ────────────────────────────────────────── */
 
@@ -823,6 +942,14 @@ input  { font-family: var(--mono); }
 
 .trade.buy  { background: var(--rise); }
 .trade.sell { background: var(--fall); }
+
+.margin-preview {
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 0.02em;
+  color: var(--amber);
+  white-space: nowrap;
+}
 
 /* ── auth ────────────────────────────────────────────────── */
 /* Split screen: a fixed-dark marketing rail (brand, always-dark
@@ -1348,6 +1475,7 @@ input  { font-family: var(--mono); }
   .cell-value { font-size: 27px; }
   .ticket-in { gap: 12px; }
   .ledger .hide-sm { display: none; }
+  .liq-stack { left: 12px; right: 12px; top: 12px; max-width: none; }
 }
 
 /* ── admin panel ─────────────────────────────────────────── */

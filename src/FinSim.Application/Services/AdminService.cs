@@ -49,7 +49,7 @@ public class AdminService
                     return new PortfolioItemDto(
                         i.Symbol, i.Name, p.TotalQuantity, p.LockedQuantity, p.AverageCost,
                         i.CurrentPrice, i.CurrentPrice * p.TotalQuantity,
-                        (i.CurrentPrice - p.AverageCost) * p.TotalQuantity);
+                        (i.CurrentPrice - p.AverageCost) * p.TotalQuantity, p.IsShort);
                 }).ToList()
                 : [];
 
