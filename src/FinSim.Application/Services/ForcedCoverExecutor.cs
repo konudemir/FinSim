@@ -4,13 +4,7 @@ using FinSim.Domain.Models.Enums;
 
 namespace FinSim.Application.Services;
 
-/// <summary>
-/// Fully covers a short position at the current price — a forced market buy for the whole
-/// position, with proportional margin release. Used by both InstrumentService (an instrument
-/// being delisted out from under a short) and MarginEngine (a maintenance-margin breach).
-/// Creates the Order and Transaction records and mutates the position and the user's cash
-/// and margin; the caller is only responsible for reporting the result onward.
-/// </summary>
+/// Buys the whole shorted stock back at the current market price and releases the rest of the margin.
 internal static class ForcedCoverExecutor
 {
     private static decimal Money(decimal value) =>
@@ -50,11 +44,13 @@ internal static class ForcedCoverExecutor
 
         var release = MarginCalculator.ReleaseOnCover(quantity, 0, entry);
         var amount = Money(quantity * price);
+        var proceedsRelease = Money(quantity * entry);
 
-        user.LockedCashBalance -= amount;   // paid out of the short's own locked proceeds
+        user.LockedCashBalance -= proceedsRelease;
+        user.FreeCashBalance   += proceedsRelease - amount;
         user.LockedCashBalance -= release;
-        user.FreeCashBalance += release;
-        user.MarginUsed -= release;
+        user.FreeCashBalance   += release;
+        user.MarginUsed        -= release;
 
         transactions.Add(new Transaction
         {
