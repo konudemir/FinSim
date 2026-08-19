@@ -112,6 +112,67 @@ function Money({ value }: { value: number }) {
   )
 }
 
+function OrderTable({ orders, pending, onCancel }: {
+  orders: Order[]; pending: boolean; onCancel: (id: string) => void
+}) {
+  const { t } = useLang()
+  return (
+    <div className="panel-scroll">
+      <table className="ledger">
+        <thead>
+          <tr>
+            <th>{t('ledger.symbol')}</th>
+            <th className="hide-sm">{t('ledger.type')}</th>
+            <th>{t('ledger.side')}</th>
+            <th className="num">{t('ledger.qty')}</th>
+            <th className="num">{t('ledger.price')}</th>
+            {pending
+              ? <><th className="num">{t('ledger.locked')}</th><th /></>
+              : <><th>{t('ledger.status')}</th><th className="num">{t('ledger.spent')}</th></>}
+          </tr>
+        </thead>
+        <tbody>
+          {orders.map(o => (
+            <tr key={o.id}>
+              <td className="sym">{o.symbol}</td>
+              <td className="hide-sm">{o.orderType === 'Market' ? t('order.market') : t('order.limit')}</td>
+              <td className={o.direction === 'Buy' ? 'up' : 'down'}>
+                {o.direction === 'Buy' ? t('order.buy') : t('order.sell')}
+              </td>
+              <td className="num">{o.quantity}</td>
+              <td className="num">
+                {o.price != null ? fmt(o.price) : '—'}
+                {o.stopPrice != null && (
+                  <span className="down" style={{ fontSize: 11, marginLeft: 4 }}>↓{fmt(o.stopPrice)}</span>
+                )}
+              </td>
+              {pending ? (
+                <>
+                  <td className="num">{o.lockedAmount != null ? fmt(o.lockedAmount) : '—'}</td>
+                  <td className="num">
+                    <button className="link-btn" onClick={() => onCancel(o.id)}>{t('ledger.cancel')}</button>
+                  </td>
+                </>
+              ) : (
+                <>
+                  <td>
+                    <span className={`pill ${o.status.toLowerCase()}`}>
+                      {o.status === 'Filled' ? t('status.filled')
+                     : o.status === 'Rejected' ? t('status.rejected')
+                     : t('status.cancelled')}
+                    </span>
+                  </td>
+                  <td className="num">{o.executedAmount != null ? fmt(o.executedAmount) : '—'}</td>
+                </>
+              )}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  )
+}
+
 
 export default function App() {
   const { loggedIn, checking, logout } = useAuth()
@@ -291,6 +352,8 @@ const seeded = useRef<Set<string>>(new Set())
   }, [])
 
   const chosen = instruments.find(i => i.id === selected) ?? null
+  const pendingOrders = useMemo(() => orders.filter(o => o.status === 'Pending'), [orders])
+  const pastOrders    = useMemo(() => orders.filter(o => o.status !== 'Pending'), [orders])
   const livePortfolio = useMemo(() => {
     const priceBySymbol: Record<string, number> = {}
     for (const i of instruments) priceBySymbol[i.symbol] = i.currentPrice
@@ -634,69 +697,28 @@ const loadHistory = (i: Instrument) => {
         </div>
 
         <div className="panels">
+          <div className="panel">            <div className="section-head">
+              <h2>{t('pending.title')}</h2>
+              <span className="section-note">{t('pending.note')}</span>
+            </div>
+
+            {pendingOrders.length === 0 ? (
+              <div className="empty-state">{t('pending.empty')}</div>
+            ) : (
+              <OrderTable orders={pendingOrders} pending onCancel={cancelOrder} />
+            )}
+          </div>
+
           <div className="panel">
             <div className="section-head">
               <h2>{t('ledger.title')}</h2>
               <span className="section-note">{t('ledger.note')}</span>
             </div>
 
-            {orders.length === 0 ? (
-              <div className="empty-state">
-                {t('ledger.empty')}
-              </div>
+            {pastOrders.length === 0 ? (
+              <div className="empty-state">{t('ledger.empty')}</div>
             ) : (
-              <table className="ledger">
-                <thead>
-                  <tr>
-                    <th>{t('ledger.symbol')}</th>
-                    <th className="hide-sm">{t('ledger.type')}</th>
-                    <th>{t('ledger.side')}</th>
-                    <th className="num">{t('ledger.qty')}</th>
-                    <th className="num">{t('ledger.price')}</th>
-                    <th>{t('ledger.status')}</th>
-                    <th className="num">{t('ledger.locked')}</th>
-                    <th className="num">{t('ledger.spent')}</th>
-                    <th />
-                  </tr>
-                </thead>
-                <tbody>
-                  {orders.map(o => (
-                    <tr key={o.id}>
-                      <td className="sym">{o.symbol}</td>
-                      <td className="hide-sm">{o.orderType === 'Market' ? t('order.market') : t('order.limit')}</td>
-                      <td className={o.direction === 'Buy' ? 'up' : 'down'}>
-                        {o.direction === 'Buy' ? t('order.buy') : t('order.sell')}
-                      </td>
-                      <td className="num">{o.quantity}</td>
-                      <td className="num">
-                        {o.price != null ? fmt(o.price) : '—'}
-                        {o.stopPrice != null && (
-                          <span className="down" style={{ fontSize: 11, marginLeft: 4 }}>
-                            ↓{fmt(o.stopPrice)}
-                          </span>
-                        )}
-                      </td>
-                      <td>
-                        <span className={`pill ${o.status.toLowerCase()}`}>
-                          {o.status === 'Pending' ? t('status.pending')
-                        : o.status === 'Filled' ? t('status.filled')
-                        : o.status === 'Rejected' ? t('status.rejected')
-                        : t('status.cancelled')}
-                        </span>
-                      </td>
-                      <td className="num">{o.lockedAmount != null ? fmt(o.lockedAmount) : '—'}</td>
-                      <td className="num">{o.executedAmount != null ? fmt(o.executedAmount) : '—'}</td>
-                      <td className="num">
-                        {o.status === 'Pending' && (
-                          <button className="link-btn" onClick={() => cancelOrder(o.id)}>
-                            {t('ledger.cancel')}
-                          </button>
-                        )}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+              <OrderTable orders={pastOrders} pending={false} onCancel={cancelOrder} />
             )}
           </div>
 
@@ -711,32 +733,34 @@ const loadHistory = (i: Instrument) => {
                 {t('tx.empty')}
               </div>
             ) : (
-              <table className="ledger">
-                <thead>
-                  <tr>
-                    <th>{t('tx.symbol')}</th>
-                    <th>{t('tx.side')}</th>
-                    <th className="num">{t('tx.qty')}</th>
-                    <th className="num">{t('tx.price')}</th>
-                    <th className="num">{t('tx.total')}</th>
-                    <th>{t('tx.date')}</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {transactions.map(tx => (
-                    <tr key={tx.id}>
-                      <td className="sym">{tx.symbol}</td>
-                      <td className={tx.direction === 'Buy' ? 'up' : 'down'}>
-                        {tx.direction === 'Buy' ? t('order.buy') : t('order.sell')}
-                      </td>
-                      <td className="num">{tx.executedQuantity}</td>
-                      <td className="num">{fmt(tx.executedPrice)}</td>
-                      <td className="num">{fmt(tx.totalAmount)}</td>
-                      <td>{fmtDate(tx.transactionDate)}</td>
+              <div className="panel-scroll">
+                <table className="ledger">
+                  <thead>
+                    <tr>
+                      <th>{t('tx.symbol')}</th>
+                      <th>{t('tx.side')}</th>
+                      <th className="num">{t('tx.qty')}</th>
+                      <th className="num">{t('tx.price')}</th>
+                      <th className="num">{t('tx.total')}</th>
+                      <th>{t('tx.date')}</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody>
+                    {transactions.map(tx => (
+                      <tr key={tx.id}>
+                        <td className="sym">{tx.symbol}</td>
+                        <td className={tx.direction === 'Buy' ? 'up' : 'down'}>
+                          {tx.direction === 'Buy' ? t('order.buy') : t('order.sell')}
+                        </td>
+                        <td className="num">{tx.executedQuantity}</td>
+                        <td className="num">{fmt(tx.executedPrice)}</td>
+                        <td className="num">{fmt(tx.totalAmount)}</td>
+                        <td>{fmtDate(tx.transactionDate)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             )}
           </div>
         </div>

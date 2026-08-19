@@ -290,7 +290,8 @@ public class OrderService
 
     public async Task<List<OrderDto>> GetRecentAsync(Guid userId, CancellationToken ct)
     {
-        var orders = await _orders.GetRecentByUserAsync(userId, 50, ct);
+        var pending = await _orders.GetPendingByUserAsync(userId, ct);
+        var orders  = pending.Concat(await _orders.GetRecentByUserAsync(userId, 50, ct)).ToList();
         if (orders.Count == 0) return [];
 
 var instruments = (await _instruments.GetActiveAsync(ct)).ToDictionary(i => i.Id);

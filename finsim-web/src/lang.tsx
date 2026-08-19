@@ -207,6 +207,9 @@ const tr = {
   'alert.liquidatedTitle': 'POZİSYON ZORUNLU KAPATILDI',
   'alert.liquidatedBody': '{symbol}: marj çağrısı nedeniyle {qty} lotluk açığa satış {amount} karşılığında zorla kapatıldı.',
   'alert.marginCall': 'Marj çağrısı riski: açığa satış pozisyonun(un) bakım marjına yaklaşıyor. Zamanında karşılanmazsa otomatik olarak kapatılır.',
+  'pending.title': 'Open Orders',
+  'pending.note': 'all',
+  'pending.empty': 'No open orders.',
 }
 
 const en: typeof tr = {
@@ -413,6 +416,9 @@ const en: typeof tr = {
   'alert.liquidatedTitle': 'POSITION FORCE-CLOSED',
   'alert.liquidatedBody': '{symbol}: your {qty}-lot short was force-covered for {amount} on a margin call.',
   'alert.marginCall': 'Margin call risk: a short position is approaching its maintenance margin. It will be force-covered automatically if not addressed.',
+  'pending.title': 'Open Orders',
+  'pending.note': 'all',
+  'pending.empty': 'No open orders.',
 }
 
 export type LangKey = keyof typeof tr

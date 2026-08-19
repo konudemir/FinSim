@@ -11,6 +11,12 @@ namespace FinSim.Infrastructure.Repositories
         private readonly FinSimDbContext _db;
         public OrderRepository(FinSimDbContext db) => _db = db;
 
+        public Task<List<Order>> GetPendingByUserAsync(Guid userId, CancellationToken ct) =>
+            _db.Orders
+            .Where(o => o.UserId == userId && o.Status == OrderStatus.Pending)
+            .OrderByDescending(o => o.CreatedAt)
+            .ToListAsync(ct);
+
         public Task<List<Order>> GetPendingLimitOrdersAsync(CancellationToken ct) =>
             _db.Orders
                .Where(o => o.Status == OrderStatus.Pending && o.OrderType == OrderType.Limit)
@@ -26,10 +32,10 @@ namespace FinSim.Infrastructure.Repositories
 
         public Task<List<Order>> GetRecentByUserAsync(Guid userId, int take, CancellationToken ct) =>
             _db.Orders
-               .Where(o => o.UserId == userId)
-               .OrderByDescending(o => o.CreatedAt)
-               .Take(take)
-               .ToListAsync(ct);
+                .Where(o => o.UserId == userId && o.Status != OrderStatus.Pending)
+                .OrderByDescending(o => o.CreatedAt)
+                .Take(take)
+                .ToListAsync(ct);
 
         public void Add(Order order) => _db.Orders.Add(order);
 

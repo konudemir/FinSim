@@ -631,10 +631,37 @@ input  { font-family: var(--mono); }
 
 /* ── order book / transaction history panels ────────────────── */
 
-.panels {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 0 32px;
+.panels { grid-template-columns: repeat(3, 1fr); }
+
+.panel-scroll {
+  max-height: 420px;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: var(--edge) transparent;
+}
+
+.panel-scroll::-webkit-scrollbar {
+  width: 6px;
+}
+
+.panel-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.panel-scroll::-webkit-scrollbar-thumb {
+  background: var(--edge);
+  border-radius: 3px;
+}
+
+.panel-scroll::-webkit-scrollbar-thumb:hover {
+  background: var(--faint);
+}
+
+.panel-scroll thead th {
+  position: sticky;
+  top: 0;
+  background: var(--ink);
+  z-index: 1;
 }
 
 /* ── orders table ────────────────────────────────────────── */
