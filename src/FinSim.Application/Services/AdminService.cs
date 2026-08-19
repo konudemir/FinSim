@@ -5,12 +5,6 @@ using FinSim.Domain.Models.Enums;
 
 namespace FinSim.Application.Services;
 
-/// <summary>
-/// Admin edits to a user's cash and holdings (Part 3). Deliberately separate from
-/// InstrumentService: these operations don't touch instrument state, and unlike the
-/// forced-liquidation flow they're single-entity mutations that don't need an
-/// explicit transaction — one SaveChangesAsync is already atomic.
-/// </summary>
 public class AdminService
 {
     private readonly IUserRepository _users;

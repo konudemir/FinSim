@@ -40,14 +40,14 @@ namespace FinSim.Api.Services
                         if (Random.Shared.NextDouble() < 0.2)
                         {
                             _bias = Random.Shared.NextDouble() < 0.6
-                                ? 0.94 + Random.Shared.NextDouble() * 0.04   // rally, 60% of events
-                                : 1.02 + Random.Shared.NextDouble() * 0.04;  // crash, 40%
-                            _ticksLeft = Random.Shared.Next(30, 90);         // event: 2.5–7.5 min
+                                ? 0.94 + Random.Shared.NextDouble() * 0.04
+                                : 1.02 + Random.Shared.NextDouble() * 0.04;
+                            _ticksLeft = Random.Shared.Next(30, 90);
                         }
                         else
                         {
-                            _bias = 1.0;                                     // calm
-                            _ticksLeft = Random.Shared.Next(120, 300);       // 10–25 min
+                            _bias = 1.0;
+                            _ticksLeft = Random.Shared.Next(120, 300);
                         }
 
                         _logger.LogInformation(

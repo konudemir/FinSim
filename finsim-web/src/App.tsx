@@ -265,8 +265,6 @@ const seeded = useRef<Set<string>>(new Set())
   }, [])
 
   const chosen = instruments.find(i => i.id === selected) ?? null
-    // Positions only change when an order executes; their value moves with every
-  // tick. Recompute locally rather than asking the server sixty times a minute.
   const livePortfolio = useMemo(() => {
     const priceBySymbol: Record<string, number> = {}
     for (const i of instruments) priceBySymbol[i.symbol] = i.currentPrice

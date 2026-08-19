@@ -146,15 +146,6 @@ public class InstrumentService
             held.Sum(p => p.TotalQuantity),
             instrument.CurrentPrice);
     }
-
-    /// <summary>
-    /// Deactivates an instrument and force-liquidates every open position in it,
-    /// inside a single explicit transaction.
-    ///
-    /// Pending orders are cancelled first: a pending sell order holds shares in
-    /// PortfolioItem.LockedQuantity, and releasing that lock before the liquidation
-    /// loop reads TotalQuantity is what keeps those shares from being counted twice.
-    /// </summary>
     public async Task<(DeactivateResult Result, DeactivateOutcome? Outcome)> DeactivateAsync(
         Guid id, CancellationToken ct)
     {

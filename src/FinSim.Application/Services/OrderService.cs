@@ -219,9 +219,7 @@ public class OrderService
         var orders = await _orders.GetRecentByUserAsync(userId, 50, ct);
         if (orders.Count == 0) return [];
 
-        // GetAllAsync, not GetActiveAsync: an order placed on an instrument that
-        // has since been delisted still belongs in the ledger with its symbol.
-        var instruments = (await _instruments.GetActiveAsync(ct)).ToDictionary(i => i.Id);
+var instruments = (await _instruments.GetActiveAsync(ct)).ToDictionary(i => i.Id);
         var totals = await _transactions.GetTotalsByOrderIdsAsync(orders.Select(o => o.Id), ct);
 
         return orders.Select(o => new OrderDto(
