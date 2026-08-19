@@ -68,13 +68,10 @@ public class OrderService
                 var quantityAfter = quantityBefore - quantity;
                 var release = MarginCalculator.ReleaseOnCover(quantityBefore, quantityAfter, entry);
 
-                var proceedsRelease = Money(quantityBefore * entry) - Money(quantityAfter * entry);
-
-                user.LockedCashBalance -= proceedsRelease;                 // release what was actually locked
-                user.FreeCashBalance   += proceedsRelease - total;         // settle P&L (negative on a loss)
-                user.LockedCashBalance -= release;                         // margin, unchanged
-                user.FreeCashBalance   += release;
-                user.MarginUsed        -= release;
+                user.LockedCashBalance -= total;     // paid out of the short's own locked proceeds
+                user.LockedCashBalance -= release;   // margin no longer needed for the covered shares
+                user.FreeCashBalance += release;
+                user.MarginUsed -= release;
             }
             else
             {
