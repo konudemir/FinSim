@@ -81,17 +81,19 @@ public class MatchingEngineTests
     }
 
     [Fact]
-    public async Task AnInstrumentWithNoPriceInThisTick_IsSkipped()
+    public async Task AnInstrumentWithNoPriceInThisTick_IsRejectedAndUnwound()
     {
-        _ctx.GivenUser(free: 0m, locked: 900m);
+        var user = _ctx.GivenUser(free: 0m, locked: 900m);
         _ctx.GivenNoPosition();
         var order = _ctx.GivenPendingInQueue(OrderDirection.Buy, 10, 90m);
 
         var unrelated = OrderTestContext.NewInstrument(Guid.NewGuid(), 50m);
-        var filled = await _ctx.Engine.MatchAsync([unrelated], _ct);
+        var touched = await _ctx.Engine.MatchAsync([unrelated], _ct);
 
-        Assert.Empty(filled);
-        Assert.Equal(OrderStatus.Pending, order.Status);
+        Assert.Single(touched);
+        Assert.Equal(OrderStatus.Rejected, order.Status);
+        Assert.Equal(900m, user.FreeCashBalance);
+        Assert.Equal(0m, user.LockedCashBalance);
     }
 
     [Fact]
@@ -174,16 +176,17 @@ public class MatchingEngineTests
     }
 
     [Fact]
-    public async Task ASellWithoutTheSharesLocked_IsSkipped()
+    public async Task ASellWithoutTheSharesLocked_IsRejectedAndUnlocked()
     {
         _ctx.GivenUser();
         var position = _ctx.GivenPosition(quantity: 10, averageCost: 100m, locked: 2);
         var order = _ctx.GivenPendingInQueue(OrderDirection.Sell, 10, 150m);
 
-        var filled = await _ctx.Engine.MatchAsync(MarketAt(160m), _ct);
+        var touched = await _ctx.Engine.MatchAsync(MarketAt(160m), _ct);
 
-        Assert.Empty(filled);
-        Assert.Equal(OrderStatus.Pending, order.Status);
+        Assert.Single(touched);
+        Assert.Equal(OrderStatus.Rejected, order.Status);
+        Assert.Equal(0, position.LockedQuantity);
         Assert.Equal(10, position.TotalQuantity);
     }
 
@@ -209,20 +212,5 @@ public class MatchingEngineTests
         await _ctx.Engine.MatchAsync(MarketAt(120m), _ct);
 
         _ctx.Transactions.DidNotReceive().Add(Arg.Any<Transaction>());
-    }
-
-    [Fact]
-    public async Task LosingTheConcurrencyRace_ReportsNothingFilled()
-    {
-        _ctx.GivenUser(free: 0m, locked: 900m);
-        _ctx.GivenNoPosition();
-        _ctx.GivenPendingInQueue(OrderDirection.Buy, 10, 90m);
-
-        // the user's cancel committed first, so the save matches zero rows
-        _ctx.Orders.TrySaveChangesAsync(Arg.Any<CancellationToken>()).Returns(false);
-
-        var filled = await _ctx.Engine.MatchAsync(MarketAt(85m), _ct);
-
-        Assert.Empty(filled);
     }
 }

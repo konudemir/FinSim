@@ -96,24 +96,24 @@ public class OrderTestContext
 
     /// <summary>A pending limit order that OrderService.CancelAsync can look up by id.</summary>
     public Order GivenPendingOrder(
-        OrderDirection direction, int quantity, decimal price, Guid? ownerId = null)
+        OrderDirection direction, int quantity, decimal price, Guid? ownerId = null, decimal? lockedAmount = null)
     {
-        var order = NewPendingOrder(direction, quantity, price, ownerId ?? UserId, InstrumentId);
+        var order = NewPendingOrder(direction, quantity, price, ownerId ?? UserId, InstrumentId, lockedAmount);
         Orders.GetByIdAsync(order.Id, Arg.Any<CancellationToken>()).Returns(order);
         return order;
     }
 
     /// <summary>A pending limit order the matching engine will see this tick.</summary>
-    public Order GivenPendingInQueue(OrderDirection direction, int quantity, decimal price)
+    public Order GivenPendingInQueue(OrderDirection direction, int quantity, decimal price, decimal? lockedAmount = null)
     {
-        var order = NewPendingOrder(direction, quantity, price, UserId, InstrumentId);
+        var order = NewPendingOrder(direction, quantity, price, UserId, InstrumentId, lockedAmount);
         Orders.GetPendingLimitOrdersAsync(Arg.Any<CancellationToken>())
               .Returns(new List<Order> { order });
         return order;
     }
 
     public static Order NewPendingOrder(
-        OrderDirection direction, int quantity, decimal price, Guid userId, Guid instrumentId) => new()
+        OrderDirection direction, int quantity, decimal price, Guid userId, Guid instrumentId, decimal? lockedAmount = null) => new()
     {
         Id = Guid.NewGuid(),
         UserId = userId,
@@ -124,7 +124,10 @@ public class OrderTestContext
         Price = price,
         Status = OrderStatus.Pending,
         CreatedAt = DateTimeOffset.UtcNow,
-        UpdatedAt = DateTimeOffset.UtcNow
+        UpdatedAt = DateTimeOffset.UtcNow,
+        LockedAmount = lockedAmount ?? (direction == OrderDirection.Buy
+            ? Math.Round(price * quantity, 2, MidpointRounding.AwayFromZero)
+            : 0m)
     };
 
     /// <summary>The PortfolioItem handed to Portfolio.Add, if a new position was opened.</summary>
@@ -135,6 +138,19 @@ public class OrderTestContext
             var call = Portfolio.ReceivedCalls()
                 .FirstOrDefault(c => c.GetMethodInfo().Name == nameof(IPortfolioRepository.Add));
             return call?.GetArguments()[0] as PortfolioItem;
+        } 
+    }
+    public Order? PlacedOrder
+    {
+        get
+        {
+            var call = Orders.ReceivedCalls()
+                .LastOrDefault(c => c.GetMethodInfo().Name == nameof(IOrderRepository.Add));
+
+            if (call?.GetArguments()[0] is not Order order) return null;
+
+            Orders.GetByIdAsync(order.Id, Arg.Any<CancellationToken>()).Returns(order);
+            return order;
         }
     }
 }

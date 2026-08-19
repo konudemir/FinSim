@@ -23,8 +23,8 @@ public class ReservationTests
             _ctx.UserId, _ctx.InstrumentId, 3, 90m, null, OrderDirection.Buy, _ct);
 
         Assert.Equal(OrderResult.Success, result);
-        Assert.Equal(730m, user.FreeCashBalance);     // 1000 - 270
-        Assert.Equal(270m, user.LockedCashBalance);   // 90 x 3
+        Assert.Equal(730m, user.FreeCashBalance);     // 1000 - 270       
+        Assert.Equal(270m, _ctx.PlacedOrder!.LockedAmount);
         Assert.Equal(1_000m, user.FreeCashBalance + user.LockedCashBalance);
     }
 
