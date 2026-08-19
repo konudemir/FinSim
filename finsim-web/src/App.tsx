@@ -143,7 +143,7 @@ function Terminal({ onLogout }: { onLogout: () => void }) {
 const TICK_SECONDS = 60
 const WINDOW_HOURS = 2
 const MAX_POINTS = (WINDOW_HOURS * 3600) / TICK_SECONDS
-const [history, setHistory] = useState<Record<string, number[]>>({})
+const [history, setHistory] = useState<Record<string, PricePoint[]>>({})
 const seeded = useRef<Set<string>>(new Set())
   const [selected, setSelected] = useState<string | null>(null)
   const [mode, setMode] = useState<'market' | 'limit'>('market')
@@ -224,8 +224,10 @@ const seeded = useRef<Set<string>>(new Set())
 
       setHistory(prev => {
         const next = { ...prev }
+        const now = new Date().toISOString()
         for (const u of payload.prices) {
-          next[u.symbol] = [...(prev[u.symbol] ?? []), u.currentPrice].slice(-MAX_POINTS)
+          next[u.symbol] = [...(prev[u.symbol] ?? []),
+          { timestamp: now, price: u.currentPrice }].slice(-MAX_POINTS)
         }
         return next
       })
@@ -363,11 +365,9 @@ const loadHistory = (i: Instrument) => {
 
   api.get<PricePoint[]>(`/api/instruments/${i.id}/history`)
     .then(r => {
-      const prices = r.data.map(p => p.price)
       setHistory(prev => ({
         ...prev,
-        // canlı tick'ler bu arada gelmiş olabilir; geçmişi öne ekle
-        [i.symbol]: [...prices, ...(prev[i.symbol] ?? [])].slice(-MAX_POINTS)
+        [i.symbol]: [...r.data, ...(prev[i.symbol] ?? [])].slice(-MAX_POINTS)
       }))
     })
     .catch(() => seeded.current.delete(i.symbol))   // hata olursa tekrar denenebilsin
@@ -375,7 +375,7 @@ const loadHistory = (i: Instrument) => {
 
   const tapeRow = instruments.map(i => {
     const h = history[i.symbol] ?? []
-    const base = h.length > 1 ? h[0] : i.currentPrice
+    const base = h.length > 1 ? h[0].price : i.currentPrice
     const pct = base ? ((i.currentPrice - base) / base) * 100 : 0
     return { ...i, pct }
   })
@@ -757,42 +757,68 @@ const loadHistory = (i: Instrument) => {
   )
 }
 
-/** Filled area chart — always-on inside a portfolio tile, or shown inside an expanded board row. */
-function AreaSpark({ data, className }: { data: number[]; className: string }) {
-  if (data.length < 2) return null
+const ago = (iso: string, lang: string) => {
+  const mins = Math.round((Date.now() - new Date(iso).getTime()) / 60000)
+  const rtf = new Intl.RelativeTimeFormat(lang, { numeric: 'auto' })
+  if (mins < 60) return rtf.format(-mins, 'minute')
+  return rtf.format(-Math.round(mins / 60), 'hour')
+}
 
-  const min = Math.min(...data)
-  const max = Math.max(...data)
+function AreaSpark({ data, className }: { data: PricePoint[]; className: string }) {
+  const [hover, setHover] = useState<number | null>(null)
+  if (data.length < 2) return null
+  const { lang } = useLang()
+  const prices = data.map(p => p.price)
+  const min = Math.min(...prices)
+  const max = Math.max(...prices)
   const range = max - min || 1
   const last = data.length - 1
 
-  const pts = data.map((v, idx) => {
-    const x = (idx / last) * 100
-    const y = 30 - ((v - min) / range) * 26
-    return `${x.toFixed(2)},${y.toFixed(2)}`
-  })
+  const px = (idx: number) => (idx / last) * 100
+  const py = (idx: number) => 30 - ((data[idx].price - min) / range) * 26
 
-  const rising = data[last] >= data[0]
+  const pts = data.map((_, idx) => `${px(idx).toFixed(2)},${py(idx).toFixed(2)}`)
+
+  const rising = data[last].price >= data[0].price
   const stroke = rising ? 'var(--rise)' : 'var(--fall)'
   const id = `g${rising ? 'u' : 'd'}`
 
+  const onMove = (e: React.MouseEvent<HTMLDivElement>) => {
+    const rect = e.currentTarget.getBoundingClientRect()
+    const frac = (e.clientX - rect.left) / rect.width
+    setHover(Math.max(0, Math.min(last, Math.round(frac * last))))
+  }
+
   return (
-    <svg className={className} viewBox="0 0 100 30" preserveAspectRatio="none" aria-hidden="true">
-      <defs>
-        <linearGradient id={id} x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor={stroke} stopOpacity="0.34" />
-          <stop offset="100%" stopColor={stroke} stopOpacity="0" />
-        </linearGradient>
-      </defs>
-      <polygon points={`0,30 ${pts.join(' ')} 100,30`} fill={`url(#${id})`} />
-      <polyline
-        points={pts.join(' ')}
-        fill="none"
-        stroke={stroke}
-        strokeWidth="1.5"
-        vectorEffect="non-scaling-stroke"
-      />
-    </svg>
+    <div className={`spark-wrap ${className}`} onMouseMove={onMove} onMouseLeave={() => setHover(null)}>
+      <svg className="spark-svg" viewBox="0 0 100 30" preserveAspectRatio="none" aria-hidden="true">
+        <defs>
+          <linearGradient id={id} x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor={stroke} stopOpacity="0.34" />
+            <stop offset="100%" stopColor={stroke} stopOpacity="0" />
+          </linearGradient>
+        </defs>
+        <polygon points={`0,30 ${pts.join(' ')} 100,30`} fill={`url(#${id})`} />
+        <polyline points={pts.join(' ')} fill="none" stroke={stroke}
+                  strokeWidth="1.5" vectorEffect="non-scaling-stroke" />
+        {hover !== null && (
+          <>
+            <line x1={px(hover)} y1="0" x2={px(hover)} y2="30"
+                stroke="var(--edge)" strokeWidth="1" vectorEffect="non-scaling-stroke" />
+          </>
+        )}
+      </svg>
+      {hover !== null && (
+        <i className="spark-dot"
+           style={{ left: `${px(hover)}%`, top: `${(py(hover) / 30) * 100}%`, background: stroke }} />
+      )}
+      {hover !== null && (
+        <div className="spark-tip">
+          <strong>{fmt(data[hover].price)}</strong>
+          <span>{ago(data[hover].timestamp, lang)}</span>
+        </div>
+      )}
+    </div>
   )
 }
 
