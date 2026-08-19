@@ -19,7 +19,7 @@ public class LiquidationTests
         var (result, outcome) = await _ctx.Service.DeactivateAsync(_ctx.InstrumentId, _ct);
 
         Assert.Equal(DeactivateResult.Success, result);
-        Assert.Equal(9_999m, user.FreeCashBalance);    // 1000 + (120 x 10)
+        Assert.Equal(2_200m, user.FreeCashBalance);    // 1000 + (120 x 10)
         Assert.Equal(200m, user.RealizedProfitLoss);   // (120 - 100) x 10
         Assert.Equal(1, outcome!.AffectedUsers);
         Assert.Equal(10, outcome.TotalSharesLiquidated);
