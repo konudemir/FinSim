@@ -70,36 +70,71 @@ namespace FinSim.Application.Services
                 }
 
                 var portItem = await _portfolio.GetAsync(o.UserId, o.InstrumentId, ct);
+                var currentQuantity = portItem?.TotalQuantity ?? 0;
                 var amount = Math.Round(market * o.Quantity, 2, MidpointRounding.AwayFromZero);
                 decimal? realized = null;
 
                 if (o.Direction == OrderDirection.Buy)
                 {
-                    var locked = o.LockedAmount;
+                    if (currentQuantity < 0) // covering a short: the reservation was on shares, not cash
+                    {
+                        if (portItem is null || portItem.LockedQuantity < o.Quantity)
+                        {
+                            touched.Add(Reject(o, user, portItem, instrument, "no matching locked short position"));
+                            continue;
+                        }
 
-                    user.LockedCashBalance -= locked;
-                    user.FreeCashBalance += locked - amount;   // limitten ucuza aldıysa fark iade
+                        var quantityBefore = -currentQuantity;
+                        var entry = portItem.AverageCost;
 
-                    if (portItem is null)
-                        _portfolio.Add(PortfolioItem.Open(o.UserId, o.InstrumentId, o.Quantity, market));
-                    else
-                        portItem.ApplyBuy(o.Quantity, market);
+                        portItem.LockedQuantity -= o.Quantity;
+                        realized = PortfolioFillExecutor.Apply(
+                            _portfolio, user, portItem, o.UserId, o.InstrumentId,
+                            OrderDirection.Buy, o.Quantity, market).Realized;
+
+                        var quantityAfter = quantityBefore - o.Quantity;
+                        var release = MarginCalculator.ReleaseOnCover(quantityBefore, quantityAfter, entry);
+
+                        user.LockedCashBalance -= amount;    // paid out of the short's own locked proceeds
+                        user.LockedCashBalance -= release;
+                        user.FreeCashBalance += release;
+                        user.MarginUsed -= release;
+                    }
+                    else // an ordinary buy, funded by the cash locked at placement
+                    {
+                        var locked = o.LockedAmount;
+
+                        user.LockedCashBalance -= locked;
+                        user.FreeCashBalance += locked - amount;   // limitten ucuza aldıysa fark iade
+
+                        PortfolioFillExecutor.Apply(
+                            _portfolio, user, portItem, o.UserId, o.InstrumentId,
+                            OrderDirection.Buy, o.Quantity, market);
+                    }
                 }
                 else // sell
                 {
-                    if (portItem is null || portItem.LockedQuantity < o.Quantity)
+                    if (currentQuantity > 0) // reducing or closing a long
                     {
-                        touched.Add(Reject(o, user, portItem, instrument, "no matching locked position"));
-                        continue;
+                        if (portItem is null || portItem.LockedQuantity < o.Quantity)
+                        {
+                            touched.Add(Reject(o, user, portItem, instrument, "no matching locked position"));
+                            continue;
+                        }
+
+                        portItem.LockedQuantity -= o.Quantity;
+                        realized = PortfolioFillExecutor.Apply(
+                            _portfolio, user, portItem, o.UserId, o.InstrumentId,
+                            OrderDirection.Sell, o.Quantity, market).Realized;
+                        user.FreeCashBalance += amount;
                     }
-
-                    portItem.LockedQuantity -= o.Quantity;
-                    realized = portItem.ApplySell(o.Quantity, market);
-                    user.RealizedProfitLoss += realized.Value;
-                    user.FreeCashBalance    += amount;
-
-                    if (portItem.TotalQuantity == 0)
-                        _portfolio.Remove(portItem);
+                    else // opening or adding to a short — margin was already reserved at placement
+                    {
+                        PortfolioFillExecutor.Apply(
+                            _portfolio, user, portItem, o.UserId, o.InstrumentId,
+                            OrderDirection.Sell, o.Quantity, market);
+                        user.LockedCashBalance += amount;   // short proceeds are collateral, not spendable cash
+                    }
                 }
 
                 o.Status = OrderStatus.Filled;
@@ -127,12 +162,17 @@ namespace FinSim.Application.Services
         private OrderOutcome Reject(
             Order order, User? user, PortfolioItem? portItem, Instrument? instrument, string reason)
         {
-            if (order.Direction == OrderDirection.Buy)
+            // LockedAmount > 0 means cash was reserved at placement — an ordinary buy or a
+            // short-opening sell's margin. Otherwise (buy or sell alike) a share quantity was
+            // reserved instead — a cover buy's short shares or an ordinary sell's long shares.
+            if (order.LockedAmount > 0)
             {
                 if (user is not null)
                 {
                     user.LockedCashBalance -= order.LockedAmount;
                     user.FreeCashBalance   += order.LockedAmount;
+                    if (order.Direction == OrderDirection.Sell)
+                        user.MarginUsed -= order.LockedAmount;
                 }
             }
             else if (portItem is not null)

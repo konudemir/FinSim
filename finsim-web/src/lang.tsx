@@ -18,6 +18,8 @@ const tr = {
   'strip.free': 'Hesap Bakiyesi',
   'strip.position': 'Pozisyon',
   'strip.realized': 'Kâr/Zarar',
+  'strip.locked': 'kilitli {n}',
+  'strip.margin': 'marj {n}',
 
   'board.title': 'Tahta',
   'board.note': '{n} enstrüman · emir için seç',
@@ -30,6 +32,8 @@ const tr = {
   'board.portfolioNote': '{n} pozisyon',
   'board.otherTitle': 'Diğer Hisseler',
   'board.otherNote': '{n} enstrüman · emir için seç',
+  'board.shortBadge': 'AÇIĞA SATIŞ',
+  'board.shortLots': '{n} lot açık',
 
   'ledger.title': 'Emir Defteri',
   'ledger.note': 'son 50 kayıt',
@@ -60,6 +64,7 @@ const tr = {
   'ticket.stopHint': 'satışta, ops.',
   'ticket.buy': 'Al',
   'ticket.sell': 'Sat',
+  'ticket.marginPreview': 'Ayrılacak marj: ₺{n}',
 
   'err.minQty': 'Adet en az 1 olmalı.',
   'err.minPrice': 'Limit fiyatı 0’dan büyük olmalı.',
@@ -100,6 +105,8 @@ const tr = {
   'srv.InvalidQuantity': 'Adet en az 1 olmalı.',
   'srv.InvalidPrice': 'Fiyat 0’dan büyük olmalı.',
   'srv.InvalidStopPrice': 'Stop fiyatı geçersiz. Yalnızca satışta, limit ve güncel fiyatın altında olabilir.',
+  'srv.CrossingNotAllowed': 'Bu emir pozisyonu sıfırın öbür tarafına geçiriyor. Önce mevcut pozisyonu kapat.',
+  'srv.InsufficientMargin': 'Açığa satış için yeterli marjın yok.',
 
   'gate.tag': 'Financial Terminal',
   'gate.username': 'Kullanıcı adı',
@@ -196,6 +203,10 @@ const tr = {
   'admin.applyShares': 'Payları güncelle',
   'admin.cashApplied': 'Bakiye güncellendi.',
   'admin.sharesApplied': 'Paylar güncellendi.',
+
+  'alert.liquidatedTitle': 'POZİSYON ZORUNLU KAPATILDI',
+  'alert.liquidatedBody': '{symbol}: marj çağrısı nedeniyle {qty} lotluk açığa satış {amount} karşılığında zorla kapatıldı.',
+  'alert.marginCall': 'Marj çağrısı riski: açığa satış pozisyonun(un) bakım marjına yaklaşıyor. Zamanında karşılanmazsa otomatik olarak kapatılır.',
 }
 
 const en: typeof tr = {
@@ -212,6 +223,8 @@ const en: typeof tr = {
   'strip.free': 'Account Balance',
   'strip.position': 'Holdings',
   'strip.realized': 'Realized P/L',
+  'strip.locked': 'locked {n}',
+  'strip.margin': 'margin {n}',
 
   'board.title': 'Board',
   'board.note': '{n} instruments · select one to trade',
@@ -224,6 +237,8 @@ const en: typeof tr = {
   'board.portfolioNote': '{n} positions',
   'board.otherTitle': 'Other Stocks',
   'board.otherNote': '{n} instruments · select one to trade',
+  'board.shortBadge': 'SHORT',
+  'board.shortLots': '{n} lots short',
 
   'ledger.title': 'Order Book',
   'ledger.note': 'last 50 records',
@@ -254,6 +269,7 @@ const en: typeof tr = {
   'ticket.stopHint': 'sell only, opt.',
   'ticket.buy': 'Buy',
   'ticket.sell': 'Sell',
+  'ticket.marginPreview': 'Margin to reserve: ₺{n}',
 
   'err.minQty': 'Quantity must be at least 1.',
   'err.minPrice': 'Limit price must be greater than 0.',
@@ -294,7 +310,9 @@ const en: typeof tr = {
   'srv.InvalidQuantity': 'Quantity must be at least 1.',
   'srv.InvalidPrice': 'Price must be greater than 0.',
   'srv.InvalidStopPrice': 'Invalid stop price. Sell orders only, below the limit and current price.',
-  
+  'srv.CrossingNotAllowed': 'That order would cross through zero. Close the current position first.',
+  'srv.InsufficientMargin': 'Not enough margin available to short this.',
+
 
   'gate.tag': 'Financial Terminal',
   'gate.username': 'Username',
@@ -391,6 +409,10 @@ const en: typeof tr = {
   'admin.applyShares': 'Update shares',
   'admin.cashApplied': 'Balance updated.',
   'admin.sharesApplied': 'Shares updated.',
+
+  'alert.liquidatedTitle': 'POSITION FORCE-CLOSED',
+  'alert.liquidatedBody': '{symbol}: your {qty}-lot short was force-covered for {amount} on a margin call.',
+  'alert.marginCall': 'Margin call risk: a short position is approaching its maintenance margin. It will be force-covered automatically if not addressed.',
 }
 
 export type LangKey = keyof typeof tr

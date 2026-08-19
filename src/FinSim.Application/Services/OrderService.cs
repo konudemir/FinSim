@@ -49,31 +49,65 @@ public class OrderService
         var total = Money(price * quantity);
 
         var portItem = await _portfolio.GetAsync(userId, instrumentId, ct);
+        var currentQuantity = portItem?.TotalQuantity ?? 0;
         decimal? realized = null;
 
         if (direction == OrderDirection.Buy)
         {
-            if (user.FreeCashBalance < total) return (OrderResult.InsufficientFunds, null);
+            if (currentQuantity < 0) // covering a short
+            {
+                if (quantity > -currentQuantity) return (OrderResult.CrossingNotAllowed, null);
 
-            user.FreeCashBalance -= total;
+                var quantityBefore = -currentQuantity;
+                var entry = portItem!.AverageCost;
 
-            if (portItem is null)
-                _portfolio.Add(PortfolioItem.Open(userId, instrumentId, quantity, price));
+                var result = PortfolioFillExecutor.Apply(
+                    _portfolio, user, portItem, userId, instrumentId, direction, quantity, price);
+                realized = result.Realized;
+
+                var quantityAfter = quantityBefore - quantity;
+                var release = MarginCalculator.ReleaseOnCover(quantityBefore, quantityAfter, entry);
+
+                user.LockedCashBalance -= total;     // paid out of the short's own locked proceeds
+                user.LockedCashBalance -= release;   // margin no longer needed for the covered shares
+                user.FreeCashBalance += release;
+                user.MarginUsed -= release;
+            }
             else
-                portItem.ApplyBuy(quantity, price);
+            {
+                if (user.FreeCashBalance < total) return (OrderResult.InsufficientFunds, null);
+
+                user.FreeCashBalance -= total;
+                PortfolioFillExecutor.Apply(
+                    _portfolio, user, portItem, userId, instrumentId, direction, quantity, price);
+            }
         }
         else // sell
         {
-            if (portItem is null) return (OrderResult.NoPosition, null);
-            if (portItem.TotalQuantity - portItem.LockedQuantity < quantity)
-                return (OrderResult.InsufficientShares, null);
+            if (currentQuantity > 0) // reducing or closing a long
+            {
+                if (quantity > currentQuantity) return (OrderResult.CrossingNotAllowed, null);
+                if (currentQuantity - portItem!.LockedQuantity < quantity)
+                    return (OrderResult.InsufficientShares, null);
 
-            realized = portItem.ApplySell(quantity, price);
-            user.RealizedProfitLoss += realized.Value;
-            user.FreeCashBalance += total;
+                var result = PortfolioFillExecutor.Apply(
+                    _portfolio, user, portItem, userId, instrumentId, direction, quantity, price);
+                realized = result.Realized;
+                user.FreeCashBalance += total;
+            }
+            else // opening or adding to a short
+            {
+                var margin = MarginCalculator.InitialMargin(quantity, price);
+                if (user.FreeCashBalance < margin) return (OrderResult.InsufficientMargin, null);
 
-            if (portItem.TotalQuantity == 0)
-                _portfolio.Remove(portItem);
+                PortfolioFillExecutor.Apply(
+                    _portfolio, user, portItem, userId, instrumentId, direction, quantity, price);
+
+                user.LockedCashBalance += total;    // short proceeds are collateral, not spendable cash
+                user.FreeCashBalance -= margin;
+                user.LockedCashBalance += margin;
+                user.MarginUsed += margin;
+            }
         }
 
         var order = new Order
@@ -141,22 +175,49 @@ public class OrderService
         }
 
         var total = Money(price * quantity);
+        var portItem = await _portfolio.GetAsync(userId, instrumentId, ct);
+        var currentQuantity = portItem?.TotalQuantity ?? 0;
+        var lockedAmount = 0m;
 
         if (direction == OrderDirection.Buy)
         {
-            if (user.FreeCashBalance < total) return (OrderResult.InsufficientFunds, null);
+            if (currentQuantity < 0) // reserving to cover a short: lock shares, not cash
+            {
+                if (quantity > -currentQuantity) return (OrderResult.CrossingNotAllowed, null);
+                if (-currentQuantity - portItem!.LockedQuantity < quantity)
+                    return (OrderResult.InsufficientShares, null);
 
-            user.FreeCashBalance -= total;
-            user.LockedCashBalance += total;
+                portItem.LockedQuantity += quantity;
+            }
+            else
+            {
+                if (user.FreeCashBalance < total) return (OrderResult.InsufficientFunds, null);
+
+                user.FreeCashBalance -= total;
+                user.LockedCashBalance += total;
+                lockedAmount = total;
+            }
         }
         else // sell
         {
-            var portItem = await _portfolio.GetAsync(userId, instrumentId, ct);
-            if (portItem is null) return (OrderResult.NoPosition, null);
-            if (portItem.TotalQuantity - portItem.LockedQuantity < quantity)
-                return (OrderResult.InsufficientShares, null);
+            if (currentQuantity > 0) // reducing or closing a long: lock shares
+            {
+                if (quantity > currentQuantity) return (OrderResult.CrossingNotAllowed, null);
+                if (currentQuantity - portItem!.LockedQuantity < quantity)
+                    return (OrderResult.InsufficientShares, null);
 
-            portItem.LockedQuantity += quantity;
+                portItem.LockedQuantity += quantity;
+            }
+            else // opening or adding to a short: reserve initial margin instead of shares
+            {
+                var margin = MarginCalculator.InitialMargin(quantity, price);
+                if (user.FreeCashBalance < margin) return (OrderResult.InsufficientMargin, null);
+
+                user.FreeCashBalance -= margin;
+                user.LockedCashBalance += margin;
+                user.MarginUsed += margin;
+                lockedAmount = margin;
+            }
         }
 
         var order = new Order
@@ -172,7 +233,7 @@ public class OrderService
             Status = OrderStatus.Pending,
             CreatedAt = DateTimeOffset.UtcNow,
             UpdatedAt = DateTimeOffset.UtcNow,
-            LockedAmount = direction == OrderDirection.Buy ? total : 0m
+            LockedAmount = lockedAmount
         };
         _orders.Add(order);
 
@@ -191,7 +252,7 @@ public class OrderService
         var user = await _users.GetByIdAsync(order.UserId, ct);
         if (user is null) return OrderResult.UserNotFound;
 
-        if (order.Direction == OrderDirection.Buy)
+        if (order.Direction == OrderDirection.Buy && order.LockedAmount > 0)
         {
             // Release exactly what was held. Recomputing from Price * Quantity is
             // what produced the leftover kuruş: the multiply was rounded at a
@@ -199,7 +260,20 @@ public class OrderService
             user.LockedCashBalance -= order.LockedAmount;
             user.FreeCashBalance += order.LockedAmount;
         }
-        else // sell
+        else if (order.Direction == OrderDirection.Buy) // cover buy that reserved shares of the short, not cash
+        {
+            var portItem = await _portfolio.GetAsync(order.UserId, order.InstrumentId, ct);
+            if (portItem is null) return OrderResult.NoPosition;
+
+            portItem.LockedQuantity -= order.Quantity;
+        }
+        else if (order.LockedAmount > 0) // short sell that reserved margin, not shares
+        {
+            user.LockedCashBalance -= order.LockedAmount;
+            user.FreeCashBalance += order.LockedAmount;
+            user.MarginUsed -= order.LockedAmount;
+        }
+        else // ordinary sell against a long position
         {
             var portItem = await _portfolio.GetAsync(order.UserId, order.InstrumentId, ct);
             if (portItem is null) return OrderResult.NoPosition;

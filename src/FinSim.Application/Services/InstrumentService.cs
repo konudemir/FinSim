@@ -176,10 +176,15 @@ public class InstrumentService
             var user = await ResolveUser(order.UserId);
             if (user is null) continue;
 
-            if (order.Direction == OrderDirection.Buy)
+            // LockedAmount > 0 means cash was reserved at placement — an ordinary buy or a
+            // short-opening sell's margin. Otherwise a share quantity was reserved instead —
+            // a cover buy's short shares or an ordinary sell's long shares.
+            if (order.LockedAmount > 0)
             {
                 user.LockedCashBalance -= order.LockedAmount;
                 user.FreeCashBalance   += order.LockedAmount;
+                if (order.Direction == OrderDirection.Sell)
+                    user.MarginUsed -= order.LockedAmount;
             }
             else if (positionsByUser.TryGetValue(order.UserId, out var lockedPosition))
             {
@@ -221,11 +226,11 @@ public class InstrumentService
             };
             _orders.Add(order);
 
-            var realized = position.ApplySell(quantity, price);
+            var realized = PortfolioFillExecutor.Apply(
+                _portfolio, user, position, position.UserId, id, OrderDirection.Sell, quantity, price).Realized;
             var proceeds = Money(quantity * price);
 
-            user.FreeCashBalance    += proceeds;
-            user.RealizedProfitLoss += realized;
+            user.FreeCashBalance += proceeds;
 
             _transactions.Add(new Transaction
             {
@@ -240,8 +245,18 @@ public class InstrumentService
                 TransactionDate = DateTimeOffset.UtcNow
             });
 
-            if (position.TotalQuantity == 0)
-                _portfolio.Remove(position);
+            affectedUsers.Add(position.UserId);
+            totalShares += quantity;
+        }
+
+        // 4) force-cover every remaining short at the current price, releasing its margin
+        foreach (var position in positions.Where(p => p.TotalQuantity < 0))
+        {
+            var user = await ResolveUser(position.UserId);
+            if (user is null) continue;
+
+            var quantity = -position.TotalQuantity;
+            ForcedCoverExecutor.CoverEntirely(_orders, _portfolio, _transactions, user, position, instrument);
 
             affectedUsers.Add(position.UserId);
             totalShares += quantity;

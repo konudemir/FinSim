@@ -65,6 +65,8 @@ namespace FinSim.Controllers
             OrderResult.InvalidPrice    => BadRequest("InvalidPrice"),
             OrderResult.InvalidQuantity => BadRequest("InvalidQuantity"),
             OrderResult.ConcurrencyConflict => Conflict("ConcurrencyConflict"),
+            OrderResult.CrossingNotAllowed  => BadRequest("CrossingNotAllowed"),
+            OrderResult.InsufficientMargin  => BadRequest("InsufficientMargin"),
             _                               => BadRequest("OrderFailed")
         };
     }

@@ -194,7 +194,7 @@ told the order is no longer pending. This way an order can't go on and be refund
 
 ### Unit Testing
 
-You can run the tests with `dotnet test tests/FinSim.Tests`. There are 46 tests covering the cash
+You can run the tests with `dotnet test tests/FinSim.Tests`. There are 51 tests covering the cash
 checks, the cash and share reservations, the average cost calculation and the limit order matching engine.
 
 The test project references only Application and Domain.

@@ -8,7 +8,7 @@ namespace FinSim.Domain.Dtos
         [Required]public Guid InstrumentId { get; set; }
         [Required]public OrderDirection Direction { get; set; }
         [Range(1, int.MaxValue, ErrorMessage = "InvalidQuantity")]
-        public int Quantity { get; set; }
+        public int Quantity { get; set; }//now can be negative if shorting
     }
 
     public class CreateLimitOrderRequest

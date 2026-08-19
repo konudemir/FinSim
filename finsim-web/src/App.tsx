@@ -29,6 +29,7 @@ type Balance = {
   lockedCashBalance: number
   realizedProfitLoss: number
   total: number
+  marginUsed: number
   isAdmin: boolean
 }
 
@@ -44,6 +45,7 @@ type Order = {
   createdAt: string
   lockedAmount: number | null
   executedAmount: number | null
+  liquidated: boolean
 }
 
 type Transaction = {
@@ -65,6 +67,14 @@ type PortfolioItem = {
   currentPrice: number
   marketValue: number
   profitLoss: number
+  isShort: boolean
+}
+
+type LiquidationAlert = {
+  id: string
+  symbol: string
+  quantity: number
+  amount: number
 }
 
 type PriceUpdate = {
@@ -152,6 +162,7 @@ const seeded = useRef<Set<string>>(new Set())
   const [stopPrice, setStopPrice] = useState('')
   const [notice, setNotice] = useState('')
   const [busy, setBusy] = useState(false)
+  const [liquidations, setLiquidations] = useState<LiquidationAlert[]>([])
 
   const [ticks, setTicks] = useState<Record<string, Tick>>({})
   const prevPrices = useRef<Record<string, number>>({})
@@ -251,6 +262,21 @@ const seeded = useRef<Set<string>>(new Set())
 
       // İşlem defteri yalnızca gerçekleşen bir emirle büyür; ret satır üretmez.
       if (p.orders.some(o => o.status === 'Filled')) loadTransactions()
+
+      // Marj çağrısıyla zorla kapatılan pozisyonlar aynı push'ta gelir —
+      // bu, özelliğin var olma sebebi, kaçırılmamalı.
+      const liquidated = p.orders.filter(o => o.liquidated)
+      if (liquidated.length > 0) {
+        setLiquidations(prev => [
+          ...prev,
+          ...liquidated.map(o => ({
+            id: o.id,
+            symbol: o.symbol,
+            quantity: o.quantity,
+            amount: o.executedAmount ?? 0,
+          })),
+        ])
+      }
     })
 
     conn.onreconnecting(() => setOnline(false))
@@ -285,7 +311,29 @@ const seeded = useRef<Set<string>>(new Set())
   const holdings = Object.values(livePortfolio)
   const holdingsValue = holdings.reduce((s, p) => s + p.marketValue, 0)
   const openPL = holdings.reduce((s, p) => s + p.profitLoss, 0)
+  // FreeCash + LockedCash + Σ(long qty x price) - Σ(|short qty| x price) — holdingsValue
+  // already nets the two since a short's marketValue (price x a negative quantity) is negative.
   const equity = (balance?.total ?? 0) + holdingsValue
+
+  // mirrors MarginCalculator.MaintenanceMarginRate on the backend
+  const MAINTENANCE_MARGIN_RATE = 0.3
+  const shortExposure = holdings
+    .filter(p => p.isShort)
+    .reduce((s, p) => s - p.marketValue, 0)   // marketValue is negative for a short; flip it positive
+  const maintenanceRequirement = MAINTENANCE_MARGIN_RATE * shortExposure
+  // warn a healthy buffer before the server's own liquidation trigger (equity < maintenanceRequirement)
+  const marginCallActive = shortExposure > 0 && equity < maintenanceRequirement * 1.5
+
+  // a Sell opens or adds to a short whenever there's no long position left to reduce —
+  // mirrors PortfolioFillExecutor.Classify on the backend
+  const sellWouldShort = !!chosen && (livePortfolio[chosen.symbol]?.totalQuantity ?? 0) <= 0
+  const previewQty = parseInt(qty, 10)
+  const previewPrice = mode === 'limit' ? parseDecimal(limitPrice) : chosen?.currentPrice ?? NaN
+  const marginPreview =
+    sellWouldShort && Number.isFinite(previewQty) && previewQty >= 1 &&
+    Number.isFinite(previewPrice) && previewPrice > 0
+      ? 0.5 * previewQty * previewPrice
+      : null
 
   const submit = async (direction: 'Buy' | 'Sell') => {
     if (!chosen) return
@@ -349,6 +397,9 @@ const seeded = useRef<Set<string>>(new Set())
     }
     loadBalance(); loadPortfolio(); loadOrders(); loadTransactions()
   }
+
+  const dismissLiquidation = (id: string) =>
+    setLiquidations(prev => prev.filter(l => l.id !== id))
 
   const pick = (i: Instrument) => {
   if (!i.isActive) return
@@ -440,6 +491,12 @@ const loadHistory = (i: Instrument) => {
         <div className="cell">
           <div className="cell-label">{t('strip.free')}</div>
           <div className="cell-value sm">{balance ? fmt(balance.freeCashBalance) : '—'}</div>
+          {balance && balance.lockedCashBalance !== 0 && (
+            <div className="cell-delta flat">{t('strip.locked', { n: fmt(balance.lockedCashBalance) })}</div>
+          )}
+          {balance && balance.marginUsed > 0 && (
+            <div className="cell-delta amber">{t('strip.margin', { n: fmt(balance.marginUsed) })}</div>
+          )}
         </div>
         <div className="cell">
           <div className="cell-label">{t('strip.position')}</div>
@@ -451,9 +508,32 @@ const loadHistory = (i: Instrument) => {
         </div>
       </section>
 
+      {liquidations.length > 0 && (
+        <div className="liq-stack" role="alert">
+          {liquidations.map(l => (
+            <div className="liq-toast" key={l.id}>
+              <span className="liq-icon">⚠</span>
+              <div className="liq-body">
+                <strong>{t('alert.liquidatedTitle')}</strong>
+                <span>{t('alert.liquidatedBody', {
+                  symbol: l.symbol, qty: l.quantity, amount: `₺${fmt(l.amount)}`,
+                })}</span>
+              </div>
+              <button onClick={() => dismissLiquidation(l.id)} aria-label={t('app.close')}>×</button>
+            </div>
+          ))}
+        </div>
+      )}
+
       <main className="wrap">
         {showAdmin ? <Admin onClose={() => setShowAdmin(false)} /> : (
         <>
+        {marginCallActive && (
+          <div className="notice warn">
+            <span style={{ flex: 1 }}>{t('alert.marginCall')}</span>
+          </div>
+        )}
+
         {notice && (
           <div className="notice">
             <span style={{ flex: 1 }}>{notice}</span>
@@ -477,12 +557,14 @@ const loadHistory = (i: Instrument) => {
                     className="tile"
                     data-selected={selected === i.id}
                     data-inactive={!i.isActive}
+                    data-short={pos?.isShort ?? false}
                     onClick={() => pick(i)}
                     disabled={!i.isActive}
                   >
                     <AreaSpark data={history[i.symbol] ?? []} className="tile-spark" />
                     <div className="tile-top">
                       <span className="tile-sym">{i.symbol}</span>
+                      {pos?.isShort && <span className="short-badge">{t('board.shortBadge')}</span>}
                       <span className="tile-px" data-tick={ticks[i.symbol]} key={i.currentPrice}>
                         {fmt(i.currentPrice)}
                       </span>
@@ -491,7 +573,11 @@ const loadHistory = (i: Instrument) => {
                     <div className="tile-pos">
                       {pos ? (
                         <>
-                          <span>{t('board.lots', { n: pos.totalQuantity })}</span>
+                          <span>
+                            {pos.isShort
+                              ? t('board.shortLots', { n: Math.abs(pos.totalQuantity) })
+                              : t('board.lots', { n: pos.totalQuantity })}
+                          </span>
                           {pos.lockedQuantity > 0 && (
                             <span className="locked">{t('board.locked', { n: pos.lockedQuantity })}</span>
                           )}
@@ -741,6 +827,10 @@ const loadHistory = (i: Instrument) => {
               }}
             />
           </div>
+
+          {marginPreview !== null && (
+            <span className="margin-preview">{t('ticket.marginPreview', { n: fmt(marginPreview) })}</span>
+          )}
 
           <button className="trade buy" disabled={!chosen || busy} onClick={() => submit('Buy')}>
             {t('ticket.buy')}

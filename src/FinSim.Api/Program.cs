@@ -35,6 +35,7 @@ builder.Services.AddHostedService<MarketTickWorker>();
 builder.Services.AddScoped<IEmailSender, EmailSender>();
 builder.Services.AddScoped<PriceSimEngine>();
 builder.Services.AddScoped<OrderCheckEngine>();
+builder.Services.AddScoped<MarginEngine>();
 builder.Services.AddScoped<IInstrumentRepository, InstrumentRepository>();
 builder.Services.AddScoped<InstrumentService>();
 builder.Services.AddScoped<IOrderRepository, OrderRepository>();

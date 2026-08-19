@@ -8,11 +8,13 @@ public record PortfolioItemDto(
     decimal AverageCost,
     decimal CurrentPrice,
     decimal MarketValue,
-    decimal ProfitLoss);
+    decimal ProfitLoss,
+    bool IsShort);
 
 public record BalanceDto(
     decimal FreeCashBalance,
     decimal LockedCashBalance,
     decimal RealizedProfitLoss,
     decimal Total,
+    decimal MarginUsed,
     bool IsAdmin = false);
