@@ -1,0 +1,11 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/FinSim.Api/FinSim.Api.csproj" />
+    <Project Path="src/FinSim.Application/FinSim.Application.csproj" />
+    <Project Path="src/FinSim.Domain/FinSim.Domain.csproj" />
+    <Project Path="src/FinSim.Infrastructure/FinSim.Infrastructure.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/FinSim.Tests/FinSim.Tests.csproj" />
+  </Folder>
+</Solution>
