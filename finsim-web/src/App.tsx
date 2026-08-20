@@ -18,6 +18,7 @@ type Instrument = {
   name: string
   currentPrice: number
   isActive: boolean
+  type: 'Stock' | 'Fund'
 }
 type PricePoint = {
   timestamp: string
@@ -173,6 +174,61 @@ function OrderTable({ orders, pending, onCancel }: {
   )
 }
 
+
+const InstrumentRow = memo(function InstrumentRow({ i, open, tick, pos, sparkData, onClick }: {
+  i: Instrument
+  open: boolean
+  tick: Tick | undefined
+  pos: PortfolioItem | undefined
+  sparkData: PricePoint[]
+  onClick: () => void
+}) {
+  const { t } = useLang()
+  return (
+    <div className="row" data-open={open}>
+      <button
+        type="button"
+        className="row-head"
+        data-selected={open}
+        data-inactive={!i.isActive}
+        aria-expanded={open}
+        onClick={onClick}
+        disabled={!i.isActive}
+      >
+        <span className="row-sym">{i.symbol}</span>
+        {i.type === 'Fund' && <span className="fund-badge">{t('board.fundBadge')}</span>}
+        {pos?.isShort && <span className="short-badge">{t('board.shortBadge')}</span>}
+        <span className="row-name">{i.name}</span>
+        <span className="row-px" data-tick={tick} key={i.currentPrice}>
+          {fmt(i.currentPrice)}
+        </span>
+        <div className="row-pos">
+          {pos ? (
+            <>
+              <span>
+                {pos.isShort
+                  ? t('board.shortLots', { n: Math.abs(pos.totalQuantity) })
+                  : t('board.lots', { n: pos.totalQuantity })}
+              </span>
+              {pos.lockedQuantity > 0 && (
+                <span className="locked">{t('board.locked', { n: pos.lockedQuantity })}</span>
+              )}
+              <span className="avg-cost">{t('board.avgCost', { n: fmt(pos.averageCost) })}</span>
+              <span className={dirOf(pos.profitLoss)}>{signed(pos.profitLoss)}</span>
+            </>
+          ) : (
+            <span className="empty">{i.isActive ? t('board.noPosition') : t('board.closed')}</span>
+          )}
+        </div>
+      </button>
+      <div className="row-body">
+        <div className="row-body-in">
+          {open && <AreaSpark data={sparkData} className="row-spark" />}
+        </div>
+      </div>
+    </div>
+  )
+})
 
 export default function App() {
   const { loggedIn, checking, logout } = useAuth()
@@ -493,7 +549,8 @@ const loadHistory = (i: Instrument) => {
   })
 
   const portfolioInstruments = instruments.filter(i => portfolio[i.symbol])
-  const otherInstruments = instruments.filter(i => !portfolio[i.symbol])
+  const otherStocks = instruments.filter(i => !portfolio[i.symbol] && i.type === 'Stock')
+  const otherFunds = instruments.filter(i => !portfolio[i.symbol] && i.type === 'Fund')
 
 
   return (
@@ -611,89 +668,58 @@ const loadHistory = (i: Instrument) => {
               <span className="section-note">{t('board.portfolioNote', { n: portfolioInstruments.length })}</span>
             </div>
 
-            <div className="tiles">
-              {portfolioInstruments.map(i => {
-                const pos = livePortfolio[i.symbol]
-                return (
-                  <button
-                    key={i.id}
-                    className="tile"
-                    data-selected={selected === i.id}
-                    data-inactive={!i.isActive}
-                    data-short={pos?.isShort ?? false}
-                    onClick={() => pick(i)}
-                    disabled={!i.isActive}
-                  >
-                    <AreaSpark data={history[i.symbol] ?? []} className="tile-spark" />
-                    <div className="tile-top">
-                      <span className="tile-sym">{i.symbol}</span>
-                      {pos?.isShort && <span className="short-badge">{t('board.shortBadge')}</span>}
-                      <span className="tile-px" data-tick={ticks[i.symbol]} key={i.currentPrice}>
-                        {fmt(i.currentPrice)}
-                      </span>
-                    </div>
-                    <div className="tile-name">{i.name}</div>
-                    <div className="tile-pos">
-                      {pos ? (
-                        <>
-                          <span>
-                            {pos.isShort
-                              ? t('board.shortLots', { n: Math.abs(pos.totalQuantity) })
-                              : t('board.lots', { n: pos.totalQuantity })}
-                          </span>
-                          {pos.lockedQuantity > 0 && (
-                            <span className="locked">{t('board.locked', { n: pos.lockedQuantity })}</span>
-                          )}
-                          <span className="avg-cost">{t('board.avgCost', { n: fmt(pos.averageCost) })}</span>
-                          <span className={dirOf(pos.profitLoss)}>{signed(pos.profitLoss)}</span>
-                        </>
-                      ) : (
-                        <span className="empty">{i.isActive ? t('board.noPosition') : t('board.closed')}</span>
-                      )}
-                    </div>
-                  </button>
-                )
-              })}
+            <div className="board">
+              {portfolioInstruments.map(i => (
+                <InstrumentRow
+                  key={i.id}
+                  i={i}
+                  open={selected === i.id}
+                  tick={ticks[i.symbol]}
+                  pos={livePortfolio[i.symbol]}
+                  sparkData={history[i.symbol] ?? []}
+                  onClick={() => pick(i)}
+                />
+              ))}
             </div>
           </>
         )}
 
         <div className="section-head">
           <h2>{t('board.otherTitle')}</h2>
-          <span className="section-note">{t('board.otherNote', { n: otherInstruments.length })}</span>
+          <span className="section-note">{t('board.otherNote', { n: otherStocks.length })}</span>
         </div>
 
         <div className="board">
-          {otherInstruments.map(i => {
-            const open = selected === i.id
-            return (
-              <div className="row" key={i.id} data-open={open}>
-                <button
-                  type="button"
-                  className="row-head"
-                  data-selected={open}
-                  data-inactive={!i.isActive}
-                  aria-expanded={open}
-                  onClick={() => pick(i)}
-                  disabled={!i.isActive}
-                >
-                  <span className="row-sym">{i.symbol}</span>
-                  <span className="row-name">{i.name}</span>
-                  <span className="row-px" data-tick={ticks[i.symbol]} key={i.currentPrice}>
-                    {fmt(i.currentPrice)}
-                  </span>
-                  <div className="row-pos">
-                    <span className="empty">{i.isActive ? t('board.noPosition') : t('board.closed')}</span>
-                  </div>
-                </button>
-                <div className="row-body">
-                  <div className="row-body-in">
-                    {open && <AreaSpark data={history[i.symbol] ?? []} className="row-spark" />}
-                  </div>
-                </div>
-              </div>
-            )
-          })}
+          {otherStocks.map(i => (
+            <InstrumentRow
+              key={i.id}
+              i={i}
+              open={selected === i.id}
+              tick={ticks[i.symbol]}
+              pos={undefined}
+              sparkData={history[i.symbol] ?? []}
+              onClick={() => pick(i)}
+            />
+          ))}
+        </div>
+
+        <div className="section-head">
+          <h2>{t('board.fundsTitle')}</h2>
+          <span className="section-note">{t('board.fundsNote', { n: otherFunds.length })}</span>
+        </div>
+
+        <div className="board">
+          {otherFunds.map(i => (
+            <InstrumentRow
+              key={i.id}
+              i={i}
+              open={selected === i.id}
+              tick={ticks[i.symbol]}
+              pos={undefined}
+              sparkData={history[i.symbol] ?? []}
+              onClick={() => pick(i)}
+            />
+          ))}
         </div>
 
         <div className="panels">

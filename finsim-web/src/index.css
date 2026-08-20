@@ -430,6 +430,17 @@ input  { font-family: var(--mono); }
   margin-right: auto;
 }
 
+.fund-badge {
+  font-family: var(--mono);
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  color: var(--amber);
+  border: 1px solid currentColor;
+  border-radius: 2px;
+  padding: 1px 5px;
+}
+
 .tile-spark {
   position: absolute;
   left: 0;

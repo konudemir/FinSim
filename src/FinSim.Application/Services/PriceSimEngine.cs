@@ -1,6 +1,7 @@
 using System.ComponentModel;
 using FinSim.Application.Interfaces;
 using FinSim.Domain.Models;
+using FinSim.Domain.Services;
 
 namespace FinSim.Application.Services
 {
@@ -10,20 +11,33 @@ namespace FinSim.Application.Services
 
         public PriceSimEngine(IInstrumentRepository instruments) => _instruments = instruments;
 
-        /// <summary>Moves every active instrument's price one tick. Does not save.</summary>
+                /// <summary>
+        /// Moves every active stock one tick, then reprices funds off the new
+        /// stock prices. Does not save.
+        /// </summary>
         public async Task<PriceTickResult> TickAsync(double bias, CancellationToken ct)
         {
-            var instruments = await _instruments.GetActiveAsync(ct);
+            var stocks = await _instruments.GetActiveStocksAsync(ct);
+            var funds  = await _instruments.GetActiveFundsAsync(ct);
 
             var marketMove = (decimal)(Random.Shared.NextDouble() * 2 - bias) * 0.02m;
 
-            foreach (var i in instruments)
+            foreach (var i in stocks)
                 i.CurrentPrice = NextValue(i.CurrentPrice, i.BasePrice, marketMove);
 
-            var index = Math.Round(
-                instruments.Sum(i => i.CurrentPrice / i.BasePrice) / instruments.Count * 10_000m, 2);
+            // Index tracks the market itself, so funds are excluded — including
+            // them would count their constituents a second time.
+            var index = stocks.Count == 0
+                ? 10_000m
+                : Math.Round(stocks.Sum(i => i.CurrentPrice / i.BasePrice) / stocks.Count * 10_000m, 2);
 
-            return new PriceTickResult(marketMove, index, instruments);
+            var prices = stocks.ToDictionary(i => i.Id, i => i.CurrentPrice);
+
+            foreach (var f in funds)
+                f.CurrentPrice = FundPricer.Price(
+                    FundPricer.Nav(f.Holdings, prices), f.Divisor ?? 1m);
+
+            return new PriceTickResult(marketMove, index, [.. stocks, .. funds]);
         }
 
         private static decimal NextValue(decimal currVal, decimal baseVal, decimal marketMove)
@@ -31,7 +45,7 @@ namespace FinSim.Application.Services
             if (currVal <= 0) return 0.01m;
 
             // hisseye özgü rastgele hareket, ortalaması sıfır
-            var idio = (decimal)(Random.Shared.NextDouble() * 2 - 1.0) * 0.02m;
+            var idio = (decimal)(Random.Shared.NextDouble() * 2 - 1.01) * 0.02m;
 
             const decimal drift = 0.00002m;
 

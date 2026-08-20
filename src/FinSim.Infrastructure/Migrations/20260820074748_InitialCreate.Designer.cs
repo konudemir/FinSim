@@ -12,8 +12,8 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace FinSim.Infrastructure.Migrations
 {
     [DbContext(typeof(FinSimDbContext))]
-    [Migration("20260817125042_TransactionOrderIdIndex")]
-    partial class TransactionOrderIdIndex
+    [Migration("20260820074748_InitialCreate")]
+    partial class InitialCreate
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -24,6 +24,153 @@ namespace FinSim.Infrastructure.Migrations
                 .HasAnnotation("Relational:MaxIdentifierLength", 63);
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
+
+            modelBuilder.Entity("FinSim.Domain.Models.AdminAdjustment", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("AdminUserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<decimal?>("CashDelta")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<Guid?>("InstrumentId")
+                        .HasColumnType("uuid");
+
+                    b.Property<decimal?>("Price")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<int?>("QuantityDelta")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Reason")
+                        .HasColumnType("text");
+
+                    b.Property<Guid>("TargetUserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("Type")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("AdminUserId");
+
+                    b.HasIndex("InstrumentId");
+
+                    b.HasIndex("TargetUserId");
+
+                    b.ToTable("AdminAdjustments");
+                });
+
+            modelBuilder.Entity("FinSim.Domain.Models.FundHolding", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("ConstituentId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("FundId")
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("Quantity")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ConstituentId");
+
+                    b.HasIndex("FundId", "ConstituentId")
+                        .IsUnique();
+
+                    b.ToTable("FundHoldings");
+                });
+
+            modelBuilder.Entity("FinSim.Domain.Models.FundRebalance", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("AdminUserId")
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<decimal>("DivisorAfter")
+                        .HasPrecision(18, 6)
+                        .HasColumnType("numeric(18,6)");
+
+                    b.Property<decimal>("DivisorBefore")
+                        .HasPrecision(18, 6)
+                        .HasColumnType("numeric(18,6)");
+
+                    b.Property<Guid>("FundId")
+                        .HasColumnType("uuid");
+
+                    b.Property<decimal>("NavAfter")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<decimal>("NavBefore")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<decimal>("PriceAtRebalance")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<string>("Reason")
+                        .HasColumnType("text");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("AdminUserId");
+
+                    b.HasIndex("FundId", "CreatedAt");
+
+                    b.ToTable("FundRebalances");
+                });
+
+            modelBuilder.Entity("FinSim.Domain.Models.FundRebalanceLine", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("ConstituentId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("FundRebalanceId")
+                        .HasColumnType("uuid");
+
+                    b.Property<int>("QuantityAfter")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("QuantityBefore")
+                        .HasColumnType("integer");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ConstituentId");
+
+                    b.HasIndex("FundRebalanceId");
+
+                    b.ToTable("FundRebalanceLines");
+                });
 
             modelBuilder.Entity("FinSim.Domain.Models.Instrument", b =>
                 {
@@ -39,6 +186,10 @@ namespace FinSim.Infrastructure.Migrations
                         .HasPrecision(18, 2)
                         .HasColumnType("numeric(18,2)");
 
+                    b.Property<decimal?>("Divisor")
+                        .HasPrecision(18, 6)
+                        .HasColumnType("numeric(18,6)");
+
                     b.Property<bool>("IsActive")
                         .HasColumnType("boolean");
 
@@ -49,6 +200,11 @@ namespace FinSim.Infrastructure.Migrations
                     b.Property<string>("Symbol")
                         .IsRequired()
                         .HasColumnType("text");
+
+                    b.Property<string>("Type")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)");
 
                     b.HasKey("Id");
 
@@ -99,6 +255,10 @@ namespace FinSim.Infrastructure.Migrations
                         .HasMaxLength(20)
                         .HasColumnType("character varying(20)");
 
+                    b.Property<decimal?>("StopPrice")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)");
+
                     b.Property<DateTimeOffset>("UpdatedAt")
                         .HasColumnType("timestamp with time zone");
 
@@ -147,6 +307,31 @@ namespace FinSim.Infrastructure.Migrations
                     b.ToTable("PortfolioItems");
                 });
 
+            modelBuilder.Entity("FinSim.Domain.Models.PriceHistory", b =>
+                {
+                    b.Property<long>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
+
+                    b.Property<Guid>("InstrumentId")
+                        .HasColumnType("uuid");
+
+                    b.Property<decimal>("Price")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<DateTime>("Timestamp")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("InstrumentId", "Timestamp");
+
+                    b.ToTable("PriceHistory");
+                });
+
             modelBuilder.Entity("FinSim.Domain.Models.Transaction", b =>
                 {
                     b.Property<Guid>("Id")
@@ -165,6 +350,10 @@ namespace FinSim.Infrastructure.Migrations
 
                     b.Property<Guid>("OrderId")
                         .HasColumnType("uuid");
+
+                    b.Property<decimal?>("RealizedPnL")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)");
 
                     b.Property<decimal>("TotalAmount")
                         .HasPrecision(18, 2)
@@ -230,6 +419,10 @@ namespace FinSim.Infrastructure.Migrations
                     b.Property<DateTimeOffset?>("LockoutEnd")
                         .HasColumnType("timestamp with time zone");
 
+                    b.Property<decimal>("MarginUsed")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)");
+
                     b.Property<string>("NormalizedEmail")
                         .HasMaxLength(256)
                         .HasColumnType("character varying(256)");
@@ -247,6 +440,10 @@ namespace FinSim.Infrastructure.Migrations
                     b.Property<bool>("PhoneNumberConfirmed")
                         .HasColumnType("boolean");
 
+                    b.Property<decimal>("RealizedProfitLoss")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)");
+
                     b.Property<string>("SecurityStamp")
                         .HasColumnType("text");
 
@@ -256,6 +453,12 @@ namespace FinSim.Infrastructure.Migrations
                     b.Property<string>("UserName")
                         .HasMaxLength(256)
                         .HasColumnType("character varying(256)");
+
+                    b.Property<uint>("Version")
+                        .IsConcurrencyToken()
+                        .ValueGeneratedOnAddOrUpdate()
+                        .HasColumnType("xid")
+                        .HasColumnName("xmin");
 
                     b.HasKey("Id");
 
@@ -399,6 +602,89 @@ namespace FinSim.Infrastructure.Migrations
                     b.ToTable("AspNetUserTokens", (string)null);
                 });
 
+            modelBuilder.Entity("FinSim.Domain.Models.AdminAdjustment", b =>
+                {
+                    b.HasOne("FinSim.Domain.Models.User", "AdminUser")
+                        .WithMany()
+                        .HasForeignKey("AdminUserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("FinSim.Domain.Models.Instrument", "Instrument")
+                        .WithMany()
+                        .HasForeignKey("InstrumentId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("FinSim.Domain.Models.User", "TargetUser")
+                        .WithMany()
+                        .HasForeignKey("TargetUserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("AdminUser");
+
+                    b.Navigation("Instrument");
+
+                    b.Navigation("TargetUser");
+                });
+
+            modelBuilder.Entity("FinSim.Domain.Models.FundHolding", b =>
+                {
+                    b.HasOne("FinSim.Domain.Models.Instrument", "Constituent")
+                        .WithMany()
+                        .HasForeignKey("ConstituentId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("FinSim.Domain.Models.Instrument", "Fund")
+                        .WithMany("Holdings")
+                        .HasForeignKey("FundId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Constituent");
+
+                    b.Navigation("Fund");
+                });
+
+            modelBuilder.Entity("FinSim.Domain.Models.FundRebalance", b =>
+                {
+                    b.HasOne("FinSim.Domain.Models.User", "AdminUser")
+                        .WithMany()
+                        .HasForeignKey("AdminUserId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("FinSim.Domain.Models.Instrument", "Fund")
+                        .WithMany()
+                        .HasForeignKey("FundId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("AdminUser");
+
+                    b.Navigation("Fund");
+                });
+
+            modelBuilder.Entity("FinSim.Domain.Models.FundRebalanceLine", b =>
+                {
+                    b.HasOne("FinSim.Domain.Models.Instrument", "Constituent")
+                        .WithMany()
+                        .HasForeignKey("ConstituentId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("FinSim.Domain.Models.FundRebalance", "FundRebalance")
+                        .WithMany("Lines")
+                        .HasForeignKey("FundRebalanceId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Constituent");
+
+                    b.Navigation("FundRebalance");
+                });
+
             modelBuilder.Entity("FinSim.Domain.Models.Order", b =>
                 {
                     b.HasOne("FinSim.Domain.Models.Instrument", "Instrument")
@@ -435,6 +721,17 @@ namespace FinSim.Infrastructure.Migrations
                     b.Navigation("Instrument");
 
                     b.Navigation("User");
+                });
+
+            modelBuilder.Entity("FinSim.Domain.Models.PriceHistory", b =>
+                {
+                    b.HasOne("FinSim.Domain.Models.Instrument", "Instrument")
+                        .WithMany()
+                        .HasForeignKey("InstrumentId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Instrument");
                 });
 
             modelBuilder.Entity("FinSim.Domain.Models.Transaction", b =>
@@ -513,6 +810,16 @@ namespace FinSim.Infrastructure.Migrations
                         .HasForeignKey("UserId")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
+                });
+
+            modelBuilder.Entity("FinSim.Domain.Models.FundRebalance", b =>
+                {
+                    b.Navigation("Lines");
+                });
+
+            modelBuilder.Entity("FinSim.Domain.Models.Instrument", b =>
+                {
+                    b.Navigation("Holdings");
                 });
 
             modelBuilder.Entity("FinSim.Domain.Models.Order", b =>

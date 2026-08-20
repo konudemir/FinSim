@@ -32,6 +32,9 @@ const tr = {
   'board.portfolioNote': '{n} pozisyon',
   'board.otherTitle': 'Diğer Hisseler',
   'board.otherNote': '{n} enstrüman · emir için seç',
+  'board.fundsTitle': 'Fonlar',
+  'board.fundsNote': '{n} fon · emir için seç',
+  'board.fundBadge': 'FON',
   'board.shortBadge': 'AÇIĞA SATIŞ',
   'board.shortLots': '{n} lot açık',
 
@@ -240,6 +243,9 @@ const en: typeof tr = {
   'board.portfolioNote': '{n} positions',
   'board.otherTitle': 'Other Stocks',
   'board.otherNote': '{n} instruments · select one to trade',
+  'board.fundsTitle': 'Funds',
+  'board.fundsNote': '{n} funds · select one to trade',
+  'board.fundBadge': 'FUND',
   'board.shortBadge': 'SHORT',
   'board.shortLots': '{n} lots short',
 

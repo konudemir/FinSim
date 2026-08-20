@@ -2,6 +2,7 @@ using FinSim.Application.Interfaces;
 using FinSim.Infrastructure.Data;
 using FinSim.Domain.Models;
 using Microsoft.EntityFrameworkCore;
+using FinSim.Domain.Models.Enums;
 
 namespace FinSim.Infrastructure.Repositories
 {
@@ -10,6 +11,16 @@ namespace FinSim.Infrastructure.Repositories
         private readonly FinSimDbContext _db;
 
         public InstrumentRepository(FinSimDbContext db) => _db = db;
+        public Task<List<Instrument>> GetActiveStocksAsync(CancellationToken ct) =>
+            _db.Instruments
+               .Where(i => i.IsActive && i.Type == InstrumentType.Stock)
+               .ToListAsync(ct);
+
+        public Task<List<Instrument>> GetActiveFundsAsync(CancellationToken ct) =>
+            _db.Instruments
+               .Where(i => i.IsActive && i.Type == InstrumentType.Fund)
+               .Include(i => i.Holdings)
+               .ToListAsync(ct);
 
         public Task<List<Instrument>> GetActiveAsync(CancellationToken ct) =>
             _db.Instruments.Where(i => i.IsActive).ToListAsync(ct);
