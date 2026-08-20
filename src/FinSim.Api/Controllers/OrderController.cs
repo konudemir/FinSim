@@ -35,7 +35,8 @@ namespace FinSim.Controllers
         {
             var (result, order) = await _orders.PlaceLimitOrderAsync(
                 CurrentUserId, request.InstrumentId, request.Quantity,
-                request.Price, request.StopPrice, request.Direction, ct);
+                request.Price, request.StopPrice, request.Direction, ct,
+                request.ExpiryDays ?? 0, request.ExpiryHours ?? 0, request.ExpiryMinutes ?? 0);
 
             return result == OrderResult.Success ? Ok(order) : ToError(result);
         }
@@ -45,6 +46,13 @@ namespace FinSim.Controllers
         {
             var result = await _orders.CancelAsync(CurrentUserId, id, ct);
             return result == OrderResult.Success ? Ok("OrderCancelled") : ToError(result);
+        }
+
+        [HttpPost("{id:guid}/replace")]
+        public async Task<IActionResult> ReplaceOrder(Guid id, CancellationToken ct)
+        {
+            var (result, order) = await _orders.ReplaceAsync(CurrentUserId, id, ct);
+            return result == OrderResult.Success ? Ok(order) : ToError(result);
         }
 
         [HttpGet]
@@ -67,6 +75,9 @@ namespace FinSim.Controllers
             OrderResult.ConcurrencyConflict => Conflict("ConcurrencyConflict"),
             OrderResult.CrossingNotAllowed  => BadRequest("CrossingNotAllowed"),
             OrderResult.InsufficientMargin  => BadRequest("InsufficientMargin"),
+            OrderResult.NotExpired          => BadRequest("NotExpired"),
+            OrderResult.OrderTypeNotSupported => BadRequest("OrderTypeNotSupported"),
+            OrderResult.InvalidExpiry       => BadRequest("InvalidExpiry"),
             _                               => BadRequest("OrderFailed")
         };
     }

@@ -12,6 +12,7 @@ public record OrderDto(
     DateTimeOffset CreatedAt,
     decimal? LockedAmount,
     decimal? ExecutedAmount,
+    DateTimeOffset? ExpiresAt = null,
     bool Liquidated = false);
 
 public record PlacedOrderDto(
@@ -37,4 +38,7 @@ public enum OrderResult
     InvalidStopPrice,
     CrossingNotAllowed,
     InsufficientMargin,
+    NotExpired,
+    OrderTypeNotSupported,
+    InvalidExpiry,
 }

@@ -9,6 +9,7 @@ namespace FinSim.Application.Interfaces
         Task<List<Order>> GetPendingByInstrumentAsync(Guid instrumentId, CancellationToken ct);
         Task<Order?> GetByIdAsync(Guid id, CancellationToken ct);
         Task<List<Order>> GetRecentByUserAsync(Guid userId, int take, CancellationToken ct);
+        Task<List<Order>> GetExpiredPendingAsync(DateTimeOffset now, CancellationToken ct);
         void Add(Order order);
         Task SaveChangesAsync(CancellationToken ct);
 

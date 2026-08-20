@@ -193,16 +193,6 @@ namespace FinSim.Application.Services
         /// push ile fetch arasında farklı satır görür.
         /// </summary>
         private static OrderDto ToDto(Order o, Instrument? instrument, decimal? executedAmount) =>
-            new(o.Id,
-                instrument?.Symbol ?? "?",
-                o.OrderType.ToString(),
-                o.Direction.ToString(),
-                o.Quantity,
-                o.Price,
-                o.StopPrice,
-                o.Status.ToString(),
-                o.CreatedAt,
-                null,
-                executedAmount);
+            OrderDtoMapper.ToDto(o, instrument?.Symbol ?? "?", executedAmount: executedAmount);
     }
 }

@@ -726,6 +726,18 @@ input  { font-family: var(--mono); }
 .pill.pending   { color: var(--amber); }
 .pill.filled    { color: var(--rise); }
 .pill.cancelled { color: var(--faint); }
+.pill.expired   { color: var(--faint); }
+
+/* de-emphasised but still legible — a deadline that passed, not a dead row */
+.ledger tr.expired td { color: var(--faint); opacity: 0.7; }
+.ledger tr.expired:hover td { color: var(--mute); opacity: 1; }
+.ledger tr.expired .sym { color: var(--faint); }
+
+.expiry-countdown {
+  font-size: 10px;
+  color: var(--faint);
+  margin-top: 2px;
+}
 
 .link-btn {
   background: none;
@@ -896,6 +908,25 @@ input  { font-family: var(--mono); }
 }
 
 .field-input:disabled { opacity: 0.4; }
+
+.expiry-fields {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.expiry-fields .field-input {
+  width: 34px;
+  padding: 8px 4px;
+  text-align: center;
+}
+
+.expiry-unit {
+  font-family: var(--mono);
+  font-size: 10px;
+  color: var(--faint);
+  margin-right: 2px;
+}
 
 .field-static {
   font-family: var(--serif);
