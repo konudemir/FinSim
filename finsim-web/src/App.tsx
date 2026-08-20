@@ -24,6 +24,13 @@ type PricePoint = {
   timestamp: string
   price: number
 }
+type PnlPoint = {
+  date: string
+  portfolioValue: number
+  pnl: number
+  realizedPnl: number
+  isLive: boolean
+}
 
 type Balance = {
   freeCashBalance: number
@@ -31,6 +38,7 @@ type Balance = {
   realizedProfitLoss: number
   total: number
   marginUsed: number
+  netDeposits: number
   isAdmin: boolean
 }
 
@@ -467,6 +475,30 @@ const seeded = useRef<Set<string>>(new Set())
     return out
   }, [portfolio, instruments])
 
+  // Mirrors PortfolioValueCalculator.Value on the server. Deliberately NOT the
+  // same arithmetic as `equity` below: a short contributes (avgCost − price)×|qty|
+  // here, because opening it never credited proceeds to cash.
+  const livePnl = useMemo(() => {
+    if (!balance) return null
+
+    let longValue = 0
+    let shortUnrealized = 0
+    for (const p of Object.values(livePortfolio)) {
+      if (p.totalQuantity > 0) longValue += p.currentPrice * p.totalQuantity
+      else if (p.totalQuantity < 0)
+        shortUnrealized += (p.averageCost - p.currentPrice) * -p.totalQuantity
+    }
+
+    const portfolioValue =
+      balance.freeCashBalance + balance.lockedCashBalance + longValue + shortUnrealized
+
+    return {
+      portfolioValue,
+      pnl: portfolioValue - balance.netDeposits,
+      realizedPnl: balance.realizedProfitLoss,
+    }
+  }, [balance, livePortfolio])
+
   const holdings = Object.values(livePortfolio)
   const holdingsValue = holdings.reduce((s, p) => s + p.marketValue, 0)
   const openPL = holdings.reduce((s, p) => s + p.profitLoss, 0)
@@ -720,154 +752,163 @@ const loadHistory = (i: Instrument) => {
           </div>
         )}
 
-        {notice && (
+          {notice && (
           <div className="notice">
             <span style={{ flex: 1 }}>{notice}</span>
             <button onClick={() => setNotice('')} aria-label={t('app.close')}>×</button>
           </div>
         )}
 
-        {portfolioInstruments.length > 0 && (
-          <>
+        <div className="terminal-layout">
+          <div className="terminal-left">
+            {portfolioInstruments.length > 0 && (
+              <>
+                <div className="section-head">
+                  <h2>{t('board.portfolioTitle')}</h2>
+                  <span className="section-note">{t('board.portfolioNote', { n: portfolioInstruments.length })}</span>
+                </div>
+
+                <div className="board">
+                  {portfolioInstruments.map(i => (
+                    <InstrumentRow
+                      key={i.id}
+                      i={i}
+                      open={selected === i.id}
+                      tick={ticks[i.symbol]}
+                      pos={livePortfolio[i.symbol]}
+                      sparkData={history[i.symbol] ?? []}
+                      onClick={() => pick(i)}
+                    />
+                  ))}
+                </div>
+              </>
+            )}
+
             <div className="section-head">
-              <h2>{t('board.portfolioTitle')}</h2>
-              <span className="section-note">{t('board.portfolioNote', { n: portfolioInstruments.length })}</span>
+              <h2>{t('board.otherTitle')}</h2>
+              <span className="section-note">{t('board.otherNote', { n: otherStocks.length })}</span>
             </div>
 
             <div className="board">
-              {portfolioInstruments.map(i => (
+              {otherStocks.map(i => (
                 <InstrumentRow
                   key={i.id}
                   i={i}
                   open={selected === i.id}
                   tick={ticks[i.symbol]}
-                  pos={livePortfolio[i.symbol]}
+                  pos={undefined}
                   sparkData={history[i.symbol] ?? []}
                   onClick={() => pick(i)}
                 />
               ))}
             </div>
-          </>
-        )}
 
-        <div className="section-head">
-          <h2>{t('board.otherTitle')}</h2>
-          <span className="section-note">{t('board.otherNote', { n: otherStocks.length })}</span>
-        </div>
-
-        <div className="board">
-          {otherStocks.map(i => (
-            <InstrumentRow
-              key={i.id}
-              i={i}
-              open={selected === i.id}
-              tick={ticks[i.symbol]}
-              pos={undefined}
-              sparkData={history[i.symbol] ?? []}
-              onClick={() => pick(i)}
-            />
-          ))}
-        </div>
-
-        <div className="section-head">
-          <h2>{t('board.fundsTitle')}</h2>
-          <span className="section-note">{t('board.fundsNote', { n: otherFunds.length })}</span>
-        </div>
-
-        <div className="board">
-          {otherFunds.map(i => (
-            <InstrumentRow
-              key={i.id}
-              i={i}
-              open={selected === i.id}
-              tick={ticks[i.symbol]}
-              pos={undefined}
-              sparkData={history[i.symbol] ?? []}
-              onClick={() => pick(i)}
-            />
-          ))}
-        </div>
-
-        <div className="panels">
-          <div className="panel">            <div className="section-head">
-              <h2>{t('pending.title')}</h2>
-              <span className="section-note">{t('pending.note')}</span>
+            <div className="section-head">
+              <h2>{t('board.fundsTitle')}</h2>
+              <span className="section-note">{t('board.fundsNote', { n: otherFunds.length })}</span>
             </div>
 
-            {pendingOrders.length === 0 ? (
-              <div className="empty-state">{t('pending.empty')}</div>
-            ) : (
-              <OrderTable
-                orders={pendingOrders}
-                pending
-                now={now}
-                onCancel={cancelOrder}
-                onReplace={replaceOrder}
-                replacing={replacing}
-              />
-            )}
+            <div className="board">
+              {otherFunds.map(i => (
+                <InstrumentRow
+                  key={i.id}
+                  i={i}
+                  open={selected === i.id}
+                  tick={ticks[i.symbol]}
+                  pos={undefined}
+                  sparkData={history[i.symbol] ?? []}
+                  onClick={() => pick(i)}
+                />
+              ))}
+            </div>
+
+            <div className="panel">
+              <div className="section-head">
+                <h2>{t('pending.title')}</h2>
+                <span className="section-note">{t('pending.note')}</span>
+              </div>
+
+              {pendingOrders.length === 0 ? (
+                <div className="empty-state">{t('pending.empty')}</div>
+              ) : (
+                <OrderTable
+                  orders={pendingOrders}
+                  pending
+                  now={now}
+                  onCancel={cancelOrder}
+                  onReplace={replaceOrder}
+                  replacing={replacing}
+                />
+              )}
+            </div>
           </div>
 
-          <div className="panel">
-            <div className="section-head">
-              <h2>{t('ledger.title')}</h2>
-              <span className="section-note">{t('ledger.note')}</span>
-            </div>
+          <div className="terminal-right">
+            <PnlChart live={livePnl} />
 
-            {pastOrders.length === 0 ? (
-              <div className="empty-state">{t('ledger.empty')}</div>
-            ) : (
-              <OrderTable
-                orders={pastOrders}
-                pending={false}
-                now={now}
-                onCancel={cancelOrder}
-                onReplace={replaceOrder}
-                replacing={replacing}
-              />
-            )}
-          </div>
+            <div className="history-row">
+              <div className="panel">
+                <div className="section-head">
+                  <h2>{t('ledger.title')}</h2>
+                  <span className="section-note">{t('ledger.note')}</span>
+                </div>
 
-          <div className="panel">
-            <div className="section-head">
-              <h2>{t('tx.title')}</h2>
-              <span className="section-note">{t('tx.note')}</span>
-            </div>
-
-            {transactions.length === 0 ? (
-              <div className="empty-state">
-                {t('tx.empty')}
+                {pastOrders.length === 0 ? (
+                  <div className="empty-state">{t('ledger.empty')}</div>
+                ) : (
+                  <OrderTable
+                    orders={pastOrders}
+                    pending={false}
+                    now={now}
+                    onCancel={cancelOrder}
+                    onReplace={replaceOrder}
+                    replacing={replacing}
+                  />
+                )}
               </div>
-            ) : (
-              <div className="panel-scroll">
-                <table className="ledger">
-                  <thead>
-                    <tr>
-                      <th>{t('tx.symbol')}</th>
-                      <th>{t('tx.side')}</th>
-                      <th className="num">{t('tx.qty')}</th>
-                      <th className="num">{t('tx.price')}</th>
-                      <th className="num">{t('tx.total')}</th>
-                      <th>{t('tx.date')}</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {transactions.map(tx => (
-                      <tr key={tx.id}>
-                        <td className="sym">{tx.symbol}</td>
-                        <td className={tx.direction === 'Buy' ? 'up' : 'down'}>
-                          {tx.direction === 'Buy' ? t('order.buy') : t('order.sell')}
-                        </td>
-                        <td className="num">{tx.executedQuantity}</td>
-                        <td className="num">{fmt(tx.executedPrice)}</td>
-                        <td className="num">{fmt(tx.totalAmount)}</td>
-                        <td>{fmtDate(tx.transactionDate)}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+
+              <div className="panel">
+                <div className="section-head">
+                  <h2>{t('tx.title')}</h2>
+                  <span className="section-note">{t('tx.note')}</span>
+                </div>
+
+                {transactions.length === 0 ? (
+                  <div className="empty-state">
+                    {t('tx.empty')}
+                  </div>
+                ) : (
+                  <div className="panel-scroll">
+                    <table className="ledger">
+                      <thead>
+                        <tr>
+                          <th>{t('tx.symbol')}</th>
+                          <th>{t('tx.side')}</th>
+                          <th className="num">{t('tx.qty')}</th>
+                          <th className="num">{t('tx.price')}</th>
+                          <th className="num">{t('tx.total')}</th>
+                          <th>{t('tx.date')}</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {transactions.map(tx => (
+                          <tr key={tx.id}>
+                            <td className="sym">{tx.symbol}</td>
+                            <td className={tx.direction === 'Buy' ? 'up' : 'down'}>
+                              {tx.direction === 'Buy' ? t('order.buy') : t('order.sell')}
+                            </td>
+                            <td className="num">{tx.executedQuantity}</td>
+                            <td className="num">{fmt(tx.executedPrice)}</td>
+                            <td className="num">{fmt(tx.totalAmount)}</td>
+                            <td>{fmtDate(tx.transactionDate)}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
               </div>
-            )}
+            </div>
           </div>
         </div>
         </>
@@ -877,6 +918,54 @@ const loadHistory = (i: Instrument) => {
       {!showAdmin && (
       <div className="ticket">
         <div className="wrap ticket-in">
+          <div className="ticket-slot" style={{ minWidth: 172 }}>
+            <span className="field-label">{t('ticket.expiry')}</span>
+            <div className="expiry-fields">
+              <input
+                className="field-input"
+                type="text"
+                inputMode="numeric"
+                placeholder="0"
+                aria-label={t('ticket.expiryDays')}
+                disabled={mode !== 'limit'}
+                value={mode === 'limit' ? expiryDays : ''}
+                onChange={e => {
+                  const v = e.target.value
+                  if (v === '' || /^\d+$/.test(v)) setExpiryDays(v)
+                }}
+              />
+              <span className="expiry-unit">{t('ticket.expiryDaysAbbr')}</span>
+              <input
+                className="field-input"
+                type="text"
+                inputMode="numeric"
+                placeholder="0"
+                aria-label={t('ticket.expiryHours')}
+                disabled={mode !== 'limit'}
+                value={mode === 'limit' ? expiryHours : ''}
+                onChange={e => {
+                  const v = e.target.value
+                  if (v === '' || /^\d+$/.test(v)) setExpiryHours(v)
+                }}
+              />
+              <span className="expiry-unit">{t('ticket.expiryHoursAbbr')}</span>
+              <input
+                className="field-input"
+                type="text"
+                inputMode="numeric"
+                placeholder="0"
+                aria-label={t('ticket.expiryMinutes')}
+                disabled={mode !== 'limit'}
+                value={mode === 'limit' ? expiryMinutes : ''}
+                onChange={e => {
+                  const v = e.target.value
+                  if (v === '' || /^\d+$/.test(v)) setExpiryMinutes(v)
+                }}
+              />
+              <span className="expiry-unit">{t('ticket.expiryMinutesAbbr')}</span>
+            </div>
+          </div>
+
           <div className="ticket-slot grow">
             <span className="field-label">{t('ticket.instrument')}</span>
             {chosen ? (
@@ -958,54 +1047,6 @@ const loadHistory = (i: Instrument) => {
             />
           </div>
 
-          <div className="ticket-slot" style={{ minWidth: 172 }}>
-            <span className="field-label">{t('ticket.expiry')}</span>
-            <div className="expiry-fields">
-              <input
-                className="field-input"
-                type="text"
-                inputMode="numeric"
-                placeholder="0"
-                aria-label={t('ticket.expiryDays')}
-                disabled={mode !== 'limit'}
-                value={mode === 'limit' ? expiryDays : ''}
-                onChange={e => {
-                  const v = e.target.value
-                  if (v === '' || /^\d+$/.test(v)) setExpiryDays(v)
-                }}
-              />
-              <span className="expiry-unit">{t('ticket.expiryDaysAbbr')}</span>
-              <input
-                className="field-input"
-                type="text"
-                inputMode="numeric"
-                placeholder="0"
-                aria-label={t('ticket.expiryHours')}
-                disabled={mode !== 'limit'}
-                value={mode === 'limit' ? expiryHours : ''}
-                onChange={e => {
-                  const v = e.target.value
-                  if (v === '' || /^\d+$/.test(v)) setExpiryHours(v)
-                }}
-              />
-              <span className="expiry-unit">{t('ticket.expiryHoursAbbr')}</span>
-              <input
-                className="field-input"
-                type="text"
-                inputMode="numeric"
-                placeholder="0"
-                aria-label={t('ticket.expiryMinutes')}
-                disabled={mode !== 'limit'}
-                value={mode === 'limit' ? expiryMinutes : ''}
-                onChange={e => {
-                  const v = e.target.value
-                  if (v === '' || /^\d+$/.test(v)) setExpiryMinutes(v)
-                }}
-              />
-              <span className="expiry-unit">{t('ticket.expiryMinutesAbbr')}</span>
-            </div>
-          </div>
-
           {marginPreview !== null && (
             <span className="margin-preview">{t('ticket.marginPreview', { n: fmt(marginPreview) })}</span>
           )}
@@ -1028,6 +1069,151 @@ const ago = (iso: string, lang: string) => {
   const rtf = new Intl.RelativeTimeFormat(lang, { numeric: 'auto' })
   if (mins < 60) return rtf.format(-mins, 'minute')
   return rtf.format(-Math.round(mins / 60), 'hour')
+}
+
+const PNL_RANGES = [30, 90, 365] as const
+
+function PnlChart({ live }: {
+  live: { portfolioValue: number; pnl: number; realizedPnl: number } | null
+}) {
+  const { t, lang } = useLang()
+  const [days, setDays] = useState<number>(30)
+  const [data, setData] = useState<PnlPoint[]>([])
+  const [hover, setHover] = useState<number | null>(null)
+
+  useEffect(() => {
+    let alive = true
+    const load = () =>
+      api.get<PnlPoint[]>(`/api/users/pnl-history?days=${days}`)
+        .then(r => { if (alive) setData(r.data) })
+        .catch(() => { /* interceptor handles 401 */ })
+
+    load()
+    // only the last point moves; a minute is plenty and keeps this off the tick path
+    const id = setInterval(load, 60_000)
+    return () => { alive = false; clearInterval(id) }
+  }, [days])
+
+  // The fetch supplies history; the tail is overwritten from the current tick so
+  // the chart always ends at P&L *now*, not P&L as of the last poll.
+  const series = useMemo(() => {
+    if (!live || data.length === 0) return data
+    const out = data.slice()
+    const i = out.length - 1
+    if (out[i].isLive) out[i] = { ...out[i], ...live }
+    return out
+  }, [data, live])
+
+  const day = (iso: string) =>
+    new Date(iso).toLocaleDateString(lang === 'tr' ? 'tr-TR' : 'en-US',
+      { day: '2-digit', month: 'short' })
+
+  const latest = series.length ? series[series.length - 1] : null
+  const stroke = (latest?.pnl ?? 0) >= 0 ? 'var(--rise)' : 'var(--fall)'
+
+  const ranges = (
+    <div className="pnl-ranges">
+      {PNL_RANGES.map(r => (
+        <button key={r} className="ghost-btn" aria-pressed={days === r}
+                onClick={() => setDays(r)}>
+          {t(`pnl.range.${r}` as 'pnl.range.30')}
+        </button>
+      ))}
+    </div>
+  )
+
+  // one point means the account has no history yet — a line needs two
+  if (series.length < 2) {
+    return (
+      <div className="panel pnl-panel">
+        <div className="section-head">
+          <h2>{t('pnl.title')}</h2>
+          {ranges}
+        </div>
+        <div className="empty-state">{t('pnl.empty')}</div>
+      </div>
+    )
+  }
+
+  const last = series.length - 1
+  const values = series.map(p => p.pnl)
+  // zero is always in frame: a chart of pure profit that never shows the
+  // break-even line is just a squiggle with no reference point
+  const lo = Math.min(0, ...values)
+  const hi = Math.max(0, ...values)
+  const pad = (hi - lo) * 0.12 || 1
+  const min = lo - pad
+  const span = (hi + pad) - min
+
+  const px = (idx: number) => (idx / last) * 100
+  const py = (value: number) => 40 - ((value - min) / span) * 40
+  const zero = py(0)
+
+  const pts = series.map((p, idx) => `${px(idx).toFixed(2)},${py(p.pnl).toFixed(2)}`)
+  const id = (latest?.pnl ?? 0) >= 0 ? 'pnlu' : 'pnld'
+
+  const onMove = (e: React.MouseEvent<HTMLDivElement>) => {
+    const rect = e.currentTarget.getBoundingClientRect()
+    const frac = (e.clientX - rect.left) / rect.width
+    setHover(Math.max(0, Math.min(last, Math.round(frac * last))))
+  }
+
+  const shown = series[Math.min(hover ?? last, last)]
+
+  return (
+    <div className="panel pnl-panel">
+      <div className="section-head">
+        <h2>{t('pnl.title')}</h2>
+        {ranges}
+      </div>
+
+      <div className="pnl-head">
+        <span className="pnl-value" style={{ color: stroke }}>
+          {signed(shown.pnl)} ₺
+        </span>
+        <span className="pnl-date">
+          {day(shown.date)}{shown.isLive ? ` · ${t('pnl.live')}` : ''}
+        </span>
+      </div>
+
+      <div className="pnl-plot" onMouseMove={onMove} onMouseLeave={() => setHover(null)}>
+        <svg className="spark-svg" viewBox="0 0 100 40" preserveAspectRatio="none" aria-hidden="true">
+          <defs>
+            <linearGradient id={id} x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor={stroke} stopOpacity="0.30" />
+              <stop offset="100%" stopColor={stroke} stopOpacity="0" />
+            </linearGradient>
+          </defs>
+
+          <polygon points={`0,${zero} ${pts.join(' ')} 100,${zero}`} fill={`url(#${id})`} />
+
+          <line x1="0" y1={zero} x2="100" y2={zero}
+                stroke="var(--faint)" strokeWidth="1" strokeDasharray="3 3"
+                vectorEffect="non-scaling-stroke" />
+
+          <polyline points={pts.join(' ')} fill="none" stroke={stroke}
+                    strokeWidth="1.5" vectorEffect="non-scaling-stroke" />
+
+          {hover !== null && (
+            <line x1={px(hover)} y1="0" x2={px(hover)} y2="40"
+                  stroke="var(--edge)" strokeWidth="1" vectorEffect="non-scaling-stroke" />
+          )}
+        </svg>
+
+        <i className="spark-dot"
+           style={{
+             left: `${px(hover ?? last)}%`,
+             top: `${(py(shown.pnl) / 40) * 100}%`,
+             background: stroke,
+           }} />
+      </div>
+
+      <div className="pnl-foot">
+        <span>{t('pnl.portfolioValue')} <strong>{fmt(shown.portfolioValue)}</strong></span>
+        <span>{t('pnl.realized')} <strong>{signed(shown.realizedPnl)}</strong></span>
+      </div>
+    </div>
+  )
 }
 
 function AreaSpark({ data, className }: { data: PricePoint[]; className: string }) {

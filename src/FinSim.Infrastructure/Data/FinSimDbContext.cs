@@ -21,6 +21,7 @@ namespace FinSim.Infrastructure.Data
         public DbSet<Transaction> Transactions => Set<Transaction>();
         public DbSet<AdminAdjustment> AdminAdjustments => Set<AdminAdjustment>();
         public DbSet<FundHolding> FundHoldings => Set<FundHolding>();
+        public DbSet<PortfolioSnapshot> PortfolioSnapshots => Set<PortfolioSnapshot>();
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -35,6 +36,24 @@ namespace FinSim.Infrastructure.Data
                 .WithMany()
                 .HasForeignKey(p => p.InstrumentId)
                 .OnDelete(DeleteBehavior.Cascade);
+            });
+            modelBuilder.Entity<PortfolioSnapshot>(e =>
+            {
+                e.Property(s => s.PortfolioValue).HasPrecision(18, 2);
+                e.Property(s => s.CashTotal).HasPrecision(18, 2);
+                e.Property(s => s.LongValue).HasPrecision(18, 2);
+                e.Property(s => s.ShortUnrealized).HasPrecision(18, 2);
+                e.Property(s => s.RealizedPnL).HasPrecision(18, 2);
+                e.Property(s => s.NetDeposits).HasPrecision(18, 2);
+
+                // Makes the daily capture idempotent at the database level, so a
+                // restart or a second instance can't write the same day twice.
+                e.HasIndex(s => new { s.UserId, s.Date }).IsUnique();
+
+                e.HasOne(s => s.User)
+                 .WithMany()
+                 .HasForeignKey(s => s.UserId)
+                 .OnDelete(DeleteBehavior.Cascade);
             });
             modelBuilder.Entity<FundRebalance>(e =>
             {
@@ -75,6 +94,7 @@ namespace FinSim.Infrastructure.Data
                 e.Property(u => u.LockedCashBalance).HasPrecision(18, 2);
                 e.Property(u => u.RealizedProfitLoss).HasPrecision(18, 2);
                 e.Property(u => u.MarginUsed).HasPrecision(18, 2);
+                e.Property(u => u.NetDeposits).HasPrecision(18, 2);
                 e.Property<uint>("Version")
                  .IsRowVersion()
                  .HasColumnName("xmin");

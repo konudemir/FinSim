@@ -128,9 +128,9 @@ input  { font-family: var(--mono); }
 
 .wrap {
   width: 100%;
-  max-width: 1180px;
+  max-width: 1650px;
   margin: 0 auto;
-  padding: 0 24px;
+  padding: 0 28px;
 }
 
 /* ── top rail ────────────────────────────────────────────── */
@@ -640,6 +640,39 @@ input  { font-family: var(--mono); }
   .row-body-in { margin: 0 14px 14px; }
 }
 
+/* ── terminal layout: boards left, pnl + history right ───────── */
+
+.terminal-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  align-items: start;
+  gap: 32px;
+}
+
+.terminal-left { min-width: 0; }
+
+.terminal-right {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  min-width: 0;
+}
+
+.history-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 24px;
+}
+
+@media (max-width: 1080px) {
+  .terminal-layout { grid-template-columns: minmax(0, 1fr); }
+  .history-row { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+}
+
+@media (max-width: 640px) {
+  .history-row { grid-template-columns: minmax(0, 1fr); }
+}
+
 /* ── order book / transaction history panels ────────────────── */
 
 .panels { grid-template-columns: repeat(3, 1fr); }
@@ -647,6 +680,7 @@ input  { font-family: var(--mono); }
 .panel-scroll {
   max-height: 420px;
   overflow-y: auto;
+  overflow-x: auto;
   scrollbar-width: thin;
   scrollbar-color: var(--edge) transparent;
 }
@@ -1617,3 +1651,20 @@ input  { font-family: var(--mono); }
   .row-px[data-tick] { animation: none; }
   * { transition-duration: 0.01ms !important; }
 }
+
+.pnl-panel { padding: 14px 16px 12px; border: var(--rail); background: var(--panel); }
+.pnl-ranges { display: flex; gap: 4px; }
+.pnl-ranges .ghost-btn { font-size: 11px; padding: 2px 8px; }
+.pnl-ranges .ghost-btn[aria-pressed="true"] { border-color: var(--mute); color: var(--bone); }
+
+.pnl-head { display: flex; align-items: baseline; gap: 10px; margin: 6px 0 10px; }
+.pnl-value { font-family: var(--mono); font-size: 24px; font-variant-numeric: tabular-nums; }
+.pnl-date { font-family: var(--mono); font-size: 11px; color: var(--faint); }
+
+.pnl-plot { position: relative; height: 160px; cursor: crosshair; }
+
+.pnl-foot {
+  display: flex; gap: 18px; margin-top: 8px;
+  font-family: var(--mono); font-size: 11px; color: var(--mute);
+}
+.pnl-foot strong { color: var(--bone); font-weight: 500; }

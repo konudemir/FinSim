@@ -12,5 +12,6 @@ namespace FinSim.Domain.Models
         public decimal RealizedProfitLoss { get; set; }
         public decimal MarginUsed { get; set; }
         public DateTimeOffset CreatedAt { get; set; }
+        public decimal NetDeposits { get; set; }//for profit loss
     }
 }

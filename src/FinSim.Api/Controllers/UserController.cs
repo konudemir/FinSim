@@ -27,5 +27,10 @@ namespace FinSim.Controllers
         [HttpGet("portfolio")]
         public async Task<IActionResult> GetPortfolio(CancellationToken ct) =>
             Ok(await _users.GetPortfolioAsync(CurrentUserId, ct));
+            
+        [HttpGet("pnl-history")]
+        public async Task<IActionResult> GetPnlHistory(
+            [FromQuery] int days = 90, CancellationToken ct = default) =>
+            Ok(await _users.GetPnlHistoryAsync(CurrentUserId, days, ct));
     }
 }
