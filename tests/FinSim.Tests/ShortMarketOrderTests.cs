@@ -102,13 +102,15 @@ public class ShortMarketOrderTests
             _ctx.UserId, _ctx.InstrumentId, 4, OrderDirection.Buy, _ct);
 
         // margin: locked-before 0.5x10x100=500, locked-after 0.5x6x100=300, release=200
-        // cash paid for the buyback: 4 x 80 = 320
+        // proceeds released: 4 x 100 = 400 (the ENTRY price — what was credited when
+        // these 4 were shorted), buyback costs 4 x 80 = 320, so 80 of gain lands in Free
         Assert.Equal(OrderResult.Success, result);
         Assert.Equal(-6, position.TotalQuantity);
         Assert.Equal(100m, position.AverageCost);     // covering never touches entry price
-        Assert.Equal(980m, user.LockedCashBalance);    // 1500 - 320 - 200
-        Assert.Equal(700m, user.FreeCashBalance);      // 500 + 200 released
+        Assert.Equal(900m, user.LockedCashBalance);    // 1500 - 400 proceeds - 200 margin
+        Assert.Equal(780m, user.FreeCashBalance);      // 500 + 400 - 320 + 200
         Assert.Equal(300m, user.MarginUsed);           // 500 - 200
+        Assert.Equal(80m, user.RealizedProfitLoss);    // (100 - 80) x 4
     }
 
     [Fact]
