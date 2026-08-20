@@ -4,12 +4,10 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
 #nullable disable
 
-#pragma warning disable CA1814 // Prefer jagged arrays over multidimensional
-
 namespace FinSim.Infrastructure.Migrations
 {
     /// <inheritdoc />
-    public partial class FixHektsSeed : Migration
+    public partial class InitialCreate : Migration
     {
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
@@ -37,7 +35,10 @@ namespace FinSim.Infrastructure.Migrations
                     LastName = table.Column<string>(type: "text", nullable: true),
                     FreeCashBalance = table.Column<decimal>(type: "numeric(18,2)", precision: 18, scale: 2, nullable: false),
                     LockedCashBalance = table.Column<decimal>(type: "numeric(18,2)", precision: 18, scale: 2, nullable: false),
+                    RealizedProfitLoss = table.Column<decimal>(type: "numeric(18,2)", precision: 18, scale: 2, nullable: false),
+                    MarginUsed = table.Column<decimal>(type: "numeric(18,2)", precision: 18, scale: 2, nullable: false),
                     CreatedAt = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: false),
+                    xmin = table.Column<uint>(type: "xid", rowVersion: true, nullable: false),
                     UserName = table.Column<string>(type: "character varying(256)", maxLength: 256, nullable: true),
                     NormalizedUserName = table.Column<string>(type: "character varying(256)", maxLength: 256, nullable: true),
                     Email = table.Column<string>(type: "character varying(256)", maxLength: 256, nullable: true),
@@ -63,11 +64,13 @@ namespace FinSim.Infrastructure.Migrations
                 columns: table => new
                 {
                     Id = table.Column<Guid>(type: "uuid", nullable: false),
-                    Symbol = table.Column<string>(type: "text", nullable: true),
-                    Name = table.Column<string>(type: "text", nullable: true),
+                    Type = table.Column<string>(type: "character varying(20)", maxLength: 20, nullable: false),
+                    Symbol = table.Column<string>(type: "text", nullable: false),
+                    Name = table.Column<string>(type: "text", nullable: false),
                     BasePrice = table.Column<decimal>(type: "numeric(18,2)", precision: 18, scale: 2, nullable: false),
                     CurrentPrice = table.Column<decimal>(type: "numeric(18,2)", precision: 18, scale: 2, nullable: false),
-                    IsActive = table.Column<bool>(type: "boolean", nullable: false)
+                    IsActive = table.Column<bool>(type: "boolean", nullable: false),
+                    Divisor = table.Column<decimal>(type: "numeric(18,6)", precision: 18, scale: 6, nullable: true)
                 },
                 constraints: table =>
                 {
@@ -181,6 +184,102 @@ namespace FinSim.Infrastructure.Migrations
                 });
 
             migrationBuilder.CreateTable(
+                name: "AdminAdjustments",
+                columns: table => new
+                {
+                    Id = table.Column<Guid>(type: "uuid", nullable: false),
+                    AdminUserId = table.Column<Guid>(type: "uuid", nullable: false),
+                    TargetUserId = table.Column<Guid>(type: "uuid", nullable: false),
+                    Type = table.Column<string>(type: "character varying(20)", maxLength: 20, nullable: false),
+                    InstrumentId = table.Column<Guid>(type: "uuid", nullable: true),
+                    CashDelta = table.Column<decimal>(type: "numeric(18,2)", precision: 18, scale: 2, nullable: true),
+                    QuantityDelta = table.Column<int>(type: "integer", nullable: true),
+                    Price = table.Column<decimal>(type: "numeric(18,2)", precision: 18, scale: 2, nullable: true),
+                    Reason = table.Column<string>(type: "text", nullable: true),
+                    CreatedAt = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_AdminAdjustments", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_AdminAdjustments_AspNetUsers_AdminUserId",
+                        column: x => x.AdminUserId,
+                        principalTable: "AspNetUsers",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "FK_AdminAdjustments_AspNetUsers_TargetUserId",
+                        column: x => x.TargetUserId,
+                        principalTable: "AspNetUsers",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "FK_AdminAdjustments_Instruments_InstrumentId",
+                        column: x => x.InstrumentId,
+                        principalTable: "Instruments",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Restrict);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "FundHoldings",
+                columns: table => new
+                {
+                    Id = table.Column<Guid>(type: "uuid", nullable: false),
+                    FundId = table.Column<Guid>(type: "uuid", nullable: false),
+                    ConstituentId = table.Column<Guid>(type: "uuid", nullable: false),
+                    Quantity = table.Column<int>(type: "integer", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_FundHoldings", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_FundHoldings_Instruments_ConstituentId",
+                        column: x => x.ConstituentId,
+                        principalTable: "Instruments",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "FK_FundHoldings_Instruments_FundId",
+                        column: x => x.FundId,
+                        principalTable: "Instruments",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "FundRebalances",
+                columns: table => new
+                {
+                    Id = table.Column<Guid>(type: "uuid", nullable: false),
+                    FundId = table.Column<Guid>(type: "uuid", nullable: false),
+                    AdminUserId = table.Column<Guid>(type: "uuid", nullable: false),
+                    NavBefore = table.Column<decimal>(type: "numeric(18,2)", precision: 18, scale: 2, nullable: false),
+                    NavAfter = table.Column<decimal>(type: "numeric(18,2)", precision: 18, scale: 2, nullable: false),
+                    DivisorBefore = table.Column<decimal>(type: "numeric(18,6)", precision: 18, scale: 6, nullable: false),
+                    DivisorAfter = table.Column<decimal>(type: "numeric(18,6)", precision: 18, scale: 6, nullable: false),
+                    PriceAtRebalance = table.Column<decimal>(type: "numeric(18,2)", precision: 18, scale: 2, nullable: false),
+                    Reason = table.Column<string>(type: "text", nullable: true),
+                    CreatedAt = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_FundRebalances", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_FundRebalances_AspNetUsers_AdminUserId",
+                        column: x => x.AdminUserId,
+                        principalTable: "AspNetUsers",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Restrict);
+                    table.ForeignKey(
+                        name: "FK_FundRebalances_Instruments_FundId",
+                        column: x => x.FundId,
+                        principalTable: "Instruments",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Restrict);
+                });
+
+            migrationBuilder.CreateTable(
                 name: "Orders",
                 columns: table => new
                 {
@@ -192,6 +291,8 @@ namespace FinSim.Infrastructure.Migrations
                     Direction = table.Column<string>(type: "character varying(20)", maxLength: 20, nullable: false),
                     Quantity = table.Column<int>(type: "integer", nullable: false),
                     Price = table.Column<decimal>(type: "numeric(18,2)", precision: 18, scale: 2, nullable: true),
+                    StopPrice = table.Column<decimal>(type: "numeric(18,2)", precision: 18, scale: 2, nullable: true),
+                    LockedAmount = table.Column<decimal>(type: "numeric(18,2)", precision: 18, scale: 2, nullable: false),
                     Status = table.Column<string>(type: "character varying(20)", maxLength: 20, nullable: false),
                     CreatedAt = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: false),
                     UpdatedAt = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: false)
@@ -242,6 +343,54 @@ namespace FinSim.Infrastructure.Migrations
                 });
 
             migrationBuilder.CreateTable(
+                name: "PriceHistory",
+                columns: table => new
+                {
+                    Id = table.Column<long>(type: "bigint", nullable: false)
+                        .Annotation("Npgsql:ValueGenerationStrategy", NpgsqlValueGenerationStrategy.IdentityByDefaultColumn),
+                    InstrumentId = table.Column<Guid>(type: "uuid", nullable: false),
+                    Price = table.Column<decimal>(type: "numeric(18,2)", precision: 18, scale: 2, nullable: false),
+                    Timestamp = table.Column<DateTime>(type: "timestamp with time zone", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_PriceHistory", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_PriceHistory_Instruments_InstrumentId",
+                        column: x => x.InstrumentId,
+                        principalTable: "Instruments",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                });
+
+            migrationBuilder.CreateTable(
+                name: "FundRebalanceLines",
+                columns: table => new
+                {
+                    Id = table.Column<Guid>(type: "uuid", nullable: false),
+                    FundRebalanceId = table.Column<Guid>(type: "uuid", nullable: false),
+                    ConstituentId = table.Column<Guid>(type: "uuid", nullable: false),
+                    QuantityBefore = table.Column<int>(type: "integer", nullable: false),
+                    QuantityAfter = table.Column<int>(type: "integer", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_FundRebalanceLines", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_FundRebalanceLines_FundRebalances_FundRebalanceId",
+                        column: x => x.FundRebalanceId,
+                        principalTable: "FundRebalances",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                    table.ForeignKey(
+                        name: "FK_FundRebalanceLines_Instruments_ConstituentId",
+                        column: x => x.ConstituentId,
+                        principalTable: "Instruments",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Restrict);
+                });
+
+            migrationBuilder.CreateTable(
                 name: "Transactions",
                 columns: table => new
                 {
@@ -252,6 +401,7 @@ namespace FinSim.Infrastructure.Migrations
                     ExecutedQuantity = table.Column<int>(type: "integer", nullable: false),
                     ExecutedPrice = table.Column<decimal>(type: "numeric(18,2)", precision: 18, scale: 2, nullable: false),
                     TotalAmount = table.Column<decimal>(type: "numeric(18,2)", precision: 18, scale: 2, nullable: false),
+                    RealizedPnL = table.Column<decimal>(type: "numeric(18,2)", precision: 18, scale: 2, nullable: true),
                     TransactionDate = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: false)
                 },
                 constraints: table =>
@@ -277,35 +427,20 @@ namespace FinSim.Infrastructure.Migrations
                         onDelete: ReferentialAction.Restrict);
                 });
 
-            migrationBuilder.InsertData(
-                table: "Instruments",
-                columns: new[] { "Id", "BasePrice", "CurrentPrice", "IsActive", "Name", "Symbol" },
-                values: new object[,]
-                {
-                    { new Guid("10000000-0000-0000-0000-000000000001"), 14m, 14m, true, "İş Bankası (C)", "ISCTR" },
-                    { new Guid("10000000-0000-0000-0000-000000000002"), 260m, 260m, true, "Tofaş Otomobil Fabrikası", "TOASO" },
-                    { new Guid("10000000-0000-0000-0000-000000000003"), 140m, 140m, true, "Arçelik", "ARCLK" },
-                    { new Guid("10000000-0000-0000-0000-000000000004"), 48m, 48m, true, "Türk Telekom", "TTKOM" },
-                    { new Guid("10000000-0000-0000-0000-000000000005"), 27m, 27m, true, "VakıfBank", "VAKBN" },
-                    { new Guid("10000000-0000-0000-0000-000000000006"), 21m, 21m, true, "Petkim", "PETKM" },
-                    { new Guid("10000000-0000-0000-0000-000000000007"), 58m, 58m, true, "Enka İnşaat", "ENKAI" },
-                    { new Guid("10000000-0000-0000-0000-000000000008"), 520m, 520m, true, "Migros Ticaret", "MGROS" },
-                    { new Guid("11111111-1111-1111-1111-111111111111"), 100m, 100m, true, "Türk Hava Yolları", "THYAO" },
-                    { new Guid("22222222-2222-2222-2222-222222222222"), 40m, 40m, true, "Aselsan", "ASELS" },
-                    { new Guid("33333333-3333-3333-3333-333333333333"), 110m, 110m, true, "Garanti BBVA", "GARAN" },
-                    { new Guid("44444444-4444-4444-4444-444444444444"), 155m, 155m, true, "Tüpraş", "TUPRS" },
-                    { new Guid("55555555-5555-5555-5555-555555555555"), 45m, 45m, true, "Akbank", "AKBNK" },
-                    { new Guid("66666666-6666-6666-6666-666666666666"), 50m, 50m, true, "Erdemir Ereğli Demir Çelik", "EREGL" },
-                    { new Guid("77777777-7777-7777-7777-777777777777"), 380m, 380m, true, "BİM Birleşik Mağazalar", "BIMAS" },
-                    { new Guid("88888888-8888-8888-8888-888888888888"), 55m, 55m, true, "Şişecam", "SISE" },
-                    { new Guid("99999999-9999-9999-9999-999999999999"), 190m, 190m, true, "Koç Holding", "KCHOL" },
-                    { new Guid("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"), 95m, 95m, true, "Sabancı Holding", "SAHOL" },
-                    { new Guid("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb"), 1100m, 1100m, true, "Ford Otosan", "FROTO" },
-                    { new Guid("cccccccc-cccc-cccc-cccc-cccccccccccc"), 25m, 25m, true, "Yapı Kredi Bankası", "YKBNK" },
-                    { new Guid("dddddddd-dddd-dddd-dddd-dddddddddddd"), 4m, 4m, true, "Hektaş", "HEKTS" },
-                    { new Guid("eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee"), 220m, 220m, true, "Pegasus Hava Yolları", "PGSUS" },
-                    { new Guid("ffffffff-ffff-ffff-ffff-ffffffffffff"), 95m, 95m, true, "Turkcell", "TCELL" }
-                });
+            migrationBuilder.CreateIndex(
+                name: "IX_AdminAdjustments_AdminUserId",
+                table: "AdminAdjustments",
+                column: "AdminUserId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_AdminAdjustments_InstrumentId",
+                table: "AdminAdjustments",
+                column: "InstrumentId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_AdminAdjustments_TargetUserId",
+                table: "AdminAdjustments",
+                column: "TargetUserId");
 
             migrationBuilder.CreateIndex(
                 name: "IX_AspNetRoleClaims_RoleId",
@@ -345,6 +480,37 @@ namespace FinSim.Infrastructure.Migrations
                 unique: true);
 
             migrationBuilder.CreateIndex(
+                name: "IX_FundHoldings_ConstituentId",
+                table: "FundHoldings",
+                column: "ConstituentId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_FundHoldings_FundId_ConstituentId",
+                table: "FundHoldings",
+                columns: new[] { "FundId", "ConstituentId" },
+                unique: true);
+
+            migrationBuilder.CreateIndex(
+                name: "IX_FundRebalanceLines_ConstituentId",
+                table: "FundRebalanceLines",
+                column: "ConstituentId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_FundRebalanceLines_FundRebalanceId",
+                table: "FundRebalanceLines",
+                column: "FundRebalanceId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_FundRebalances_AdminUserId",
+                table: "FundRebalances",
+                column: "AdminUserId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_FundRebalances_FundId_CreatedAt",
+                table: "FundRebalances",
+                columns: new[] { "FundId", "CreatedAt" });
+
+            migrationBuilder.CreateIndex(
                 name: "IX_Orders_InstrumentId",
                 table: "Orders",
                 column: "InstrumentId");
@@ -370,6 +536,11 @@ namespace FinSim.Infrastructure.Migrations
                 column: "UserId");
 
             migrationBuilder.CreateIndex(
+                name: "IX_PriceHistory_InstrumentId_Timestamp",
+                table: "PriceHistory",
+                columns: new[] { "InstrumentId", "Timestamp" });
+
+            migrationBuilder.CreateIndex(
                 name: "IX_Transactions_InstrumentId",
                 table: "Transactions",
                 column: "InstrumentId");
@@ -389,6 +560,9 @@ namespace FinSim.Infrastructure.Migrations
         protected override void Down(MigrationBuilder migrationBuilder)
         {
             migrationBuilder.DropTable(
+                name: "AdminAdjustments");
+
+            migrationBuilder.DropTable(
                 name: "AspNetRoleClaims");
 
             migrationBuilder.DropTable(
@@ -404,13 +578,25 @@ namespace FinSim.Infrastructure.Migrations
                 name: "AspNetUserTokens");
 
             migrationBuilder.DropTable(
+                name: "FundHoldings");
+
+            migrationBuilder.DropTable(
+                name: "FundRebalanceLines");
+
+            migrationBuilder.DropTable(
                 name: "PortfolioItems");
+
+            migrationBuilder.DropTable(
+                name: "PriceHistory");
 
             migrationBuilder.DropTable(
                 name: "Transactions");
 
             migrationBuilder.DropTable(
                 name: "AspNetRoles");
+
+            migrationBuilder.DropTable(
+                name: "FundRebalances");
 
             migrationBuilder.DropTable(
                 name: "Orders");
