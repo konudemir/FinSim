@@ -46,8 +46,10 @@ type Order = {
   createdAt: string
   lockedAmount: number | null
   executedAmount: number | null
+  expiresAt: string | null
   liquidated: boolean
 }
+
 
 type Transaction = {
   id: string
@@ -95,6 +97,9 @@ type OrderUpdate = {
 // "42,5" -> 42.5 ; "" / "42." / "abc" -> NaN
 const parseDecimal = (s: string) => parseFloat(s.replace(',', '.'))
 
+// blank expiry field -> 0
+const parseExpiryPart = (s: string) => (s === '' ? 0 : parseInt(s, 10))
+
 const signed = (n: number) => (n >= 0 ? '+' : '−') + fmt(Math.abs(n))
 
 const dirOf = (n: number) => (n > 0 ? 'up' : n < 0 ? 'down' : 'flat')
@@ -113,8 +118,21 @@ function Money({ value }: { value: number }) {
   )
 }
 
-function OrderTable({ orders, pending, onCancel }: {
-  orders: Order[]; pending: boolean; onCancel: (id: string) => void
+// null past/absent deadlines — absence is the common case and shouldn't add noise.
+const countdown = (expiresAt: string, now: number): string | null => {
+  const ms = new Date(expiresAt).getTime() - now
+  if (ms <= 0) return null
+  const totalMinutes = Math.floor(ms / 60000)
+  const hours = Math.floor(totalMinutes / 60)
+  const minutes = totalMinutes % 60
+  return hours > 0 ? `${hours}h ${minutes}m` : `${minutes}m`
+}
+
+function OrderTable({ orders, pending, now, onCancel, onReplace, replacing }: {
+  orders: Order[]; pending: boolean; now: number
+  onCancel: (id: string) => void
+  onReplace: (id: string) => void
+  replacing: Set<string>
 }) {
   const { t } = useLang()
   return (
@@ -134,7 +152,7 @@ function OrderTable({ orders, pending, onCancel }: {
         </thead>
         <tbody>
           {orders.map(o => (
-            <tr key={o.id}>
+            <tr key={o.id} className={o.status === 'Expired' ? 'expired' : undefined}>
               <td className="sym">{o.symbol}</td>
               <td className="hide-sm">{o.orderType === 'Market' ? t('order.market') : t('order.limit')}</td>
               <td className={o.direction === 'Buy' ? 'up' : 'down'}>
@@ -149,7 +167,12 @@ function OrderTable({ orders, pending, onCancel }: {
               </td>
               {pending ? (
                 <>
-                  <td className="num">{o.lockedAmount != null ? fmt(o.lockedAmount) : '—'}</td>
+                  <td className="num">
+                    {o.lockedAmount != null ? fmt(o.lockedAmount) : '—'}
+                    {o.expiresAt != null && countdown(o.expiresAt, now) != null && (
+                      <div className="expiry-countdown">{t('ledger.expiresIn', { n: countdown(o.expiresAt, now)! })}</div>
+                    )}
+                  </td>
                   <td className="num">
                     <button className="link-btn" onClick={() => onCancel(o.id)}>{t('ledger.cancel')}</button>
                   </td>
@@ -160,8 +183,19 @@ function OrderTable({ orders, pending, onCancel }: {
                     <span className={`pill ${o.status.toLowerCase()}`}>
                       {o.status === 'Filled' ? t('status.filled')
                      : o.status === 'Rejected' ? t('status.rejected')
+                     : o.status === 'Expired' ? t('status.expired')
                      : t('status.cancelled')}
                     </span>
+                    {o.status === 'Expired' && (
+                      <button
+                        className="link-btn"
+                        style={{ marginLeft: 8 }}
+                        disabled={replacing.has(o.id)}
+                        onClick={() => onReplace(o.id)}
+                      >
+                        {t('ledger.replace')}
+                      </button>
+                    )}
                   </td>
                   <td className="num">{o.executedAmount != null ? fmt(o.executedAmount) : '—'}</td>
                 </>
@@ -277,9 +311,14 @@ const seeded = useRef<Set<string>>(new Set())
   const [qty, setQty] = useState('1')
   const [limitPrice, setLimitPrice] = useState('')
   const [stopPrice, setStopPrice] = useState('')
+  const [expiryDays, setExpiryDays] = useState('')
+  const [expiryHours, setExpiryHours] = useState('')
+  const [expiryMinutes, setExpiryMinutes] = useState('')
   const [notice, setNotice] = useState('')
   const [busy, setBusy] = useState(false)
   const [liquidations, setLiquidations] = useState<LiquidationAlert[]>([])
+  const [now, setNow] = useState(() => Date.now())
+  const [replacing, setReplacing] = useState<Set<string>>(new Set())
 
   const [ticks, setTicks] = useState<Record<string, Tick>>({})
   const prevPrices = useRef<Record<string, number>>({})
@@ -330,6 +369,7 @@ const seeded = useRef<Set<string>>(new Set())
       .build()
 
     conn.on('PriceUpdate', (payload: PriceUpdate) => {
+      setNow(Date.now())
       setMarketMove(payload.marketMove)
       setIndexValue(payload.indexValue)
 
@@ -473,7 +513,13 @@ const seeded = useRef<Set<string>>(new Set())
         setNotice(t('err.minPrice'))
         return
       }
-      body = { ...body, price }
+      body = {
+        ...body,
+        price,
+        expiryDays: parseExpiryPart(expiryDays),
+        expiryHours: parseExpiryPart(expiryHours),
+        expiryMinutes: parseExpiryPart(expiryMinutes),
+      }
       url = '/api/order/limit'
 
       // Stop yalnizca satista anlamli: fiyat asagi gecerse panik satis.
@@ -495,7 +541,10 @@ const seeded = useRef<Set<string>>(new Set())
     setBusy(true)
     try {
       await api.post(url, body)
-      if (mode === 'limit') { setLimitPrice(''); setStopPrice('') }
+      if (mode === 'limit') {
+        setLimitPrice(''); setStopPrice('')
+        setExpiryDays(''); setExpiryHours(''); setExpiryMinutes('')
+      }
     } catch (e: any) {
       setNotice(e.response ? tServer(e.response.data) : t('err.orderFailed'))
     } finally {
@@ -515,6 +564,23 @@ const seeded = useRef<Set<string>>(new Set())
       setNotice(e.response ? tServer(e.response.data) : t('err.cancelFailed'))
     }
     loadBalance(); loadPortfolio(); loadOrders(); loadTransactions()
+  }
+
+  const replaceOrder = async (id: string) => {
+    setNotice('')
+    setReplacing(prev => new Set(prev).add(id))
+    try {
+      await api.post(`/api/order/${id}/replace`)
+      loadBalance(); loadPortfolio(); loadOrders(); loadTransactions()
+    } catch (e: any) {
+      setNotice(e.response ? tServer(e.response.data) : t('err.orderFailed'))
+    } finally {
+      setReplacing(prev => {
+        const next = new Set(prev)
+        next.delete(id)
+        return next
+      })
+    }
   }
 
   const dismissLiquidation = (id: string) =>
@@ -731,7 +797,14 @@ const loadHistory = (i: Instrument) => {
             {pendingOrders.length === 0 ? (
               <div className="empty-state">{t('pending.empty')}</div>
             ) : (
-              <OrderTable orders={pendingOrders} pending onCancel={cancelOrder} />
+              <OrderTable
+                orders={pendingOrders}
+                pending
+                now={now}
+                onCancel={cancelOrder}
+                onReplace={replaceOrder}
+                replacing={replacing}
+              />
             )}
           </div>
 
@@ -744,7 +817,14 @@ const loadHistory = (i: Instrument) => {
             {pastOrders.length === 0 ? (
               <div className="empty-state">{t('ledger.empty')}</div>
             ) : (
-              <OrderTable orders={pastOrders} pending={false} onCancel={cancelOrder} />
+              <OrderTable
+                orders={pastOrders}
+                pending={false}
+                now={now}
+                onCancel={cancelOrder}
+                onReplace={replaceOrder}
+                replacing={replacing}
+              />
             )}
           </div>
 
@@ -876,6 +956,54 @@ const loadHistory = (i: Instrument) => {
                 if (e.key === 'Enter') { e.preventDefault(); submit('Sell') }
               }}
             />
+          </div>
+
+          <div className="ticket-slot" style={{ minWidth: 172 }}>
+            <span className="field-label">{t('ticket.expiry')}</span>
+            <div className="expiry-fields">
+              <input
+                className="field-input"
+                type="text"
+                inputMode="numeric"
+                placeholder="0"
+                aria-label={t('ticket.expiryDays')}
+                disabled={mode !== 'limit'}
+                value={mode === 'limit' ? expiryDays : ''}
+                onChange={e => {
+                  const v = e.target.value
+                  if (v === '' || /^\d+$/.test(v)) setExpiryDays(v)
+                }}
+              />
+              <span className="expiry-unit">{t('ticket.expiryDaysAbbr')}</span>
+              <input
+                className="field-input"
+                type="text"
+                inputMode="numeric"
+                placeholder="0"
+                aria-label={t('ticket.expiryHours')}
+                disabled={mode !== 'limit'}
+                value={mode === 'limit' ? expiryHours : ''}
+                onChange={e => {
+                  const v = e.target.value
+                  if (v === '' || /^\d+$/.test(v)) setExpiryHours(v)
+                }}
+              />
+              <span className="expiry-unit">{t('ticket.expiryHoursAbbr')}</span>
+              <input
+                className="field-input"
+                type="text"
+                inputMode="numeric"
+                placeholder="0"
+                aria-label={t('ticket.expiryMinutes')}
+                disabled={mode !== 'limit'}
+                value={mode === 'limit' ? expiryMinutes : ''}
+                onChange={e => {
+                  const v = e.target.value
+                  if (v === '' || /^\d+$/.test(v)) setExpiryMinutes(v)
+                }}
+              />
+              <span className="expiry-unit">{t('ticket.expiryMinutesAbbr')}</span>
+            </div>
           </div>
 
           {marginPreview !== null && (

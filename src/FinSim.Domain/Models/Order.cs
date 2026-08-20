@@ -19,6 +19,9 @@ namespace FinSim.Domain.Models
         public OrderStatus Status { get; set; } = OrderStatus.Pending;
         public DateTimeOffset CreatedAt { get; set; }
         public DateTimeOffset UpdatedAt { get; set; }
+        
+        public DateTimeOffset? ExpiresAt { get; set; }
+        public Guid? ReplacedFromOrderId { get; set; }
 
         public User User { get; set; } = null!;
         public Instrument Instrument { get; set; } = null!;

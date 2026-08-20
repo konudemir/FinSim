@@ -148,8 +148,16 @@ public class OrderService
 
     public async Task<(OrderResult Result, PlacedOrderDto? Order)> PlaceLimitOrderAsync(
         Guid userId, Guid instrumentId, int quantity, decimal limitPrice,
-        decimal? stopPrice, OrderDirection direction, CancellationToken ct)
+        decimal? stopPrice, OrderDirection direction, CancellationToken ct,
+        int expiryDays = 0, int expiryHours = 0, int expiryMinutes = 0, Guid? replacedFromOrderId = null)
     {
+        // Blank fields arrive as 0; all three at 0 means the order never expires.
+        if (expiryDays < 0 || expiryHours < 0 || expiryMinutes < 0)
+            return (OrderResult.InvalidExpiry, null);
+        var expiryDuration = TimeSpan.FromDays(expiryDays)
+                            + TimeSpan.FromHours(expiryHours)
+                            + TimeSpan.FromMinutes(expiryMinutes);
+
         var user = await _users.GetByIdAsync(userId, ct);
         if (user is null) return (OrderResult.UserNotFound, null);
 
@@ -233,7 +241,12 @@ public class OrderService
             Status = OrderStatus.Pending,
             CreatedAt = DateTimeOffset.UtcNow,
             UpdatedAt = DateTimeOffset.UtcNow,
-            LockedAmount = lockedAmount
+            LockedAmount = lockedAmount,
+            // Absolute deadline, not a stored duration — a restart must not shift it.
+            ExpiresAt = expiryDuration > TimeSpan.Zero
+                ? DateTimeOffset.UtcNow + expiryDuration
+                : null,
+            ReplacedFromOrderId = replacedFromOrderId
         };
         _orders.Add(order);
 
@@ -252,40 +265,37 @@ public class OrderService
         var user = await _users.GetByIdAsync(order.UserId, ct);
         if (user is null) return OrderResult.UserNotFound;
 
-        if (order.Direction == OrderDirection.Buy && order.LockedAmount > 0)
-        {
-            // Release exactly what was held. Recomputing from Price * Quantity is
-            // what produced the leftover kuruş: the multiply was rounded at a
-            // different point than it was when the funds were locked.
-            user.LockedCashBalance -= order.LockedAmount;
-            user.FreeCashBalance += order.LockedAmount;
-        }
-        else if (order.Direction == OrderDirection.Buy) // cover buy that reserved shares of the short, not cash
-        {
-            var portItem = await _portfolio.GetAsync(order.UserId, order.InstrumentId, ct);
-            if (portItem is null) return OrderResult.NoPosition;
+        var portItem = await _portfolio.GetAsync(order.UserId, order.InstrumentId, ct);
+        if (!OrderReleaseExecutor.Release(user, order, portItem))
+            return OrderResult.NoPosition;
 
-            portItem.LockedQuantity -= order.Quantity;
-        }
-        else if (order.LockedAmount > 0) // short sell that reserved margin, not shares
-        {
-            user.LockedCashBalance -= order.LockedAmount;
-            user.FreeCashBalance += order.LockedAmount;
-            user.MarginUsed -= order.LockedAmount;
-        }
-        else // ordinary sell against a long position
-        {
-            var portItem = await _portfolio.GetAsync(order.UserId, order.InstrumentId, ct);
-            if (portItem is null) return OrderResult.NoPosition;
-
-            portItem.LockedQuantity -= order.Quantity;
-        }
-
-        order.Status = OrderStatus.Cancelled;
+        order.Status    = OrderStatus.Cancelled;
         order.UpdatedAt = DateTimeOffset.UtcNow;
+
         return await _orders.TrySaveChangesAsync(ct)
             ? OrderResult.Success
             : OrderResult.NotCancellable;   // worker filled it first
+    }
+
+    /// <summary>
+    /// Re-places an expired order as a brand-new one, running the full validation
+    /// and locking path fresh. The old row is never resurrected or mutated — between
+    /// placement and expiry the user's cash may be spent, the instrument may be
+    /// delisted, or the stop price may now sit above market, and a revived order
+    /// would skip all of those checks.
+    /// </summary>
+    public async Task<(OrderResult Result, PlacedOrderDto? Order)> ReplaceAsync(
+        Guid userId, Guid orderId, CancellationToken ct,
+        int expiryDays = 0, int expiryHours = 0, int expiryMinutes = 0)
+    {
+        var order = await _orders.GetByIdAsync(orderId, ct);
+        if (order is null || order.UserId != userId) return (OrderResult.OrderNotFound, null);
+        if (order.Status != OrderStatus.Expired) return (OrderResult.NotExpired, null);
+
+        return await PlaceLimitOrderAsync(
+            userId, order.InstrumentId, order.Quantity, order.Price ?? 0m,
+            order.StopPrice, order.Direction, ct,
+            expiryDays, expiryHours, expiryMinutes, replacedFromOrderId: order.Id);
     }
 
     public async Task<List<OrderDto>> GetRecentAsync(Guid userId, CancellationToken ct)
@@ -297,19 +307,12 @@ public class OrderService
 var instruments = (await _instruments.GetActiveAsync(ct)).ToDictionary(i => i.Id);
         var totals = await _transactions.GetTotalsByOrderIdsAsync(orders.Select(o => o.Id), ct);
 
-        return orders.Select(o => new OrderDto(
-        o.Id,
-        instruments.TryGetValue(o.InstrumentId, out var i) ? i.Symbol! : "?",
-        o.OrderType.ToString(),
-        o.Direction.ToString(),
-        o.Quantity,
-        o.Price,
-        o.StopPrice,
-        o.Status.ToString(),
-        o.CreatedAt,
-        o.Status == OrderStatus.Pending && o.Direction == OrderDirection.Buy
-            ? o.LockedAmount
-            : null,
-        totals.TryGetValue(o.Id, out var spent) ? spent : null)).ToList();
+        return orders.Select(o => OrderDtoMapper.ToDto(
+            o,
+            instruments.TryGetValue(o.InstrumentId, out var i) ? i.Symbol! : "?",
+            lockedAmount: o.Status == OrderStatus.Pending && o.Direction == OrderDirection.Buy
+                ? o.LockedAmount
+                : null,
+            executedAmount: totals.TryGetValue(o.Id, out var spent) ? spent : null)).ToList();
     }
 }

@@ -17,6 +17,13 @@ namespace FinSim.Infrastructure.Repositories
             .OrderByDescending(o => o.CreatedAt)
             .ToListAsync(ct);
 
+        public Task<List<Order>> GetExpiredPendingAsync(DateTimeOffset now, CancellationToken ct) =>
+            _db.Orders
+               .Where(o => o.Status == OrderStatus.Pending
+                        && o.ExpiresAt != null
+                        && o.ExpiresAt <= now)
+               .ToListAsync(ct);
+
         public Task<List<Order>> GetPendingLimitOrdersAsync(CancellationToken ct) =>
             _db.Orders
                .Where(o => o.Status == OrderStatus.Pending && o.OrderType == OrderType.Limit)

@@ -54,6 +54,7 @@ builder.Services.AddScoped<AdminService>();
 builder.Services.AddSignalR();
 builder.Services.AddScoped<IFundRepository, FundRepository>();
 builder.Services.AddScoped<FundService>();
+builder.Services.AddScoped<OrderExpiryEngine>();
 
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>

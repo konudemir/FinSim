@@ -62,12 +62,15 @@ namespace FinSim.Api.Services
                     var matcher = sp.GetRequiredService<OrderCheckEngine>();
                     var margin  = sp.GetRequiredService<MarginEngine>();
                     var users   = sp.GetRequiredService<UserService>();
+                    var expiry  = sp.GetRequiredService<OrderExpiryEngine>();
 
                     await using var tx = await db.Database.BeginTransactionAsync(stoppingToken);
 
-                    var tick      = await prices.TickAsync(_bias, stoppingToken);
-                    var touched   = await matcher.MatchAsync(tick.Instruments, stoppingToken);
+                    var tick       = await prices.TickAsync(_bias, stoppingToken);
+                    var expired    = await expiry.SweepAsync(stoppingToken);
+                    var touched    = await matcher.MatchAsync(tick.Instruments, stoppingToken);
                     var liquidated = await margin.CheckAsync(tick.Instruments, stoppingToken);
+                    touched.AddRange(expired);
                     touched.AddRange(liquidated);
 
                     var stamp = DateTime.UtcNow;

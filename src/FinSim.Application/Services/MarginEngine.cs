@@ -106,18 +106,7 @@ public class MarginEngine
         var (order, realized, amount) = ForcedCoverExecutor.CoverEntirely(
             _orders, _portfolio, _transactions, user, position, instrument);
 
-        return new OrderOutcome(user.Id, new OrderDto(
-            order.Id,
-            instrument.Symbol,
-            order.OrderType.ToString(),
-            order.Direction.ToString(),
-            order.Quantity,
-            order.Price,
-            order.StopPrice,
-            order.Status.ToString(),
-            order.CreatedAt,
-            null,
-            amount,
-            Liquidated: true));
+        return new OrderOutcome(user.Id, OrderDtoMapper.ToDto(
+            order, instrument.Symbol, executedAmount: amount, liquidated: true));
     }
 }
