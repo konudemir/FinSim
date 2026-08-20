@@ -68,10 +68,18 @@ public class OrderService
                 var quantityAfter = quantityBefore - quantity;
                 var release = MarginCalculator.ReleaseOnCover(quantityBefore, quantityAfter, entry);
 
-                user.LockedCashBalance -= total;     // paid out of the short's own locked proceeds
+                // Release what was actually credited when these shares were shorted —
+                // the ENTRY notional, not what they cost to buy back. The difference
+                // between the two is the realized P&L and belongs in Free.
+                var proceedsReleased = Money(entry * quantity);
+
+                user.LockedCashBalance -= proceedsReleased;
+                user.FreeCashBalance   += proceedsReleased;
+                user.FreeCashBalance   -= total;     // buy the shares back at the current price
+
                 user.LockedCashBalance -= release;   // margin no longer needed for the covered shares
-                user.FreeCashBalance += release;
-                user.MarginUsed -= release;
+                user.FreeCashBalance   += release;
+                user.MarginUsed        -= release;
             }
             else
             {
