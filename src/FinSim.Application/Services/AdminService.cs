@@ -76,6 +76,10 @@ public class AdminService
 
         user.FreeCashBalance += amount;
 
+        // Outside money in or out — never profit. Without this the grant lands
+        // on the P&L chart as a vertical jump the user didn't earn.
+        user.NetDeposits += amount;
+
         _audit.Add(new AdminAdjustment
         {
             Id = Guid.NewGuid(),
@@ -130,6 +134,12 @@ public class AdminService
             if (position.TotalQuantity == 0)
                 _portfolio.Remove(position);
         }
+
+        // Same reasoning as cash: an inventory correction is a deposit of value,
+        // benchmarked at the price the grant was made at. A negative delta
+        // reduces NetDeposits symmetrically — removing shares is a withdrawal,
+        // not a loss.
+        user.NetDeposits += Money(quantityDelta * price);
 
         _audit.Add(new AdminAdjustment
         {

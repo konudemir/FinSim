@@ -17,4 +17,15 @@ public record BalanceDto(
     decimal RealizedProfitLoss,
     decimal Total,
     decimal MarginUsed,
+    decimal NetDeposits,
     bool IsAdmin = false);
+/// <summary>
+/// One point on the P&L chart. IsLive marks today's point, which is computed
+/// from current prices rather than read from a snapshot row.
+/// </summary>
+public record PnlPointDto(
+    DateOnly Date,
+    decimal PortfolioValue,
+    decimal Pnl,
+    decimal RealizedPnl,
+    bool IsLive);

@@ -226,6 +226,15 @@ const tr = {
   'pending.title': 'Open Orders',
   'pending.note': 'all',
   'pending.empty': 'No open orders.',
+  
+  'pnl.title': 'Kâr/Zarar Geçmişi',
+  'pnl.live': 'canlı',
+  'pnl.empty': 'Henüz geçmiş yok — ilk kayıt yarın alınacak.',
+  'pnl.portfolioValue': 'Portföy',
+  'pnl.realized': 'Gerçekleşen',
+  'pnl.range.30': '30G',
+  'pnl.range.90': '90G',
+  'pnl.range.365': '1Y',
 }
 
 const en: typeof tr = {
@@ -451,6 +460,15 @@ const en: typeof tr = {
   'pending.title': 'Open Orders',
   'pending.note': 'all',
   'pending.empty': 'No open orders.',
+
+  'pnl.title': 'P&L History',
+  'pnl.live': 'live',
+  'pnl.empty': 'No history yet — the first record is taken tomorrow.',
+  'pnl.portfolioValue': 'Portfolio',
+  'pnl.realized': 'Realized',
+  'pnl.range.30': '30D',
+  'pnl.range.90': '90D',
+  'pnl.range.365': '1Y',
 }
 
 export type LangKey = keyof typeof tr

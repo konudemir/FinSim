@@ -45,6 +45,7 @@ public class AuthService
             FirstName = req.FirstName,
             LastName = req.LastName,
             FreeCashBalance = 80_000m,
+            NetDeposits     = 80_000m,
             LockedCashBalance = 0,
             CreatedAt = DateTimeOffset.UtcNow
         };
