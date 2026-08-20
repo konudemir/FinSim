@@ -475,22 +475,17 @@ const seeded = useRef<Set<string>>(new Set())
     return out
   }, [portfolio, instruments])
 
-  // Mirrors PortfolioValueCalculator.Value on the server. Deliberately NOT the
-  // same arithmetic as `equity` below: a short contributes (avgCost − price)×|qty|
-  // here, because opening it never credited proceeds to cash.
   const livePnl = useMemo(() => {
     if (!balance) return null
 
-    let longValue = 0
-    let shortUnrealized = 0
-    for (const p of Object.values(livePortfolio)) {
-      if (p.totalQuantity > 0) longValue += p.currentPrice * p.totalQuantity
-      else if (p.totalQuantity < 0)
-        shortUnrealized += (p.averageCost - p.currentPrice) * -p.totalQuantity
-    }
+    // price × quantity across the board — a short's quantity is negative, so the
+    // shares owed subtract themselves. Matches PortfolioValueCalculator exactly.
+    let positionValue = 0
+    for (const p of Object.values(livePortfolio))
+      positionValue += p.currentPrice * p.totalQuantity
 
     const portfolioValue =
-      balance.freeCashBalance + balance.lockedCashBalance + longValue + shortUnrealized
+      balance.freeCashBalance + balance.lockedCashBalance + positionValue
 
     return {
       portfolioValue,

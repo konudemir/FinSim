@@ -31,7 +31,7 @@ public static class PortfolioValueCalculator
     {
         var cash = user.FreeCashBalance + user.LockedCashBalance;
 
-        decimal longValue = 0m, shortUnrealized = 0m;
+        decimal longValue = 0m, shortLiability = 0m;
 
         foreach (var p in positions)
         {
@@ -47,21 +47,22 @@ public static class PortfolioValueCalculator
             }
             else
             {
-                // Opening a short never credited proceeds to cash — only margin
-                // was locked — so the position's contribution is the gain against
-                // its entry price, not a negative market value.
-                shortUnrealized += (p.AverageCost - price) * -p.TotalQuantity;
+                // Opening a short DID credit proceeds to LockedCashBalance, so they
+                // are already inside `cash`. What's missing is the other half: the
+                // shares owed. Value the debt at the current price and subtract it —
+                // the unrealized gain then falls out as (proceeds − liability).
+                shortLiability += price * -p.TotalQuantity;
             }
         }
 
-        cash            = Money(cash);
-        longValue       = Money(longValue);
-        shortUnrealized = Money(shortUnrealized);
+        cash           = Money(cash);
+        longValue      = Money(longValue);
+        shortLiability = Money(shortLiability);
 
         // LockedCashBalance already contains MarginUsed; adding it again would
         // inflate every short-holder's chart.
         return new PortfolioValuation(
-            cash, longValue, shortUnrealized, cash + longValue + shortUnrealized);
+            cash, longValue, shortLiability, cash + longValue - shortLiability);
     }
 
     /// <summary>Profit against what was put in from outside. The number the chart plots.</summary>
