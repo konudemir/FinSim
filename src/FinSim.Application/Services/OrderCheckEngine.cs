@@ -128,8 +128,25 @@ namespace FinSim.Application.Services
                             OrderDirection.Sell, o.Quantity, market).Realized;
                         user.FreeCashBalance += amount;
                     }
-                    else // opening or adding to a short — margin was already reserved at placement
+                    else // opening or adding to a short
                     {
+                        // Margin was reserved at the LIMIT price, but the position's entry —
+                        // and therefore ReleaseOnCover — will be the FILL price. True the lock
+                        // up here or the release later won't match what was held.
+                        var actualMargin = MarginCalculator.InitialMargin(o.Quantity, market);
+                        var topUp = actualMargin - o.LockedAmount;
+
+                        if (topUp > 0 && user.FreeCashBalance < topUp)
+                        {
+                            touched.Add(Reject(o, user, portItem, instrument, "insufficient margin at fill price"));
+                            continue;
+                        }
+
+                        user.FreeCashBalance   -= topUp;
+                        user.LockedCashBalance += topUp;
+                        user.MarginUsed        += topUp;
+                        o.LockedAmount          = actualMargin;
+
                         PortfolioFillExecutor.Apply(
                             _portfolio, user, portItem, o.UserId, o.InstrumentId,
                             OrderDirection.Sell, o.Quantity, market);

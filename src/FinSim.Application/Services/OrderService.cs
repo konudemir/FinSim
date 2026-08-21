@@ -57,6 +57,8 @@ public class OrderService
             if (currentQuantity < 0) // covering a short
             {
                 if (quantity > -currentQuantity) return (OrderResult.CrossingNotAllowed, null);
+                if (-currentQuantity - portItem!.LockedQuantity < quantity)
+                    return (OrderResult.InsufficientShares, null);
 
                 var quantityBefore = -currentQuantity;
                 var entry = portItem!.AverageCost;
