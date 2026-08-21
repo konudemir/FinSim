@@ -42,13 +42,17 @@ internal static class ForcedCoverExecutor
             portfolio, user, position, user.Id, instrument.Id,
             OrderDirection.Buy, quantity, price).Realized;
 
-        var release = MarginCalculator.ReleaseOnCover(quantity, 0, entry);
-        var amount = Money(quantity * price);
+        var release   = MarginCalculator.ReleaseOnCover(quantity, 0, entry);
+        var amount    = Money(quantity * price);
+        var proceeds  = Money(entry * quantity);   // what was actually locked at open
 
-        user.LockedCashBalance -= amount;   // paid out of the short's own locked proceeds
+        user.LockedCashBalance -= proceeds;
+        user.FreeCashBalance   += proceeds;
+        user.FreeCashBalance   -= amount;          // buy back at market
+
         user.LockedCashBalance -= release;
-        user.FreeCashBalance += release;
-        user.MarginUsed -= release;
+        user.FreeCashBalance   += release;
+        user.MarginUsed        -= release;
 
         transactions.Add(new Transaction
         {

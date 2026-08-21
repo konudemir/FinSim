@@ -24,6 +24,7 @@ public class MarginEngineTests
         Assert.Equal(-10, position.TotalQuantity);
         Assert.Equal(500m, user.MarginUsed);
         _ctx.Orders.DidNotReceive().Add(Arg.Any<Order>());
+        SharedAssertions.AssertNoOrphanedCash(user, [position], []);
     }
 
     [Fact]
@@ -40,10 +41,13 @@ public class MarginEngineTests
         Assert.True(touched[0].Order.Liquidated);
         Assert.Equal(0, position.TotalQuantity);
         Assert.Equal(-160m, user.RealizedProfitLoss);   // (100 - 116) x 10, a loss
-        Assert.Equal(500m, user.FreeCashBalance);        // never negative — margin returns in full
-        Assert.Equal(-160m, user.LockedCashBalance);     // the loss lands here, not on free cash
+        // -160: realized loss on the cover (entry 100 - cover 116) x 10 now paid out of Free
+        Assert.Equal(340m, user.FreeCashBalance);        // 0 + 1000 proceeds - 1160 buyback + 500 margin
+        // +160: the loss no longer lands in Locked — it now flows through Free
+        Assert.Equal(0m, user.LockedCashBalance);        // 1500 - 1000 proceeds - 500 margin
         Assert.Equal(0m, user.MarginUsed);
         _ctx.Portfolio.Received(1).Remove(position);
+        SharedAssertions.AssertNoOrphanedCash(user, [position], []);
     }
 
     [Fact]
@@ -64,6 +68,7 @@ public class MarginEngineTests
         Assert.Equal(40m, longPosition.AverageCost);
         _ctx.Portfolio.DidNotReceive().Remove(longPosition);
         _ctx.Portfolio.Received(1).Remove(shortPosition);
+        SharedAssertions.AssertNoOrphanedCash(user, [longPosition, shortPosition], []);
     }
 
     [Fact]
@@ -94,7 +99,10 @@ public class MarginEngineTests
         Assert.Equal(OrderStatus.Cancelled, pendingOrder.Status);
         Assert.Equal(0, position.TotalQuantity);
         Assert.Equal(0m, user.MarginUsed);               // both the position's and the order's margin drain
-        Assert.Equal(1_000m, user.FreeCashBalance);
+        // -600: realized loss on the cover (entry 100 - cover 160) x 10 now paid out of Free
+        Assert.Equal(400m, user.FreeCashBalance);
+        Assert.Equal(0m, user.LockedCashBalance);        // 1775 - 1000 proceeds - 500 margin - 275 order margin
+        SharedAssertions.AssertNoOrphanedCash(user, [position], [pendingOrder]);
     }
 
     [Fact]
@@ -109,5 +117,6 @@ public class MarginEngineTests
         Assert.Empty(touched);
         Assert.Equal(100, position.TotalQuantity);
         _ctx.Orders.DidNotReceive().Add(Arg.Any<Order>());
+        SharedAssertions.AssertNoOrphanedCash(user, [position], []);
     }
 }
