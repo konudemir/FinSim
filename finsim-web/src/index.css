@@ -950,16 +950,7 @@ input  { font-family: var(--mono); }
 }
 
 .expiry-fields .field-input {
-  width: 34px;
-  padding: 8px 4px;
-  text-align: center;
-}
-
-.expiry-unit {
-  font-family: var(--mono);
-  font-size: 10px;
-  color: var(--faint);
-  margin-right: 2px;
+  width: 100%;
 }
 
 .field-static {
