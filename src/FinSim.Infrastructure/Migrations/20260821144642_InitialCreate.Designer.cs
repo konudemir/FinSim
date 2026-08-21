@@ -12,8 +12,8 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace FinSim.Infrastructure.Migrations
 {
     [DbContext(typeof(FinSimDbContext))]
-    [Migration("20260820120526_UserNetDeposits")]
-    partial class UserNetDeposits
+    [Migration("20260821144642_InitialCreate")]
+    partial class InitialCreate
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -313,6 +313,53 @@ namespace FinSim.Infrastructure.Migrations
                     b.HasIndex("UserId");
 
                     b.ToTable("PortfolioItems");
+                });
+
+            modelBuilder.Entity("FinSim.Domain.Models.PortfolioSnapshot", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<decimal>("CashTotal")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<DateOnly>("Date")
+                        .HasColumnType("date");
+
+                    b.Property<decimal>("LongValue")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<decimal>("NetDeposits")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<decimal>("PortfolioValue")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<decimal>("RealizedPnL")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<decimal>("ShortUnrealized")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)");
+
+                    b.Property<Guid>("UserId")
+                        .HasColumnType("uuid");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UserId", "Date")
+                        .IsUnique();
+
+                    b.ToTable("PortfolioSnapshots");
                 });
 
             modelBuilder.Entity("FinSim.Domain.Models.PriceHistory", b =>
@@ -731,6 +778,17 @@ namespace FinSim.Infrastructure.Migrations
                         .IsRequired();
 
                     b.Navigation("Instrument");
+
+                    b.Navigation("User");
+                });
+
+            modelBuilder.Entity("FinSim.Domain.Models.PortfolioSnapshot", b =>
+                {
+                    b.HasOne("FinSim.Domain.Models.User", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
 
                     b.Navigation("User");
                 });

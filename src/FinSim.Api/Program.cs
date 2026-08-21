@@ -102,7 +102,7 @@ using (var scope = app.Services.CreateScope())
     var db = scope.ServiceProvider.GetRequiredService<FinSimDbContext>();
     await db.Database.MigrateAsync();
     await DbSeeder.SeedInstrumentsAsync(db);
-    await DbSeeder.SeedFundsAsync(db);
+    //await DbSeeder.SeedFundsAsync(db);
 
     var roleManager = scope.ServiceProvider.GetRequiredService<RoleManager<IdentityRole<Guid>>>();
     var userManager = scope.ServiceProvider.GetRequiredService<UserManager<User>>();

@@ -38,6 +38,7 @@ namespace FinSim.Infrastructure.Migrations
                     RealizedProfitLoss = table.Column<decimal>(type: "numeric(18,2)", precision: 18, scale: 2, nullable: false),
                     MarginUsed = table.Column<decimal>(type: "numeric(18,2)", precision: 18, scale: 2, nullable: false),
                     CreatedAt = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: false),
+                    NetDeposits = table.Column<decimal>(type: "numeric(18,2)", precision: 18, scale: 2, nullable: false),
                     xmin = table.Column<uint>(type: "xid", rowVersion: true, nullable: false),
                     UserName = table.Column<string>(type: "character varying(256)", maxLength: 256, nullable: true),
                     NormalizedUserName = table.Column<string>(type: "character varying(256)", maxLength: 256, nullable: true),
@@ -184,6 +185,32 @@ namespace FinSim.Infrastructure.Migrations
                 });
 
             migrationBuilder.CreateTable(
+                name: "PortfolioSnapshots",
+                columns: table => new
+                {
+                    Id = table.Column<Guid>(type: "uuid", nullable: false),
+                    UserId = table.Column<Guid>(type: "uuid", nullable: false),
+                    Date = table.Column<DateOnly>(type: "date", nullable: false),
+                    PortfolioValue = table.Column<decimal>(type: "numeric(18,2)", precision: 18, scale: 2, nullable: false),
+                    CashTotal = table.Column<decimal>(type: "numeric(18,2)", precision: 18, scale: 2, nullable: false),
+                    LongValue = table.Column<decimal>(type: "numeric(18,2)", precision: 18, scale: 2, nullable: false),
+                    ShortUnrealized = table.Column<decimal>(type: "numeric(18,2)", precision: 18, scale: 2, nullable: false),
+                    RealizedPnL = table.Column<decimal>(type: "numeric(18,2)", precision: 18, scale: 2, nullable: false),
+                    NetDeposits = table.Column<decimal>(type: "numeric(18,2)", precision: 18, scale: 2, nullable: false),
+                    CreatedAt = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: false)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_PortfolioSnapshots", x => x.Id);
+                    table.ForeignKey(
+                        name: "FK_PortfolioSnapshots_AspNetUsers_UserId",
+                        column: x => x.UserId,
+                        principalTable: "AspNetUsers",
+                        principalColumn: "Id",
+                        onDelete: ReferentialAction.Cascade);
+                });
+
+            migrationBuilder.CreateTable(
                 name: "AdminAdjustments",
                 columns: table => new
                 {
@@ -295,7 +322,9 @@ namespace FinSim.Infrastructure.Migrations
                     LockedAmount = table.Column<decimal>(type: "numeric(18,2)", precision: 18, scale: 2, nullable: false),
                     Status = table.Column<string>(type: "character varying(20)", maxLength: 20, nullable: false),
                     CreatedAt = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: false),
-                    UpdatedAt = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: false)
+                    UpdatedAt = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: false),
+                    ExpiresAt = table.Column<DateTimeOffset>(type: "timestamp with time zone", nullable: true),
+                    ReplacedFromOrderId = table.Column<Guid>(type: "uuid", nullable: true)
                 },
                 constraints: table =>
                 {
@@ -521,6 +550,11 @@ namespace FinSim.Infrastructure.Migrations
                 column: "Status");
 
             migrationBuilder.CreateIndex(
+                name: "IX_Orders_Status_ExpiresAt",
+                table: "Orders",
+                columns: new[] { "Status", "ExpiresAt" });
+
+            migrationBuilder.CreateIndex(
                 name: "IX_Orders_UserId",
                 table: "Orders",
                 column: "UserId");
@@ -534,6 +568,12 @@ namespace FinSim.Infrastructure.Migrations
                 name: "IX_PortfolioItems_UserId",
                 table: "PortfolioItems",
                 column: "UserId");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_PortfolioSnapshots_UserId_Date",
+                table: "PortfolioSnapshots",
+                columns: new[] { "UserId", "Date" },
+                unique: true);
 
             migrationBuilder.CreateIndex(
                 name: "IX_PriceHistory_InstrumentId_Timestamp",
@@ -585,6 +625,9 @@ namespace FinSim.Infrastructure.Migrations
 
             migrationBuilder.DropTable(
                 name: "PortfolioItems");
+
+            migrationBuilder.DropTable(
+                name: "PortfolioSnapshots");
 
             migrationBuilder.DropTable(
                 name: "PriceHistory");
