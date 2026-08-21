@@ -19,9 +19,10 @@ public class ShortLimitOrderTests
     [Fact]
     public async Task LimitSell_AddingToAnExistingShort_ReservesMarginAtTheLimitPrice()
     {
-        var user = _ctx.GivenUser(free: 1_000m);
+        // the existing -10 @ 100 short already has its 1000 proceeds + 500 margin locked
+        var user = _ctx.GivenUser(free: 1_000m, locked: 1_500m);
         _ctx.GivenInstrument(price: 90m);
-        _ctx.GivenPosition(quantity: -10, averageCost: 100m);
+        var position = _ctx.GivenPosition(quantity: -10, averageCost: 100m);
 
         var (result, _) = await _ctx.Service.PlaceLimitOrderAsync(
             _ctx.UserId, _ctx.InstrumentId, 5, 120m, null, OrderDirection.Sell, _ct);
@@ -29,8 +30,9 @@ public class ShortLimitOrderTests
         // margin: 50% x (5 x 120) = 300
         Assert.Equal(OrderResult.Success, result);
         Assert.Equal(700m, user.FreeCashBalance);
-        Assert.Equal(300m, user.LockedCashBalance);
+        Assert.Equal(1_800m, user.LockedCashBalance);   // 1500 existing + 300 new margin reservation
         Assert.Equal(300m, user.MarginUsed);
+        SharedAssertions.AssertNoOrphanedCash(user, [position], [_ctx.PlacedOrder!]);
     }
 
     [Fact]
@@ -46,6 +48,7 @@ public class ShortLimitOrderTests
         Assert.Equal(OrderResult.InsufficientMargin, result);
         Assert.Equal(10m, user.FreeCashBalance);
         Assert.Equal(0m, user.MarginUsed);
+        SharedAssertions.AssertNoOrphanedCash(user, [], []);
     }
 
     [Fact]
@@ -63,12 +66,13 @@ public class ShortLimitOrderTests
         Assert.Equal(-10, position.TotalQuantity);   // still short until the cover fills
         Assert.Equal(0m, user.FreeCashBalance);       // a cover never locks free cash upfront
         Assert.Equal(0m, _ctx.PlacedOrder!.LockedAmount);
+        SharedAssertions.AssertNoOrphanedCash(user, [position], [_ctx.PlacedOrder!]);
     }
 
     [Fact]
     public async Task LimitBuy_MoreThanTheShort_IsRejectedAsCrossing()
     {
-        _ctx.GivenUser(free: 0m, locked: 1_500m);
+        var user = _ctx.GivenUser(free: 0m, locked: 1_500m);
         _ctx.GivenInstrument(price: 100m);
         var position = _ctx.GivenPosition(quantity: -10, averageCost: 100m);
 
@@ -77,12 +81,13 @@ public class ShortLimitOrderTests
 
         Assert.Equal(OrderResult.CrossingNotAllowed, result);
         Assert.Equal(0, position.LockedQuantity);
+        SharedAssertions.AssertNoOrphanedCash(user, [position], []);
     }
 
     [Fact]
     public async Task LimitBuy_AgainstAShort_CannotLockMoreThanIsAvailable()
     {
-        _ctx.GivenUser(free: 0m, locked: 1_500m);
+        var user = _ctx.GivenUser(free: 0m, locked: 1_500m);
         _ctx.GivenInstrument(price: 100m);
         var position = _ctx.GivenPosition(quantity: -10, averageCost: 100m, locked: 8);
 
@@ -91,6 +96,7 @@ public class ShortLimitOrderTests
 
         Assert.Equal(OrderResult.InsufficientShares, result);
         Assert.Equal(8, position.LockedQuantity);   // unchanged
+        SharedAssertions.AssertNoOrphanedCash(user, [position], []);
     }
 
     // ── cancelling ───────────────────────────────────────────
@@ -98,7 +104,7 @@ public class ShortLimitOrderTests
     [Fact]
     public async Task CancellingACoverBuyLimitOrder_ReleasesTheLockedShares()
     {
-        _ctx.GivenUser(free: 0m, locked: 1_500m);
+        var user = _ctx.GivenUser(free: 0m, locked: 1_500m);
         var position = _ctx.GivenPosition(quantity: -10, averageCost: 100m, locked: 4);
         var order = _ctx.GivenPendingOrder(OrderDirection.Buy, quantity: 4, price: 80m, lockedAmount: 0m);
 
@@ -107,12 +113,13 @@ public class ShortLimitOrderTests
         Assert.Equal(OrderResult.Success, result);
         Assert.Equal(0, position.LockedQuantity);
         Assert.Equal(-10, position.TotalQuantity);
+        SharedAssertions.AssertNoOrphanedCash(user, [position], [order]);
     }
 
     // ── matching / filling ───────────────────────────────────
 
     [Fact]
-    public async Task FillingAShortOpenSell_CreditsProceedsToLockedCash_MarginUnchangedAtFill()
+    public async Task FillingAShortOpenSell_CreditsProceedsToLockedCash_AndRaisesMarginToTheFillPrice()
     {
         var user = _ctx.GivenUser(free: 500m, locked: 75m);
         user.MarginUsed = 75m;   // reserved at placement: 50% x (1 x 150)
@@ -125,9 +132,11 @@ public class ShortLimitOrderTests
         Assert.NotNull(created);
         Assert.Equal(-1, created!.TotalQuantity);
         Assert.Equal(160m, created.AverageCost);        // opened at the execution price
-        Assert.Equal(235m, user.LockedCashBalance);      // 75 (margin, untouched) + 160 (proceeds)
-        Assert.Equal(500m, user.FreeCashBalance);        // untouched at fill; margin already left at placement
-        Assert.Equal(75m, user.MarginUsed);              // untouched at fill
+        // +5: margin trued up to the fill price, 0.5 x 1 x (160 fill - 150 limit)
+        Assert.Equal(240m, user.LockedCashBalance);      // 75 (margin) + 5 (top-up) + 160 (proceeds)
+        Assert.Equal(495m, user.FreeCashBalance);        // 500 - 5 margin top-up, paid at fill
+        Assert.Equal(80m, user.MarginUsed);              // 75 + 5 trued up to the fill price
+        SharedAssertions.AssertNoOrphanedCash(user, [created], []);
     }
 
     [Fact]
@@ -141,12 +150,14 @@ public class ShortLimitOrderTests
         await _ctx.Engine.MatchAsync(MarketAt(75m), _ct);
 
         // margin: locked-before 0.5x10x100=500, locked-after 0.5x6x100=300, release=200
-        // paid for the buyback at the execution price: 4 x 75 = 300
+        // proceeds released: 4 x 100 = 400 (the ENTRY price), buyback costs 4 x 75 = 300,
+        // so 100 of gain lands in Free
         Assert.Equal(0, position.LockedQuantity);
         Assert.Equal(-6, position.TotalQuantity);
-        Assert.Equal(1_000m, user.LockedCashBalance);   // 1500 - 300 - 200
-        Assert.Equal(500m, user.FreeCashBalance);        // 300 + 200 released
+        Assert.Equal(900m, user.LockedCashBalance);     // 1500 - 400 proceeds - 200 margin
+        Assert.Equal(600m, user.FreeCashBalance);        // 300 + 400 - 300 + 200
         Assert.Equal(300m, user.MarginUsed);
+        SharedAssertions.AssertNoOrphanedCash(user, [position], []);
     }
 
     [Fact]
@@ -163,6 +174,7 @@ public class ShortLimitOrderTests
         Assert.Equal(0m, user.MarginUsed);
         Assert.Equal(100m, user.RealizedProfitLoss);   // (100 - 90) x 10
         _ctx.Portfolio.Received(1).Remove(position);
+        SharedAssertions.AssertNoOrphanedCash(user, [position], []);
     }
 
     [Fact]
@@ -180,5 +192,6 @@ public class ShortLimitOrderTests
         Assert.Equal(575m, user.FreeCashBalance);
         Assert.Equal(0m, user.LockedCashBalance);
         Assert.Equal(0m, user.MarginUsed);
+        SharedAssertions.AssertNoOrphanedCash(user, [], [order]);
     }
 }

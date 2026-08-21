@@ -16,7 +16,7 @@ public class ShortMarketOrderTests
     [Fact]
     public async Task MarketSell_WithNoPosition_OpensAShort()
     {
-        _ctx.GivenUser(free: 1_000m);
+        var user = _ctx.GivenUser(free: 1_000m);
         _ctx.GivenInstrument(price: 100m);
         _ctx.GivenNoPosition();
 
@@ -30,6 +30,7 @@ public class ShortMarketOrderTests
         Assert.Equal(-10, created!.TotalQuantity);
         Assert.Equal(100m, created.AverageCost);
         Assert.True(created.IsShort);
+        SharedAssertions.AssertNoOrphanedCash(user, [created], []);
     }
 
     [Fact]
@@ -47,6 +48,7 @@ public class ShortMarketOrderTests
         Assert.Equal(500m, user.FreeCashBalance);
         Assert.Equal(1_500m, user.LockedCashBalance);
         Assert.Equal(500m, user.MarginUsed);
+        SharedAssertions.AssertNoOrphanedCash(user, [_ctx.AddedPosition!], []);
     }
 
     [Fact]
@@ -64,12 +66,14 @@ public class ShortMarketOrderTests
         Assert.Equal(0m, user.LockedCashBalance);
         Assert.Equal(0m, user.MarginUsed);
         _ctx.Portfolio.DidNotReceive().Add(Arg.Any<PortfolioItem>());
+        SharedAssertions.AssertNoOrphanedCash(user, [], []);
     }
 
     [Fact]
     public async Task MarketSell_AddingToAnExistingShort_PullsTheAverageEntryAndKeepsGoingNegative()
     {
-        _ctx.GivenUser();
+        // the existing -10 @ 100 short already has its 1000 proceeds + 500 margin locked
+        var user = _ctx.GivenUser(locked: 1_500m);
         _ctx.GivenInstrument(price: 120m);
         var position = _ctx.GivenPosition(quantity: -10, averageCost: 100m);
 
@@ -79,6 +83,7 @@ public class ShortMarketOrderTests
         Assert.Equal(OrderResult.Success, result);
         Assert.Equal(-20, position.TotalQuantity);
         Assert.Equal(110m, position.AverageCost);   // (100x10 + 120x10) / 20
+        SharedAssertions.AssertNoOrphanedCash(user, [position], []);
     }
 
     // ── covering a short ─────────────────────────────────────
@@ -111,6 +116,7 @@ public class ShortMarketOrderTests
         Assert.Equal(780m, user.FreeCashBalance);      // 500 + 400 - 320 + 200
         Assert.Equal(300m, user.MarginUsed);           // 500 - 200
         Assert.Equal(80m, user.RealizedProfitLoss);    // (100 - 80) x 4
+        SharedAssertions.AssertNoOrphanedCash(user, [position], []);
     }
 
     [Fact]
@@ -127,12 +133,13 @@ public class ShortMarketOrderTests
         Assert.Equal(100m, user.RealizedProfitLoss);   // (100 - 90) x 10, a gain
         Assert.Equal(0m, user.MarginUsed);              // every last cent of margin comes back
         _ctx.Portfolio.Received(1).Remove(position);
+        SharedAssertions.AssertNoOrphanedCash(user, [position], []);
     }
 
     [Fact]
     public async Task MarketBuy_AgainstAShort_TwoPartialCoversThenTheRest_StillDrainsToExactlyZero()
     {
-        var (user, _) = GivenAnOpenShort();
+        var (user, position) = GivenAnOpenShort();
         _ctx.GivenInstrument(price: 77.77m);
 
         // three uneven covers of an odd entry price: rounding must not leave a residue
@@ -141,18 +148,20 @@ public class ShortMarketOrderTests
         await _ctx.Service.PlaceMarketOrderAsync(_ctx.UserId, _ctx.InstrumentId, 4, OrderDirection.Buy, _ct);
 
         Assert.Equal(0m, user.MarginUsed);
+        SharedAssertions.AssertNoOrphanedCash(user, [position], []);
     }
 
     [Fact]
     public async Task MarketBuy_AgainstAShort_WhenThePriceRose_RealizesALoss()
     {
-        var (user, _) = GivenAnOpenShort();
+        var (user, position) = GivenAnOpenShort();
         _ctx.GivenInstrument(price: 130m);
 
         await _ctx.Service.PlaceMarketOrderAsync(
             _ctx.UserId, _ctx.InstrumentId, 10, OrderDirection.Buy, _ct);
 
         Assert.Equal(-300m, user.RealizedProfitLoss);   // (100 - 130) x 10
+        SharedAssertions.AssertNoOrphanedCash(user, [position], []);
     }
 
     // ── crossing zero is rejected ────────────────────────────
@@ -170,12 +179,14 @@ public class ShortMarketOrderTests
         Assert.Equal(OrderResult.CrossingNotAllowed, result);
         Assert.Equal(10, position.TotalQuantity);       // untouched
         Assert.Equal(1_000m, user.FreeCashBalance);      // untouched
+        SharedAssertions.AssertNoOrphanedCash(user, [position], []);
     }
 
     [Fact]
     public async Task MarketBuy_MoreThanTheShort_IsRejectedAsCrossing()
     {
-        var user = _ctx.GivenUser(free: 1_000m, locked: 1_000m);
+        // a -10 @ 100 short locks 1000 proceeds + 500 margin = 1500
+        var user = _ctx.GivenUser(free: 1_000m, locked: 1_500m);
         _ctx.GivenInstrument(price: 100m);
         var position = _ctx.GivenPosition(quantity: -10, averageCost: 100m);
 
@@ -184,13 +195,14 @@ public class ShortMarketOrderTests
 
         Assert.Equal(OrderResult.CrossingNotAllowed, result);
         Assert.Equal(-10, position.TotalQuantity);       // untouched
-        Assert.Equal(1_000m, user.LockedCashBalance);     // untouched
+        Assert.Equal(1_500m, user.LockedCashBalance);     // untouched
+        SharedAssertions.AssertNoOrphanedCash(user, [position], []);
     }
 
     [Fact]
     public async Task MarketSell_ExactlyEverythingHeld_ClosesTheLongWithoutCrossing()
     {
-        _ctx.GivenUser();
+        var user = _ctx.GivenUser();
         _ctx.GivenInstrument(price: 150m);
         var position = _ctx.GivenPosition(quantity: 10, averageCost: 100m);
 
@@ -199,12 +211,14 @@ public class ShortMarketOrderTests
 
         Assert.Equal(OrderResult.Success, result);
         Assert.Equal(0, position.TotalQuantity);
+        SharedAssertions.AssertNoOrphanedCash(user, [position], []);
     }
 
     [Fact]
     public async Task MarketBuy_ExactlyTheShortSize_ClosesItWithoutCrossing()
     {
-        _ctx.GivenUser(free: 0m, locked: 1_000m);
+        // a -10 @ 100 short locks 1000 proceeds + 500 margin = 1500
+        var user = _ctx.GivenUser(free: 0m, locked: 1_500m);
         _ctx.GivenInstrument(price: 90m);
         var position = _ctx.GivenPosition(quantity: -10, averageCost: 100m);
 
@@ -213,5 +227,6 @@ public class ShortMarketOrderTests
 
         Assert.Equal(OrderResult.Success, result);
         Assert.Equal(0, position.TotalQuantity);
+        SharedAssertions.AssertNoOrphanedCash(user, [position], []);
     }
 }

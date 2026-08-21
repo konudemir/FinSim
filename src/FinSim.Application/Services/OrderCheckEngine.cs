@@ -94,8 +94,12 @@ namespace FinSim.Application.Services
 
                         var quantityAfter = quantityBefore - o.Quantity;
                         var release = MarginCalculator.ReleaseOnCover(quantityBefore, quantityAfter, entry);
+                        var proceeds = Math.Round(entry * o.Quantity, 2, MidpointRounding.AwayFromZero);
 
-                        user.LockedCashBalance -= amount;    // paid out of the short's own locked proceeds
+                        user.LockedCashBalance -= proceeds;
+                        user.FreeCashBalance   += proceeds;
+                        user.FreeCashBalance   -= amount;   // buy back at market
+
                         user.LockedCashBalance -= release;
                         user.FreeCashBalance += release;
                         user.MarginUsed -= release;
