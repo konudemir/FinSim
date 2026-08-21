@@ -105,8 +105,18 @@ type OrderUpdate = {
 // "42,5" -> 42.5 ; "" / "42." / "abc" -> NaN
 const parseDecimal = (s: string) => parseFloat(s.replace(',', '.'))
 
-// blank expiry field -> 0
-const parseExpiryPart = (s: string) => (s === '' ? 0 : parseInt(s, 10))
+// blank expiry date -> no expiry; otherwise the order is valid through the end of that day.
+const expiryPartsFromDate = (dateStr: string): { days: number; hours: number; minutes: number } => {
+  if (dateStr === '') return { days: 0, hours: 0, minutes: 0 }
+  const target = new Date(`${dateStr}T23:59:59`)
+  const ms = Math.max(0, target.getTime() - Date.now())
+  const totalMinutes = Math.floor(ms / 60000)
+  return {
+    days: Math.floor(totalMinutes / 1440),
+    hours: Math.floor((totalMinutes % 1440) / 60),
+    minutes: totalMinutes % 60,
+  }
+}
 
 const signed = (n: number) => (n >= 0 ? '+' : '−') + fmt(Math.abs(n))
 
@@ -319,9 +329,7 @@ const seeded = useRef<Set<string>>(new Set())
   const [qty, setQty] = useState('1')
   const [limitPrice, setLimitPrice] = useState('')
   const [stopPrice, setStopPrice] = useState('')
-  const [expiryDays, setExpiryDays] = useState('')
-  const [expiryHours, setExpiryHours] = useState('')
-  const [expiryMinutes, setExpiryMinutes] = useState('')
+  const [expiryDate, setExpiryDate] = useState('')
   const [notice, setNotice] = useState('')
   const [busy, setBusy] = useState(false)
   const [liquidations, setLiquidations] = useState<LiquidationAlert[]>([])
@@ -540,12 +548,13 @@ const seeded = useRef<Set<string>>(new Set())
         setNotice(t('err.minPrice'))
         return
       }
+      const expiryParts = expiryPartsFromDate(expiryDate)
       body = {
         ...body,
         price,
-        expiryDays: parseExpiryPart(expiryDays),
-        expiryHours: parseExpiryPart(expiryHours),
-        expiryMinutes: parseExpiryPart(expiryMinutes),
+        expiryDays: expiryParts.days,
+        expiryHours: expiryParts.hours,
+        expiryMinutes: expiryParts.minutes,
       }
       url = '/api/order/limit'
 
@@ -570,7 +579,7 @@ const seeded = useRef<Set<string>>(new Set())
       await api.post(url, body)
       if (mode === 'limit') {
         setLimitPrice(''); setStopPrice('')
-        setExpiryDays(''); setExpiryHours(''); setExpiryMinutes('')
+        setExpiryDate('')
       }
     } catch (e: any) {
       setNotice(e.response ? tServer(e.response.data) : t('err.orderFailed'))
@@ -918,46 +927,13 @@ const loadHistory = (i: Instrument) => {
             <div className="expiry-fields">
               <input
                 className="field-input"
-                type="text"
-                inputMode="numeric"
-                placeholder="0"
-                aria-label={t('ticket.expiryDays')}
+                type="date"
+                min={new Date().toISOString().slice(0, 10)}
+                aria-label={t('ticket.expiryDate')}
                 disabled={mode !== 'limit'}
-                value={mode === 'limit' ? expiryDays : ''}
-                onChange={e => {
-                  const v = e.target.value
-                  if (v === '' || /^\d+$/.test(v)) setExpiryDays(v)
-                }}
+                value={mode === 'limit' ? expiryDate : ''}
+                onChange={e => setExpiryDate(e.target.value)}
               />
-              <span className="expiry-unit">{t('ticket.expiryDaysAbbr')}</span>
-              <input
-                className="field-input"
-                type="text"
-                inputMode="numeric"
-                placeholder="0"
-                aria-label={t('ticket.expiryHours')}
-                disabled={mode !== 'limit'}
-                value={mode === 'limit' ? expiryHours : ''}
-                onChange={e => {
-                  const v = e.target.value
-                  if (v === '' || /^\d+$/.test(v)) setExpiryHours(v)
-                }}
-              />
-              <span className="expiry-unit">{t('ticket.expiryHoursAbbr')}</span>
-              <input
-                className="field-input"
-                type="text"
-                inputMode="numeric"
-                placeholder="0"
-                aria-label={t('ticket.expiryMinutes')}
-                disabled={mode !== 'limit'}
-                value={mode === 'limit' ? expiryMinutes : ''}
-                onChange={e => {
-                  const v = e.target.value
-                  if (v === '' || /^\d+$/.test(v)) setExpiryMinutes(v)
-                }}
-              />
-              <span className="expiry-unit">{t('ticket.expiryMinutesAbbr')}</span>
             </div>
           </div>
 
