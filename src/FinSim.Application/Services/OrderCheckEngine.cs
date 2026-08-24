@@ -51,15 +51,15 @@ namespace FinSim.Application.Services
 
                 // Frozen collar reference for the whole walk on this instrument.
                 var reference = instrument.CurrentPrice;
-                var low  = reference * 0.95m;
-                var high = reference * 1.05m;
+                var low  = reference * (1m - MarketRules.CollarBand);
+                var high = reference * (1m + MarketRules.CollarBand);
 
                 foreach (var o in book)
                 {
                     if (o.StopPrice is null || o.ImmediateOrCancel) continue;
                     if (reference > o.StopPrice.Value) continue;
 
-                    o.Price = Math.Round(reference * 0.95m, 2, MidpointRounding.AwayFromZero);
+                    o.Price = Math.Round(reference * (1m - MarketRules.CollarBand), 2, MidpointRounding.AwayFromZero);
                     o.ImmediateOrCancel = true;
                     o.UpdatedAt = DateTimeOffset.UtcNow;
                     touched.Add(new OrderOutcome(o.UserId, ToDto(o, instrument, null)));

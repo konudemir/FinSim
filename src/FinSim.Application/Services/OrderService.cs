@@ -46,8 +46,8 @@ public class OrderService
         // collar and cancels any remainder (IOC). Buy prices up to +5%, sell down
         // to -5%, so it crosses everything the collar allows.
         var aggressivePrice = direction == OrderDirection.Buy
-            ? Money(instrument.CurrentPrice * 1.05m)
-            : Money(instrument.CurrentPrice * 0.95m);
+            ? Money(instrument.CurrentPrice * (1m + MarketRules.CollarBand))
+            : Money(instrument.CurrentPrice * (1m - MarketRules.CollarBand));
 
         return await PlaceLimitOrderAsync(
             userId, instrumentId, quantity, aggressivePrice,
