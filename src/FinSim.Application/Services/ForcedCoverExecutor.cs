@@ -28,7 +28,7 @@ internal static class ForcedCoverExecutor
             OrderType = OrderType.Limit,   // must carry a Price to enter the book
             Direction = OrderDirection.Buy,
             Quantity = uncovered,
-            Price = Money(instrument.CurrentPrice * 1.05m),
+            Price = Money(instrument.CurrentPrice * (1m + MarketRules.CollarBand)),
             Status = OrderStatus.Pending,
             CreatedAt = DateTimeOffset.UtcNow,
             UpdatedAt = DateTimeOffset.UtcNow,
