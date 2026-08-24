@@ -75,17 +75,18 @@ public class MarginEngine
                 foreach (var stale in pendingOrders.Where(o =>
                     o.UserId == user.Id && o.InstrumentId == position.InstrumentId))
                 {
-                    CancelStaleOrder(user, stale);
+                    CancelStaleOrder(user, stale, position);
                 }
 
-                touched.Add(LiquidatePosition(user, position, instrument));
+                var outcome = LiquidatePosition(user, position, instrument);
+                if (outcome is not null) touched.Add(outcome);
             }
         }
 
         return touched;
     }
 
-    private static void CancelStaleOrder(User user, Order order)
+    private static void CancelStaleOrder(User user, Order order, PortfolioItem position)
     {
         if (order.LockedAmount > 0) // cash or margin reserved at placement
         {
@@ -93,18 +94,22 @@ public class MarginEngine
             user.FreeCashBalance += order.LockedAmount;
             if (order.Direction == OrderDirection.Sell)
                 user.MarginUsed -= order.LockedAmount;
+            order.LockedAmount = 0m;
         }
-        // a reserved share quantity needs no separate release: it lived on the
-        // position that is about to be removed by the forced cover.
+        else
+        {
+            var remaining = order.Quantity - order.FilledQuantity;
+            position.LockedQuantity -= Math.Min(position.LockedQuantity, remaining);
+        }
 
         order.Status = OrderStatus.Cancelled;
         order.UpdatedAt = DateTimeOffset.UtcNow;
     }
 
-    private OrderOutcome LiquidatePosition(User user, PortfolioItem position, Instrument instrument)
+    private OrderOutcome? LiquidatePosition(User user, PortfolioItem position, Instrument instrument)
     {
-        var order = ForcedCoverExecutor.CoverEntirely(
-            _orders, _portfolio, _transactions, user, position, instrument);
+        var order = ForcedCoverExecutor.PlaceCover(_orders, position, instrument);
+        if (order is null) return null;
 
         return new OrderOutcome(user.Id, OrderDtoMapper.ToDto(
             order, instrument.Symbol, executedAmount: null, liquidated: true));

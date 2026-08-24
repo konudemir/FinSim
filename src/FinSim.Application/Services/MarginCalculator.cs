@@ -14,10 +14,11 @@ internal static class MarginCalculator
     /// <summary>Initial margin required to open or add <paramref name="quantity"/> shares of a short at <paramref name="price"/>.</summary>
     public static decimal InitialMargin(int quantity, decimal price) =>
         Money(InitialMarginRate * quantity * price);
-    public static decimal ReleaseOnCover(int quantityBefore, int quantityAfter, decimal entryPrice)
-    {
-        var lockedBefore = Money(InitialMarginRate * quantityBefore * entryPrice);
-        var lockedAfter = Money(InitialMarginRate * quantityAfter * entryPrice);
-        return lockedBefore - lockedAfter;
-    }
+    /// <summary>Margin component of the collateral for a short of <paramref name="quantity"/> shares at <paramref name="avgCost"/>. Quantity is the positive short size.</summary>
+    public static decimal PositionMargin(int quantity, decimal avgCost) =>
+        Money(InitialMarginRate * quantity * avgCost);
+
+    /// <summary>Sale proceeds held as collateral for the same position. avgCost is the weighted average entry, so this is exactly what came in.</summary>
+    public static decimal PositionProceeds(int quantity, decimal avgCost) =>
+        Money(quantity * avgCost);
 }

@@ -34,7 +34,9 @@ namespace FinSim.Infrastructure.Repositories
 
         public Task<List<Order>> GetPendingLimitOrdersAsync(CancellationToken ct) =>
             _db.Orders
-               .Where(o => o.Status == OrderStatus.Pending && o.OrderType == OrderType.Limit)
+               .Where(o => (o.Status == OrderStatus.Pending
+                         || o.Status == OrderStatus.PartiallyFilled)
+                        && o.OrderType == OrderType.Limit)
                .ToListAsync(ct);
 
         public Task<List<Order>> GetPendingByInstrumentAsync(Guid instrumentId, CancellationToken ct) =>

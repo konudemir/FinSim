@@ -54,12 +54,25 @@ namespace FinSim.Application.Services
                 var low  = reference * 0.95m;
                 var high = reference * 1.05m;
 
+                foreach (var o in book)
+                {
+                    if (o.StopPrice is null || o.ImmediateOrCancel) continue;
+                    if (reference > o.StopPrice.Value) continue;
+
+                    o.Price = Math.Round(reference * 0.95m, 2, MidpointRounding.AwayFromZero);
+                    o.ImmediateOrCancel = true;
+                    o.UpdatedAt = DateTimeOffset.UtcNow;
+                    touched.Add(new OrderOutcome(o.UserId, ToDto(o, instrument, null)));
+                }
+
                 int Remaining(Order o) => o.Quantity - o.FilledQuantity;
 
                 // Bids: highest price first, then FIFO. Asks: lowest first, then FIFO.
-                var bids = book.Where(o => o.Direction == OrderDirection.Buy  && o.Price is not null)
+                var bids = book.Where(o => o.Direction == OrderDirection.Buy  && o.Price is not null
+                                        && (o.StopPrice is null || o.ImmediateOrCancel))
                                .OrderByDescending(o => o.Price!.Value).ThenBy(o => o.CreatedAt).ToList();
-                var asks = book.Where(o => o.Direction == OrderDirection.Sell && o.Price is not null)
+                var asks = book.Where(o => o.Direction == OrderDirection.Sell && o.Price is not null
+                                        && (o.StopPrice is null || o.ImmediateOrCancel))
                                .OrderBy(o => o.Price!.Value).ThenBy(o => o.CreatedAt).ToList();
 
                 int bi = 0, ai = 0;
@@ -158,38 +171,71 @@ namespace FinSim.Application.Services
             var buyerPos  = await _portfolio.GetAsync(bid.UserId, instrument.Id, ct);
             var sellerPos = await _portfolio.GetAsync(ask.UserId, instrument.Id, ct);
 
-            // Shorts not handled until Aşama 6. A sell with no long, or a buy against
-            // a short, would open/cover — bail before touching anything.
             var buyerKind  = PortfolioFillExecutor.Classify(buyerPos?.TotalQuantity ?? 0, OrderDirection.Buy);
             var sellerKind = PortfolioFillExecutor.Classify(sellerPos?.TotalQuantity ?? 0, OrderDirection.Sell);
-            if (buyerKind == FillKind.CoverShort || sellerKind == FillKind.OpenOrAddShort)
+
+            // All-or-nothing: every share reservation is verified before anything mutates.
+            if (buyerKind == FillKind.CoverShort && (buyerPos is null || buyerPos.LockedQuantity < qty))
+                return false;
+            if (sellerKind == FillKind.ReduceOrCloseLong && (sellerPos is null || sellerPos.LockedQuantity < qty))
                 return false;
 
             var gross = Math.Round(price * qty, 2, MidpointRounding.AwayFromZero);
 
-            // ---- BUYER: cash locked at placement, refund the difference for this slice ----
-            // Locked per unit = bid.LockedAmount spread over the order's original quantity.
-            var buyerLockedPerUnit = bid.Quantity > 0 ? bid.LockedAmount / bid.Quantity : 0m;
+            // Short size and entry price before the fill. The collateral recompute needs
+            // the pair, and ApplyShortOpen moves both at once.
+            var buyerShortBefore  = Math.Max(0, -(buyerPos?.TotalQuantity  ?? 0));
+            var buyerAvgBefore    = buyerPos?.AverageCost  ?? 0m;
+            var sellerShortBefore = Math.Max(0, -(sellerPos?.TotalQuantity ?? 0));
+            var sellerAvgBefore   = sellerPos?.AverageCost ?? 0m;
+
+            // ---- BUYER: per-unit slice of the cash locked at placement. A cover buy
+            // reserved shares instead, so its LockedAmount is 0 and the slice is 0. ----
+            var buyerRemaining = bid.Quantity - bid.FilledQuantity;
+            var buyerLockedPerUnit = buyerRemaining > 0 ? bid.LockedAmount / buyerRemaining : 0m;
             var buyerReleaseFromLock = Math.Round(buyerLockedPerUnit * qty, 2, MidpointRounding.AwayFromZero);
 
             buyer.LockedCashBalance -= buyerReleaseFromLock;
             buyer.FreeCashBalance   += buyerReleaseFromLock - gross;   // refund = locked slice − actual cost
             bid.LockedAmount        -= buyerReleaseFromLock;
 
+            if (buyerKind == FillKind.CoverShort) buyerPos!.LockedQuantity -= qty;
+
             var buyerFill = PortfolioFillExecutor.Apply(
                 _portfolio, buyer, buyerPos, bid.UserId, instrument.Id,
                 OrderDirection.Buy, qty, price);
 
-            // ---- SELLER: long sell, shares were locked at placement ----
-            if (sellerPos is null || sellerPos.LockedQuantity < qty)
-                return false;
-            sellerPos.LockedQuantity -= qty;
+            // ---- SELLER ----
+            if (sellerKind == FillKind.ReduceOrCloseLong) sellerPos!.LockedQuantity -= qty;
+
+            if (sellerKind == FillKind.OpenOrAddShort)
+            {
+                // Order-level margin reserved at placement, drawn down per unit like the
+                // buyer's cash. Position margin is handled separately below.
+                var askRemaining = ask.Quantity - ask.FilledQuantity;
+                var askLockedPerUnit = askRemaining > 0 ? ask.LockedAmount / askRemaining : 0m;
+                var askRelease = Math.Round(askLockedPerUnit * qty, 2, MidpointRounding.AwayFromZero);
+
+                seller.LockedCashBalance -= askRelease;
+                seller.FreeCashBalance   += askRelease;
+                seller.MarginUsed        -= askRelease;
+                ask.LockedAmount         -= askRelease;
+            }
 
             var sellerFill = PortfolioFillExecutor.Apply(
                 _portfolio, seller, sellerPos, ask.UserId, instrument.Id,
                 OrderDirection.Sell, qty, price);
 
             seller.FreeCashBalance += gross;
+
+            // ---- position collateral, recomputed from scratch (scenario 6) ----
+            if (buyerKind == FillKind.CoverShort)
+                ResyncShortCollateral(buyer, buyerShortBefore, buyerAvgBefore,
+                    buyerShortBefore - qty, buyerAvgBefore);   // cover never moves avgCost
+
+            if (sellerKind == FillKind.OpenOrAddShort)
+                ResyncShortCollateral(seller, sellerShortBefore, sellerAvgBefore,
+                    sellerShortBefore + qty, sellerPos?.AverageCost ?? price);
 
             // ---- order caches: FilledQuantity, running AvgPrice, status ----
             ApplyFillCache(bid, qty, price);
@@ -215,6 +261,27 @@ namespace FinSim.Application.Services
             touched.Add(new OrderOutcome(bid.UserId, ToDto(bid, instrument, gross)));
             touched.Add(new OrderOutcome(ask.UserId, ToDto(ask, instrument, gross)));
             return true;
+        }
+                /// <summary>
+        /// Recomputes a short position's collateral from scratch and locks or releases
+        /// the difference. Because it's the difference between two rounded totals, a
+        /// drifting avgCost across partials can't accumulate error, and a position at
+        /// zero quantity zeroes its own collateral. Margin and proceeds are tracked
+        /// apart because only the margin part is MarginUsed.
+        /// Quantities are positive short sizes.
+        /// </summary>
+        private static void ResyncShortCollateral(
+            User user, int quantityBefore, decimal avgCostBefore,
+            int quantityAfter, decimal avgCostAfter)
+        {
+            var marginDelta = MarginCalculator.PositionMargin(quantityAfter, avgCostAfter)
+                            - MarginCalculator.PositionMargin(quantityBefore, avgCostBefore);
+            var proceedsDelta = MarginCalculator.PositionProceeds(quantityAfter, avgCostAfter)
+                              - MarginCalculator.PositionProceeds(quantityBefore, avgCostBefore);
+
+            user.FreeCashBalance   -= marginDelta + proceedsDelta;
+            user.LockedCashBalance += marginDelta + proceedsDelta;
+            user.MarginUsed        += marginDelta;
         }
 
         private static void ApplyFillCache(Order o, int qty, decimal price)
