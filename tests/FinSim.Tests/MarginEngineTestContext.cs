@@ -1,68 +1,63 @@
 using FinSim.Application.Interfaces;
 using FinSim.Application.Services;
 using FinSim.Domain.Models;
-using NSubstitute;
+using FinSim.Domain.Models.Enums;
 
 namespace FinSim.Tests;
 
 /// <summary>
-/// Wires MarginEngine to substituted repositories. GetAllAsync and GetPendingLimitOrdersAsync
-/// return live views over internal lists so GivenPosition/GivenPendingOrder calls made after
-/// construction still show up, mirroring OrderTestContext/InstrumentTestContext.
+/// Wires MarginEngine to substituted repositories. Composes an OrderTestContext rather
+/// than keeping its own parallel set of substitutes: MarginEngine.CheckAsync only books a
+/// forced-cover IOC order (ForcedCoverExecutor.PlaceCover), it doesn't settle inline --
+/// actually filling it needs OrderCheckEngine.MatchAsync run against the same Orders/Users/
+/// Portfolio substitutes afterwards. Sharing OrderTestContext's already-live _book/_positions
+/// stubs means there's exactly one "how does the fake book work" implementation for both
+/// engines to run against, instead of two copies that can drift apart.
 /// </summary>
 public class MarginEngineTestContext
 {
-    public readonly IOrderRepository Orders = Substitute.For<IOrderRepository>();
-    public readonly IUserRepository Users = Substitute.For<IUserRepository>();
-    public readonly IPortfolioRepository Portfolio = Substitute.For<IPortfolioRepository>();
-    public readonly ITransactionRepository Transactions = Substitute.For<ITransactionRepository>();
+    private readonly OrderTestContext _orderCtx = new();
 
-    private readonly List<PortfolioItem> _positions = [];
-    private readonly List<Order> _pendingOrders = [];
-
-    public MarginEngineTestContext()
-    {
-        Portfolio.GetAllAsync(Arg.Any<CancellationToken>()).Returns(_ => _positions.ToList());
-        Orders.GetPendingLimitOrdersAsync(Arg.Any<CancellationToken>()).Returns(_ => _pendingOrders.ToList());
-    }
+    public IOrderRepository Orders => _orderCtx.Orders;
+    public IUserRepository Users => _orderCtx.Users;
+    public IPortfolioRepository Portfolio => _orderCtx.Portfolio;
+    public ITransactionRepository Transactions => _orderCtx.Transactions;
 
     public MarginEngine Engine => new(Orders, Users, Portfolio, Transactions);
 
+    /// <summary>Runs the forced-cover order MarginEngine.CheckAsync booked -- a liquidation
+    /// only completes once this actually crosses it against a counterparty.</summary>
+    public OrderCheckEngine Matcher => _orderCtx.Engine;
+
     public User GivenUser(decimal free = 0m, decimal locked = 0m, decimal marginUsed = 0m)
     {
-        var user = new User
-        {
-            Id = Guid.NewGuid(),
-            UserName = "tester",
-            Email = $"{Guid.NewGuid()}@finsim.local",
-            FreeCashBalance = free,
-            LockedCashBalance = locked,
-            MarginUsed = marginUsed,
-            CreatedAt = DateTimeOffset.UtcNow
-        };
-        Users.GetByIdAsync(user.Id, Arg.Any<CancellationToken>()).Returns(user);
+        var user = _orderCtx.GivenUser(Guid.NewGuid(), free, locked);
+        user.MarginUsed = marginUsed;
         return user;
     }
 
     public PortfolioItem GivenPosition(
-        Guid userId, Guid instrumentId, int quantity, decimal averageCost, int locked = 0)
-    {
-        var item = new PortfolioItem
-        {
-            Id = Guid.NewGuid(),
-            UserId = userId,
-            InstrumentId = instrumentId,
-            TotalQuantity = quantity,
-            LockedQuantity = locked,
-            AverageCost = averageCost
-        };
-        _positions.Add(item);
-        return item;
-    }
+        Guid userId, Guid instrumentId, int quantity, decimal averageCost, int locked = 0) =>
+        _orderCtx.GivenPosition(userId, instrumentId, quantity, averageCost, locked);
 
     public Order GivenPendingOrder(Order order)
     {
-        _pendingOrders.Add(order);
+        _orderCtx.AddToBook(order);
+        return order;
+    }
+
+    /// <summary>A counterparty resting order on an arbitrary instrument, for the forced-cover
+    /// order a liquidation books to actually have something to cross against. OrderTestContext's
+    /// own GivenPendingInQueue is pinned to its single fixed InstrumentId, which doesn't fit a
+    /// context that juggles several instruments per test.</summary>
+    public Order GivenRestingOrder(
+        Guid instrumentId, OrderDirection direction, int quantity, decimal price, DateTimeOffset createdAt)
+    {
+        var ownerId = Guid.NewGuid();
+        _orderCtx.GivenUser(ownerId, free: 100_000m);
+        var order = OrderTestContext.NewPendingOrder(direction, quantity, price, ownerId, instrumentId);
+        order.CreatedAt = createdAt;
+        _orderCtx.AddToBook(order);
         return order;
     }
 

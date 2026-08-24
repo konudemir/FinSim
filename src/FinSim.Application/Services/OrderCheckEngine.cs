@@ -103,7 +103,15 @@ namespace FinSim.Application.Services
                         : resting.Price!.Value;
 
                     // Collar: resting price outside frozen ±5% → no trade, walk stops.
-                    if (fillPrice < low || fillPrice > high) break;
+                    // The aggressor can't complete this tick either — rather than leave
+                    // it resting against a quote outside the band indefinitely, its
+                    // remainder is cancelled and refunded here. The resting side (whose
+                    // price caused the breach) is left untouched. Scenario 3.
+                    if (fillPrice < low || fillPrice > high)
+                    {
+                        await CancelLeftoverAsync(resting == bid ? ask : bid, instrument, touched, ct);
+                        break;
+                    }
 
                     var qty = Math.Min(Remaining(bid), Remaining(ask));
 
@@ -123,36 +131,47 @@ namespace FinSim.Application.Services
                 }
                                 // IOC leftover: a market order (emulated as aggressive limit) must not
                 // rest. Anything still open on this instrument that's IOC gets cancelled
-                // and its reservation refunded. Scenario 4.
+                // and its reservation refunded. Scenario 4. (A collar-break aggressor may
+                // already have been cancelled above — CancelLeftoverAsync no-ops on it.)
                 foreach (var o in book)
                 {
                     if (!o.ImmediateOrCancel) continue;
-                    if (o.Status != OrderStatus.Pending && o.Status != OrderStatus.PartiallyFilled) continue;
-
-                    var owner = await _users.GetByIdAsync(o.UserId, ct);
-                    var pos   = await _portfolio.GetAsync(o.UserId, o.InstrumentId, ct);
-
-                    // Same refund logic as a reject: hand back whatever's still locked.
-                    if (o.LockedAmount > 0 && owner is not null)
-                    {
-                        owner.LockedCashBalance -= o.LockedAmount;
-                        owner.FreeCashBalance   += o.LockedAmount;
-                        if (o.Direction == OrderDirection.Sell)
-                            owner.MarginUsed -= o.LockedAmount;
-                        o.LockedAmount = 0m;
-                    }
-                    else if (pos is not null)
-                    {
-                        pos.LockedQuantity -= Math.Min(pos.LockedQuantity, o.Quantity - o.FilledQuantity);
-                    }
-
-                    o.Status = OrderStatus.Cancelled;
-                    o.UpdatedAt = DateTimeOffset.UtcNow;
-                    touched.Add(new OrderOutcome(o.UserId, ToDto(o, instrument, null)));
+                    await CancelLeftoverAsync(o, instrument, touched, ct);
                 }
             }
 
             return touched;
+        }
+
+        /// <summary>
+        /// Cancels a still-open order and refunds exactly what it reserved — the same
+        /// release logic as OrderReleaseExecutor.Release, duplicated here because this
+        /// runs mid-tick against orders the caller already loaded, not by id.
+        /// </summary>
+        private async Task CancelLeftoverAsync(
+            Order o, Instrument instrument, List<OrderOutcome> touched, CancellationToken ct)
+        {
+            if (o.Status != OrderStatus.Pending && o.Status != OrderStatus.PartiallyFilled) return;
+
+            var owner = await _users.GetByIdAsync(o.UserId, ct);
+            var pos   = await _portfolio.GetAsync(o.UserId, o.InstrumentId, ct);
+
+            if (o.LockedAmount > 0 && owner is not null)
+            {
+                owner.LockedCashBalance -= o.LockedAmount;
+                owner.FreeCashBalance   += o.LockedAmount;
+                if (o.Direction == OrderDirection.Sell)
+                    owner.MarginUsed -= o.LockedAmount;
+                o.LockedAmount = 0m;
+            }
+            else if (pos is not null)
+            {
+                pos.LockedQuantity -= Math.Min(pos.LockedQuantity, o.Quantity - o.FilledQuantity);
+            }
+
+            o.Status = OrderStatus.Cancelled;
+            o.UpdatedAt = DateTimeOffset.UtcNow;
+            touched.Add(new OrderOutcome(o.UserId, ToDto(o, instrument, null)));
         }
 
                 /// <summary>
@@ -230,11 +249,11 @@ namespace FinSim.Application.Services
 
             // ---- position collateral, recomputed from scratch (scenario 6) ----
             if (buyerKind == FillKind.CoverShort)
-                ResyncShortCollateral(buyer, buyerShortBefore, buyerAvgBefore,
+                MarginCalculator.ResyncShortCollateral(buyer, buyerShortBefore, buyerAvgBefore,
                     buyerShortBefore - qty, buyerAvgBefore);   // cover never moves avgCost
 
             if (sellerKind == FillKind.OpenOrAddShort)
-                ResyncShortCollateral(seller, sellerShortBefore, sellerAvgBefore,
+                MarginCalculator.ResyncShortCollateral(seller, sellerShortBefore, sellerAvgBefore,
                     sellerShortBefore + qty, sellerPos?.AverageCost ?? price);
 
             // ---- order caches: FilledQuantity, running AvgPrice, status ----
@@ -262,29 +281,7 @@ namespace FinSim.Application.Services
             touched.Add(new OrderOutcome(ask.UserId, ToDto(ask, instrument, gross)));
             return true;
         }
-                /// <summary>
-        /// Recomputes a short position's collateral from scratch and locks or releases
-        /// the difference. Because it's the difference between two rounded totals, a
-        /// drifting avgCost across partials can't accumulate error, and a position at
-        /// zero quantity zeroes its own collateral. Margin and proceeds are tracked
-        /// apart because only the margin part is MarginUsed.
-        /// Quantities are positive short sizes.
-        /// </summary>
-        private static void ResyncShortCollateral(
-            User user, int quantityBefore, decimal avgCostBefore,
-            int quantityAfter, decimal avgCostAfter)
-        {
-            var marginDelta = MarginCalculator.PositionMargin(quantityAfter, avgCostAfter)
-                            - MarginCalculator.PositionMargin(quantityBefore, avgCostBefore);
-            var proceedsDelta = MarginCalculator.PositionProceeds(quantityAfter, avgCostAfter)
-                              - MarginCalculator.PositionProceeds(quantityBefore, avgCostBefore);
-
-            user.FreeCashBalance   -= marginDelta + proceedsDelta;
-            user.LockedCashBalance += marginDelta + proceedsDelta;
-            user.MarginUsed        += marginDelta;
-        }
-
-        private static void ApplyFillCache(Order o, int qty, decimal price)
+                private static void ApplyFillCache(Order o, int qty, decimal price)
         {
             var newFilled = o.FilledQuantity + qty;
             o.AvgPrice = ((o.AvgPrice * o.FilledQuantity) + price * qty) / newFilled;
