@@ -313,7 +313,7 @@ namespace FinSim.Application.Services
             }
             else if (portItem is not null)
             {
-                portItem.LockedQuantity -= Math.Min(portItem.LockedQuantity, order.Quantity);
+                portItem.LockedQuantity -= Math.Min(portItem.LockedQuantity, order.Quantity - order.FilledQuantity);
             }
 
             order.Status    = OrderStatus.Rejected;

@@ -169,7 +169,7 @@ public class OrderService
     {
         var order = await _orders.GetByIdAsync(orderId, ct);
         if (order is null || order.UserId != userId) return OrderResult.OrderNotFound;
-        if (order.Status != OrderStatus.Pending) return OrderResult.NotCancellable;
+        if (order.Status != OrderStatus.Pending && order.Status != OrderStatus.PartiallyFilled) return OrderResult.NotCancellable;
 
         var user = await _users.GetByIdAsync(order.UserId, ct);
         if (user is null) return OrderResult.UserNotFound;
@@ -219,7 +219,7 @@ var instruments = (await _instruments.GetActiveAsync(ct)).ToDictionary(i => i.Id
         return orders.Select(o => OrderDtoMapper.ToDto(
             o,
             instruments.TryGetValue(o.InstrumentId, out var i) ? i.Symbol! : "?",
-            lockedAmount: o.Status == OrderStatus.Pending && o.Direction == OrderDirection.Buy
+            lockedAmount: (o.Status == OrderStatus.Pending || o.Status == OrderStatus.PartiallyFilled) && o.Direction == OrderDirection.Buy
                 ? o.LockedAmount
                 : null,
             executedAmount: totals.TryGetValue(o.Id, out var spent) ? spent : null)).ToList();

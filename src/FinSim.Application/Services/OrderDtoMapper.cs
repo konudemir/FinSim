@@ -21,6 +21,8 @@ public static class OrderDtoMapper
             order.OrderType.ToString(),
             order.Direction.ToString(),
             order.Quantity,
+            order.FilledQuantity,
+            order.AvgPrice,
             order.Price,
             order.StopPrice,
             order.Status.ToString(),

@@ -21,13 +21,14 @@ namespace FinSim.Infrastructure.Repositories
 
         public Task<List<Order>> GetPendingByUserAsync(Guid userId, CancellationToken ct) =>
             _db.Orders
-            .Where(o => o.UserId == userId && o.Status == OrderStatus.Pending)
+            .Where(o => o.UserId == userId
+                     && (o.Status == OrderStatus.Pending || o.Status == OrderStatus.PartiallyFilled))
             .OrderByDescending(o => o.CreatedAt)
             .ToListAsync(ct);
 
         public Task<List<Order>> GetExpiredPendingAsync(DateTimeOffset now, CancellationToken ct) =>
             _db.Orders
-               .Where(o => o.Status == OrderStatus.Pending
+               .Where(o => (o.Status == OrderStatus.Pending || o.Status == OrderStatus.PartiallyFilled)
                         && o.ExpiresAt != null
                         && o.ExpiresAt <= now)
                .ToListAsync(ct);
@@ -49,7 +50,8 @@ namespace FinSim.Infrastructure.Repositories
 
         public Task<List<Order>> GetRecentByUserAsync(Guid userId, int take, CancellationToken ct) =>
             _db.Orders
-                .Where(o => o.UserId == userId && o.Status != OrderStatus.Pending)
+                .Where(o => o.UserId == userId
+                         && o.Status != OrderStatus.Pending && o.Status != OrderStatus.PartiallyFilled)
                 .OrderByDescending(o => o.CreatedAt)
                 .Take(take)
                 .ToListAsync(ct);

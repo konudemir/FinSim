@@ -40,7 +40,7 @@ public static class OrderReleaseExecutor
         // short, or an ordinary sell against a long.
         if (portItem is null) return false;
 
-        portItem.LockedQuantity -= order.Quantity;
+        portItem.LockedQuantity -= order.Quantity - order.FilledQuantity;
         return true;
     }
 }

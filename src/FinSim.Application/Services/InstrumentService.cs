@@ -188,7 +188,7 @@ public class InstrumentService
             }
             else if (positionsByUser.TryGetValue(order.UserId, out var lockedPosition))
             {
-                lockedPosition.LockedQuantity -= Math.Min(lockedPosition.LockedQuantity, order.Quantity);
+                lockedPosition.LockedQuantity -= Math.Min(lockedPosition.LockedQuantity, order.Quantity - order.FilledQuantity);
             }
 
             order.Status    = OrderStatus.Cancelled;

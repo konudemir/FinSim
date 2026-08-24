@@ -6,6 +6,8 @@ public record OrderDto(
     string OrderType,
     string Direction,
     int Quantity,
+    int FilledQuantity,
+    decimal AvgPrice,
     decimal? Price,
     decimal? StopPrice,
     string Status,
