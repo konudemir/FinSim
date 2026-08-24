@@ -12,6 +12,7 @@ public class AdminTestContext
     public readonly IPortfolioRepository Portfolio = Substitute.For<IPortfolioRepository>();
     public readonly IInstrumentRepository Instruments = Substitute.For<IInstrumentRepository>();
     public readonly IAdminAuditRepository Audit = Substitute.For<IAdminAuditRepository>();
+    public readonly IOrderRepository Orders = Substitute.For<IOrderRepository>();
     public readonly IUnitOfWork UnitOfWork = Substitute.For<IUnitOfWork>();
 
     public readonly Guid AdminId = Guid.NewGuid();
@@ -23,7 +24,7 @@ public class AdminTestContext
         UnitOfWork.TrySaveChangesAsync(Arg.Any<CancellationToken>()).Returns(true);
     }
 
-    public AdminService Service => new(Users, Portfolio, Instruments, Audit, UnitOfWork);
+    public AdminService Service => new(Users, Portfolio, Instruments, Audit, Orders, UnitOfWork);
 
     public User GivenUser(decimal free = 1_000m, decimal netDeposits = 1_000m)
     {

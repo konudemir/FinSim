@@ -39,6 +39,12 @@ type AdminUser = {
   holdings: Holding[]
 }
 
+type BookLevel = { price: number; quantity: number; orderCount: number }
+type OrderBook = {
+  instrumentId: string; symbol: string; currentPrice: number
+  bids: BookLevel[]; asks: BookLevel[]
+}
+
 export default function Admin({ onClose }: { onClose: () => void }) {
   const { t, tServer } = useLang()
 
@@ -46,6 +52,9 @@ export default function Admin({ onClose }: { onClose: () => void }) {
   const [users, setUsers] = useState<AdminUser[]>([])
   const [notice, setNotice] = useState('')
   const [busy, setBusy] = useState(false)
+
+  const [bookSymbol, setBookSymbol] = useState<string>('')
+  const [book, setBook] = useState<OrderBook | null>(null)
 
   const [symbol, setSymbol] = useState('')
   const [name, setName] = useState('')
@@ -64,8 +73,18 @@ export default function Admin({ onClose }: { onClose: () => void }) {
 
   const loadUsers = () =>
     api.get<AdminUser[]>('/api/admin/users').then(r => setUsers(r.data)).catch(console.error)
+  
 
   useEffect(() => { loadInstruments(); loadUsers() }, [])
+
+  useEffect(() => {
+    if (!bookSymbol) return
+    const load = () => api.get<OrderBook>(`/api/admin/book/${bookSymbol}`)
+      .then(r => setBook(r.data)).catch(console.error)
+    load()
+    const h = setInterval(load, 10000)
+    return () => clearInterval(h)
+  }, [bookSymbol])
 
   const fail = (e: any, fallback: LangKey) =>
     setNotice(e.response ? tServer(e.response.data) : t(fallback))
@@ -252,6 +271,52 @@ export default function Admin({ onClose }: { onClose: () => void }) {
             ))}
           </tbody>
         </table>
+      </div>
+
+      <div className="panel">
+        <div className="section-head">
+          <h3>Order Book</h3>
+          <select className="field-input" value={bookSymbol} onChange={e => setBookSymbol(e.target.value)}>
+            <option value="">—</option>
+            {instruments.map(i => (
+              <option key={i.id} value={i.id}>{i.symbol}</option>
+            ))}
+          </select>
+        </div>
+        {book && (
+          <table className="ledger">
+            <thead>
+              <tr>
+                <th>Side</th>
+                <th className="num">Price</th>
+                <th className="num">Qty</th>
+                <th className="num">Orders</th>
+              </tr>
+            </thead>
+            <tbody>
+              {[...book.asks].reverse().map(l => (
+                <tr key={`a${l.price}`}>
+                  <td className="down">Sell</td>
+                  <td className="num down">{fmt(l.price)}</td>
+                  <td className="num">{l.quantity}</td>
+                  <td className="num">{l.orderCount}</td>
+                </tr>
+              ))}
+              <tr>
+                <td colSpan={2}>Last</td>
+                <td className="num" colSpan={2}>{fmt(book.currentPrice)}</td>
+              </tr>
+              {book.bids.map(l => (
+                <tr key={`b${l.price}`}>
+                  <td className="up">Buy</td>
+                  <td className="num up">{fmt(l.price)}</td>
+                  <td className="num">{l.quantity}</td>
+                  <td className="num">{l.orderCount}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
       </div>
 
       <div className="panel">

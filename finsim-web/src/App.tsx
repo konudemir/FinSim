@@ -161,7 +161,7 @@ function OrderTable({ orders, pending, now, onCancel, onReplace, replacing }: {
         <thead>
           <tr>
             <th>{t('ledger.symbol')}</th>
-            <th className="num">{t('ledger.qty')}</th>
+            <th className="hide-sm">{t('ledger.type')}</th>1
             <th>{t('ledger.side')}</th>
             <th className="num">{t('ledger.qty')}</th>
             <th className="num">{t('ledger.price')}</th>

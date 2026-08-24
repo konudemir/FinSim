@@ -11,6 +11,7 @@ public class AdminService
     private readonly IPortfolioRepository _portfolio;
     private readonly IInstrumentRepository _instruments;
     private readonly IAdminAuditRepository _audit;
+    private readonly IOrderRepository _orders;
     private readonly IUnitOfWork _unitOfWork;
 
     public AdminService(
@@ -18,12 +19,14 @@ public class AdminService
         IPortfolioRepository portfolio,
         IInstrumentRepository instruments,
         IAdminAuditRepository audit,
+        IOrderRepository orders,
         IUnitOfWork unitOfWork)
     {
         _users = users;
         _portfolio = portfolio;
         _instruments = instruments;
         _audit = audit;
+        _orders = orders;
         _unitOfWork = unitOfWork;
     }
 
@@ -156,5 +159,34 @@ public class AdminService
         return await _unitOfWork.TrySaveChangesAsync(ct)
             ? ShareAdjustResult.Success
             : ShareAdjustResult.ConcurrencyConflict;
+    }
+
+
+    public async Task<OrderBookDto?> GetOrderBookAsync(Guid instrumentId, CancellationToken ct)
+    {
+        var instrument = await _instruments.GetByIdAsync(instrumentId, ct);
+        if (instrument is null) return null;
+
+        var book = await _orders.GetOpenBookAsync(instrumentId, ct);
+
+        static List<BookLevelDto> Levels(IEnumerable<Order> side, bool descending)
+        {
+            var q = side.GroupBy(o => o.Price!.Value)
+                        .Select(g => new BookLevelDto(
+                            g.Key,
+                            g.Sum(o => o.Quantity - o.FilledQuantity),
+                            g.Count()))
+                        .Where(l => l.Quantity > 0);
+            return (descending ? q.OrderByDescending(l => l.Price)
+                            : q.OrderBy(l => l.Price)).ToList();
+        }
+
+        bool InBook(Order o) => o.Price is not null
+                            && (o.StopPrice is null || o.ImmediateOrCancel);
+
+        return new OrderBookDto(
+            instrument.Id, instrument.Symbol!, instrument.CurrentPrice,
+            Levels(book.Where(o => o.Direction == OrderDirection.Buy  && InBook(o)), descending: true),
+            Levels(book.Where(o => o.Direction == OrderDirection.Sell && InBook(o)), descending: false));
     }
 }
