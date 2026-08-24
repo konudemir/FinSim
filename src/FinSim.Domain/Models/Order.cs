@@ -25,6 +25,9 @@ namespace FinSim.Domain.Models
 
         public User User { get; set; } = null!;
         public Instrument Instrument { get; set; } = null!;
-        public ICollection<Transaction> Transactions { get; set; } = [];
+        public int FilledQuantity { get; set; }
+        public decimal AvgPrice { get; set; }
+        public bool ImmediateOrCancel { get; set; }
+
     }
 }

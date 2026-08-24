@@ -3,21 +3,51 @@ using NSubstitute;
 
 namespace FinSim.Tests;
 
-/// <summary>Ortalama maliyet — weighted average cost across successive buys.</summary>
+/// <summary>
+/// Ortalama maliyet — weighted average cost across successive buys.
+/// PlaceMarketOrderAsync only reserves and books into the order book now — it doesn't
+/// fill anything itself — so every case needs a resting counterparty at the instrument's
+/// price and a following Engine.MatchAsync to actually produce the fill these tests
+/// are about the aftermath of.
+/// </summary>
 public class AverageCostTests
 {
     private readonly OrderTestContext _ctx = new();
     private readonly CancellationToken _ct = CancellationToken.None;
 
+    // Placed well in the past so it's always the resting side regardless of clock
+    // resolution — the counterparty's price is what these tests assert fills happened at.
+    private static readonly DateTimeOffset Earlier = DateTimeOffset.UtcNow.AddMinutes(-1);
+
+    private async Task BuyAsync(int quantity, decimal price)
+    {
+        _ctx.GivenUser(_ctx.CounterpartyId, free: 1_000_000m);
+        _ctx.GivenNoPosition(_ctx.CounterpartyId);
+        _ctx.GivenPendingInQueue(OrderDirection.Sell, quantity, price, ownerId: _ctx.CounterpartyId, createdAt: Earlier);
+
+        var instrument = _ctx.GivenInstrument(price);
+        await _ctx.Service.PlaceMarketOrderAsync(_ctx.UserId, _ctx.InstrumentId, quantity, OrderDirection.Buy, _ct);
+        await _ctx.Engine.MatchAsync([instrument], _ct);
+    }
+
+    private async Task SellAsync(int quantity, decimal price)
+    {
+        _ctx.GivenUser(_ctx.CounterpartyId, free: 1_000_000m);
+        _ctx.GivenNoPosition(_ctx.CounterpartyId);
+        _ctx.GivenPendingInQueue(OrderDirection.Buy, quantity, price, ownerId: _ctx.CounterpartyId, createdAt: Earlier);
+
+        var instrument = _ctx.GivenInstrument(price);
+        await _ctx.Service.PlaceMarketOrderAsync(_ctx.UserId, _ctx.InstrumentId, quantity, OrderDirection.Sell, _ct);
+        await _ctx.Engine.MatchAsync([instrument], _ct);
+    }
+
     [Fact]
     public async Task FirstBuy_SetsAverageCostToTheExecutionPrice()
     {
         _ctx.GivenUser();
-        _ctx.GivenInstrument(price: 100m);
         _ctx.GivenNoPosition();
 
-        await _ctx.Service.PlaceMarketOrderAsync(
-            _ctx.UserId, _ctx.InstrumentId, 10, OrderDirection.Buy, _ct);
+        await BuyAsync(10, 100m);
 
         var created = _ctx.AddedPosition;
 
@@ -30,12 +60,10 @@ public class AverageCostTests
     [Fact]
     public async Task SecondBuy_AtAHigherPrice_PullsTheAverageUp()
     {
-        _ctx.GivenUser();
-        _ctx.GivenInstrument(price: 120m);
+        _ctx.GivenUser(free: 1_000_000m);
         var position = _ctx.GivenPosition(quantity: 10, averageCost: 100m);
 
-        await _ctx.Service.PlaceMarketOrderAsync(
-            _ctx.UserId, _ctx.InstrumentId, 10, OrderDirection.Buy, _ct);
+        await BuyAsync(10, 120m);
 
         // (100x10 + 120x10) / 20 = 110
         Assert.Equal(110m, position.AverageCost);
@@ -45,12 +73,10 @@ public class AverageCostTests
     [Fact]
     public async Task SecondBuy_AtALowerPrice_PullsTheAverageDown()
     {
-        _ctx.GivenUser();
-        _ctx.GivenInstrument(price: 80m);
+        _ctx.GivenUser(free: 1_000_000m);
         var position = _ctx.GivenPosition(quantity: 10, averageCost: 100m);
 
-        await _ctx.Service.PlaceMarketOrderAsync(
-            _ctx.UserId, _ctx.InstrumentId, 10, OrderDirection.Buy, _ct);
+        await BuyAsync(10, 80m);
 
         Assert.Equal(90m, position.AverageCost);
         Assert.Equal(20, position.TotalQuantity);
@@ -59,12 +85,10 @@ public class AverageCostTests
     [Fact]
     public async Task TheAverageIsWeightedByQuantity_NotASimpleMean()
     {
-        _ctx.GivenUser();
-        _ctx.GivenInstrument(price: 200m);
+        _ctx.GivenUser(free: 1_000_000m);
         var position = _ctx.GivenPosition(quantity: 90, averageCost: 100m);
 
-        await _ctx.Service.PlaceMarketOrderAsync(
-            _ctx.UserId, _ctx.InstrumentId, 10, OrderDirection.Buy, _ct);
+        await BuyAsync(10, 200m);
 
         // (100x90 + 200x10) / 100 = 110 — a simple mean would give 150
         Assert.Equal(110m, position.AverageCost);
@@ -74,12 +98,10 @@ public class AverageCostTests
     [Fact]
     public async Task BuyingAtTheSamePrice_LeavesTheAverageUnchanged()
     {
-        _ctx.GivenUser();
-        _ctx.GivenInstrument(price: 100m);
+        _ctx.GivenUser(free: 1_000_000m);
         var position = _ctx.GivenPosition(quantity: 5, averageCost: 100m);
 
-        await _ctx.Service.PlaceMarketOrderAsync(
-            _ctx.UserId, _ctx.InstrumentId, 5, OrderDirection.Buy, _ct);
+        await BuyAsync(5, 100m);
 
         Assert.Equal(100m, position.AverageCost);
         Assert.Equal(10, position.TotalQuantity);
@@ -89,11 +111,9 @@ public class AverageCostTests
     public async Task Selling_DoesNotChangeTheAverageCost()
     {
         _ctx.GivenUser();
-        _ctx.GivenInstrument(price: 150m);
         var position = _ctx.GivenPosition(quantity: 10, averageCost: 100m);
 
-        await _ctx.Service.PlaceMarketOrderAsync(
-            _ctx.UserId, _ctx.InstrumentId, 4, OrderDirection.Sell, _ct);
+        await SellAsync(4, 150m);
 
         // realising a gain must not rewrite the cost basis of what's left
         Assert.Equal(100m, position.AverageCost);
@@ -104,11 +124,9 @@ public class AverageCostTests
     public async Task SellingEverything_RemovesThePosition()
     {
         _ctx.GivenUser();
-        _ctx.GivenInstrument(price: 150m);
         var position = _ctx.GivenPosition(quantity: 10, averageCost: 100m);
 
-        await _ctx.Service.PlaceMarketOrderAsync(
-            _ctx.UserId, _ctx.InstrumentId, 10, OrderDirection.Sell, _ct);
+        await SellAsync(10, 150m);
 
         Assert.Equal(0, position.TotalQuantity);
         _ctx.Portfolio.Received(1).Remove(position);
@@ -123,11 +141,9 @@ public class AverageCostTests
         int heldQty, decimal heldCost, int buyQty, decimal buyPrice, decimal expected)
     {
         _ctx.GivenUser(free: 1_000_000m);
-        _ctx.GivenInstrument(price: buyPrice);
         var position = _ctx.GivenPosition(quantity: heldQty, averageCost: heldCost);
 
-        await _ctx.Service.PlaceMarketOrderAsync(
-            _ctx.UserId, _ctx.InstrumentId, buyQty, OrderDirection.Buy, _ct);
+        await BuyAsync(buyQty, buyPrice);
 
         Assert.Equal(expected, position.AverageCost);
         Assert.Equal(heldQty + buyQty, position.TotalQuantity);

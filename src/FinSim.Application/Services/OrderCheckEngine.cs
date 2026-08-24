@@ -13,6 +13,10 @@ namespace FinSim.Application.Services
         private readonly IPortfolioRepository _portfolio;
         private readonly ITransactionRepository _transactions;
         private readonly ILogger<OrderCheckEngine> _logger;
+        
+        /// <summary>Traded quantity per instrument from the last MatchAsync call.
+        /// BackgroundWorker reads this to stamp Volume on the PriceHistory row.</summary>
+        public Dictionary<Guid, double> LastTickVolume { get; private set; } = new();
 
         public OrderCheckEngine(
             IOrderRepository orders,
@@ -32,152 +36,260 @@ namespace FinSim.Application.Services
             IReadOnlyCollection<Instrument> instruments, CancellationToken ct)
         {
             var touched = new List<OrderOutcome>();
+            //var map = instruments.ToDictionary(i => i.Id);
 
-            var orders = await _orders.GetPendingLimitOrdersAsync(ct);
-            if (orders.Count == 0) return touched;
+            // Accumulate traded quantity per instrument this tick; BackgroundWorker
+            // stamps it onto the PriceHistory row it writes after the save.
+            LastTickVolume = new Dictionary<Guid, double>();
 
-            var map = instruments.ToDictionary(i => i.Id);
-
-            foreach (var o in orders)
+            foreach (var instrument in instruments)
             {
-                if (!map.TryGetValue(o.InstrumentId, out var instrument))
-                {
-                    touched.Add(Reject(o, await _users.GetByIdAsync(o.UserId, ct),
-                                    await _portfolio.GetAsync(o.UserId, o.InstrumentId, ct),
-                                    null, "instrument no longer trading"));
-                    continue;
-                }
-                if (o.Price is null)
-                {
-                    touched.Add(Reject(o, await _users.GetByIdAsync(o.UserId, ct), null,
-                                    instrument, "limit order has no price"));
-                    continue;
-                }
+                if (!instrument.IsActive) continue;
 
-                var market = instrument.CurrentPrice;
+                var book = await _orders.GetOpenBookAsync(instrument.Id, ct);
+                if (book.Count == 0) continue;
 
-                bool matched = o.Direction == OrderDirection.Buy
-                ? market <= o.Price.Value
-                : market >= o.Price.Value || (o.StopPrice is decimal stop && market <= stop);
-                if (!matched) continue;
+                // Frozen collar reference for the whole walk on this instrument.
+                var reference = instrument.CurrentPrice;
+                var low  = reference * 0.95m;
+                var high = reference * 1.05m;
 
-                var user = await _users.GetByIdAsync(o.UserId, ct);
-                if (user is null)
+                foreach (var o in book)
                 {
-                    // Sahibi yok; kimseye push edilemez, sadece durumu kapat.
-                    Reject(o, null, null, instrument, "user no longer exists");
-                    continue;
+                    if (o.StopPrice is null || o.ImmediateOrCancel) continue;
+                    if (reference > o.StopPrice.Value) continue;
+
+                    o.Price = Math.Round(reference * 0.95m, 2, MidpointRounding.AwayFromZero);
+                    o.ImmediateOrCancel = true;
+                    o.UpdatedAt = DateTimeOffset.UtcNow;
+                    touched.Add(new OrderOutcome(o.UserId, ToDto(o, instrument, null)));
                 }
 
-                var portItem = await _portfolio.GetAsync(o.UserId, o.InstrumentId, ct);
-                var currentQuantity = portItem?.TotalQuantity ?? 0;
-                var amount = Math.Round(market * o.Quantity, 2, MidpointRounding.AwayFromZero);
-                decimal? realized = null;
+                int Remaining(Order o) => o.Quantity - o.FilledQuantity;
 
-                if (o.Direction == OrderDirection.Buy)
+                // Bids: highest price first, then FIFO. Asks: lowest first, then FIFO.
+                var bids = book.Where(o => o.Direction == OrderDirection.Buy  && o.Price is not null
+                                        && (o.StopPrice is null || o.ImmediateOrCancel))
+                               .OrderByDescending(o => o.Price!.Value).ThenBy(o => o.CreatedAt).ToList();
+                var asks = book.Where(o => o.Direction == OrderDirection.Sell && o.Price is not null
+                                        && (o.StopPrice is null || o.ImmediateOrCancel))
+                               .OrderBy(o => o.Price!.Value).ThenBy(o => o.CreatedAt).ToList();
+
+                int bi = 0, ai = 0;
+
+                while (bi < bids.Count && ai < asks.Count)
                 {
-                    if (currentQuantity < 0) // covering a short: the reservation was on shares, not cash
+                    var bid = bids[bi];
+                    var ask = asks[ai];
+
+                    if (Remaining(bid) <= 0) { bi++; continue; }
+                    if (Remaining(ask) <= 0) { ai++; continue; }
+
+                    // Self-trade: same user both sides. Skip this bid and try the next
+                    // one against the same ask — advancing the ask would discard a
+                    // resting order that other bids could still legitimately match.
+                    if (bid.UserId == ask.UserId)
                     {
-                        if (portItem is null || portItem.LockedQuantity < o.Quantity)
-                        {
-                            touched.Add(Reject(o, user, portItem, instrument, "no matching locked short position"));
-                            continue;
-                        }
-
-                        var quantityBefore = -currentQuantity;
-                        var entry = portItem.AverageCost;
-
-                        portItem.LockedQuantity -= o.Quantity;
-                        realized = PortfolioFillExecutor.Apply(
-                            _portfolio, user, portItem, o.UserId, o.InstrumentId,
-                            OrderDirection.Buy, o.Quantity, market).Realized;
-
-                        var quantityAfter = quantityBefore - o.Quantity;
-                        var release = MarginCalculator.ReleaseOnCover(quantityBefore, quantityAfter, entry);
-                        var proceeds = Math.Round(entry * o.Quantity, 2, MidpointRounding.AwayFromZero);
-
-                        user.LockedCashBalance -= proceeds;
-                        user.FreeCashBalance   += proceeds;
-                        user.FreeCashBalance   -= amount;   // buy back at market
-
-                        user.LockedCashBalance -= release;
-                        user.FreeCashBalance += release;
-                        user.MarginUsed -= release;
+                        bi++;
+                        continue;
                     }
-                    else // an ordinary buy, funded by the cash locked at placement
+
+                    // Cross? highest bid must meet lowest ask.
+                    if (bid.Price!.Value < ask.Price!.Value) break;
+
+                    var resting = bid.CreatedAt <= ask.CreatedAt ? bid : ask;
+                    var fillPrice = (bid.ImmediateOrCancel && ask.ImmediateOrCancel)
+                        ? reference
+                        : resting.Price!.Value;
+
+                    // Collar: resting price outside frozen ±5% → no trade, walk stops.
+                    // The aggressor can't complete this tick either — rather than leave
+                    // it resting against a quote outside the band indefinitely, its
+                    // remainder is cancelled and refunded here. The resting side (whose
+                    // price caused the breach) is left untouched. Scenario 3.
+                    if (fillPrice < low || fillPrice > high)
                     {
-                        var locked = o.LockedAmount;
-
-                        user.LockedCashBalance -= locked;
-                        user.FreeCashBalance += locked - amount;   // limitten ucuza aldıysa fark iade
-
-                        PortfolioFillExecutor.Apply(
-                            _portfolio, user, portItem, o.UserId, o.InstrumentId,
-                            OrderDirection.Buy, o.Quantity, market);
+                        await CancelLeftoverAsync(resting == bid ? ask : bid, instrument, touched, ct);
+                        break;
                     }
+
+                    var qty = Math.Min(Remaining(bid), Remaining(ask));
+
+                    // All-or-nothing: settle both sides; if either can't, skip this pair.
+                    if (!await TrySettleFillAsync(bid, ask, qty, fillPrice, instrument, touched, ct))
+                    {
+                        // Couldn't settle (e.g. short side, not yet implemented) — don't
+                        // let it wedge the walk; step past the resting order.
+                        if (resting == bid) bi++; else ai++;
+                        continue;
+                    }
+
+                    LastTickVolume[instrument.Id] =
+                        LastTickVolume.GetValueOrDefault(instrument.Id) + qty;
+
+                    instrument.CurrentPrice = fillPrice; // last-trade price
                 }
-                else // sell
+                                // IOC leftover: a market order (emulated as aggressive limit) must not
+                // rest. Anything still open on this instrument that's IOC gets cancelled
+                // and its reservation refunded. Scenario 4. (A collar-break aggressor may
+                // already have been cancelled above — CancelLeftoverAsync no-ops on it.)
+                foreach (var o in book)
                 {
-                    if (currentQuantity > 0) // reducing or closing a long
-                    {
-                        if (portItem is null || portItem.LockedQuantity < o.Quantity)
-                        {
-                            touched.Add(Reject(o, user, portItem, instrument, "no matching locked position"));
-                            continue;
-                        }
-
-                        portItem.LockedQuantity -= o.Quantity;
-                        realized = PortfolioFillExecutor.Apply(
-                            _portfolio, user, portItem, o.UserId, o.InstrumentId,
-                            OrderDirection.Sell, o.Quantity, market).Realized;
-                        user.FreeCashBalance += amount;
-                    }
-                    else // opening or adding to a short
-                    {
-                        // Margin was reserved at the LIMIT price, but the position's entry —
-                        // and therefore ReleaseOnCover — will be the FILL price. True the lock
-                        // up here or the release later won't match what was held.
-                        var actualMargin = MarginCalculator.InitialMargin(o.Quantity, market);
-                        var topUp = actualMargin - o.LockedAmount;
-
-                        if (topUp > 0 && user.FreeCashBalance < topUp)
-                        {
-                            touched.Add(Reject(o, user, portItem, instrument, "insufficient margin at fill price"));
-                            continue;
-                        }
-
-                        user.FreeCashBalance   -= topUp;
-                        user.LockedCashBalance += topUp;
-                        user.MarginUsed        += topUp;
-                        o.LockedAmount          = actualMargin;
-
-                        PortfolioFillExecutor.Apply(
-                            _portfolio, user, portItem, o.UserId, o.InstrumentId,
-                            OrderDirection.Sell, o.Quantity, market);
-                        user.LockedCashBalance += amount;   // short proceeds are collateral, not spendable cash
-                    }
+                    if (!o.ImmediateOrCancel) continue;
+                    await CancelLeftoverAsync(o, instrument, touched, ct);
                 }
-
-                o.Status = OrderStatus.Filled;
-                o.UpdatedAt = DateTimeOffset.UtcNow;
-
-                _transactions.Add(new Transaction
-                {
-                    Id = Guid.NewGuid(),
-                    OrderId = o.Id,
-                    UserId = o.UserId,
-                    InstrumentId = o.InstrumentId,
-                    ExecutedQuantity = o.Quantity,
-                    ExecutedPrice = market,
-                    TotalAmount = amount,
-                    RealizedPnL = realized,
-                    TransactionDate = DateTimeOffset.UtcNow
-                });
-
-                touched.Add(new OrderOutcome(o.UserId, ToDto(o, instrument, amount)));
             }
 
             return touched;
+        }
+
+        /// <summary>
+        /// Cancels a still-open order and refunds exactly what it reserved — the same
+        /// release logic as OrderReleaseExecutor.Release, duplicated here because this
+        /// runs mid-tick against orders the caller already loaded, not by id.
+        /// </summary>
+        private async Task CancelLeftoverAsync(
+            Order o, Instrument instrument, List<OrderOutcome> touched, CancellationToken ct)
+        {
+            if (o.Status != OrderStatus.Pending && o.Status != OrderStatus.PartiallyFilled) return;
+
+            var owner = await _users.GetByIdAsync(o.UserId, ct);
+            var pos   = await _portfolio.GetAsync(o.UserId, o.InstrumentId, ct);
+
+            if (o.LockedAmount > 0 && owner is not null)
+            {
+                owner.LockedCashBalance -= o.LockedAmount;
+                owner.FreeCashBalance   += o.LockedAmount;
+                if (o.Direction == OrderDirection.Sell)
+                    owner.MarginUsed -= o.LockedAmount;
+                o.LockedAmount = 0m;
+            }
+            else if (pos is not null)
+            {
+                pos.LockedQuantity -= Math.Min(pos.LockedQuantity, o.Quantity - o.FilledQuantity);
+            }
+
+            o.Status = OrderStatus.Cancelled;
+            o.UpdatedAt = DateTimeOffset.UtcNow;
+            touched.Add(new OrderOutcome(o.UserId, ToDto(o, instrument, null)));
+        }
+
+                /// <summary>
+        /// Settles one fill against BOTH orders. All-or-nothing: returns false without
+        /// mutating anything if either side can't be settled, so the caller skips the pair.
+        /// Short open/cover deferred to Aşama 6 — they surface as a false return.
+        /// </summary>
+        private async Task<bool> TrySettleFillAsync(
+            Order bid, Order ask, int qty, decimal price,
+            Instrument instrument, List<OrderOutcome> touched, CancellationToken ct)
+        {
+            var buyer  = await _users.GetByIdAsync(bid.UserId, ct);
+            var seller = await _users.GetByIdAsync(ask.UserId, ct);
+            if (buyer is null || seller is null) return false;
+
+            var buyerPos  = await _portfolio.GetAsync(bid.UserId, instrument.Id, ct);
+            var sellerPos = await _portfolio.GetAsync(ask.UserId, instrument.Id, ct);
+
+            var buyerKind  = PortfolioFillExecutor.Classify(buyerPos?.TotalQuantity ?? 0, OrderDirection.Buy);
+            var sellerKind = PortfolioFillExecutor.Classify(sellerPos?.TotalQuantity ?? 0, OrderDirection.Sell);
+
+            // All-or-nothing: every share reservation is verified before anything mutates.
+            if (buyerKind == FillKind.CoverShort && (buyerPos is null || buyerPos.LockedQuantity < qty))
+                return false;
+            if (sellerKind == FillKind.ReduceOrCloseLong && (sellerPos is null || sellerPos.LockedQuantity < qty))
+                return false;
+
+            var gross = Math.Round(price * qty, 2, MidpointRounding.AwayFromZero);
+
+            // Short size and entry price before the fill. The collateral recompute needs
+            // the pair, and ApplyShortOpen moves both at once.
+            var buyerShortBefore  = Math.Max(0, -(buyerPos?.TotalQuantity  ?? 0));
+            var buyerAvgBefore    = buyerPos?.AverageCost  ?? 0m;
+            var sellerShortBefore = Math.Max(0, -(sellerPos?.TotalQuantity ?? 0));
+            var sellerAvgBefore   = sellerPos?.AverageCost ?? 0m;
+
+            // ---- BUYER: per-unit slice of the cash locked at placement. A cover buy
+            // reserved shares instead, so its LockedAmount is 0 and the slice is 0. ----
+            var buyerRemaining = bid.Quantity - bid.FilledQuantity;
+            var buyerLockedPerUnit = buyerRemaining > 0 ? bid.LockedAmount / buyerRemaining : 0m;
+            var buyerReleaseFromLock = Math.Round(buyerLockedPerUnit * qty, 2, MidpointRounding.AwayFromZero);
+
+            buyer.LockedCashBalance -= buyerReleaseFromLock;
+            buyer.FreeCashBalance   += buyerReleaseFromLock - gross;   // refund = locked slice − actual cost
+            bid.LockedAmount        -= buyerReleaseFromLock;
+
+            if (buyerKind == FillKind.CoverShort) buyerPos!.LockedQuantity -= qty;
+
+            var buyerFill = PortfolioFillExecutor.Apply(
+                _portfolio, buyer, buyerPos, bid.UserId, instrument.Id,
+                OrderDirection.Buy, qty, price);
+
+            // ---- SELLER ----
+            if (sellerKind == FillKind.ReduceOrCloseLong) sellerPos!.LockedQuantity -= qty;
+
+            if (sellerKind == FillKind.OpenOrAddShort)
+            {
+                // Order-level margin reserved at placement, drawn down per unit like the
+                // buyer's cash. Position margin is handled separately below.
+                var askRemaining = ask.Quantity - ask.FilledQuantity;
+                var askLockedPerUnit = askRemaining > 0 ? ask.LockedAmount / askRemaining : 0m;
+                var askRelease = Math.Round(askLockedPerUnit * qty, 2, MidpointRounding.AwayFromZero);
+
+                seller.LockedCashBalance -= askRelease;
+                seller.FreeCashBalance   += askRelease;
+                seller.MarginUsed        -= askRelease;
+                ask.LockedAmount         -= askRelease;
+            }
+
+            var sellerFill = PortfolioFillExecutor.Apply(
+                _portfolio, seller, sellerPos, ask.UserId, instrument.Id,
+                OrderDirection.Sell, qty, price);
+
+            seller.FreeCashBalance += gross;
+
+            // ---- position collateral, recomputed from scratch (scenario 6) ----
+            if (buyerKind == FillKind.CoverShort)
+                MarginCalculator.ResyncShortCollateral(buyer, buyerShortBefore, buyerAvgBefore,
+                    buyerShortBefore - qty, buyerAvgBefore);   // cover never moves avgCost
+
+            if (sellerKind == FillKind.OpenOrAddShort)
+                MarginCalculator.ResyncShortCollateral(seller, sellerShortBefore, sellerAvgBefore,
+                    sellerShortBefore + qty, sellerPos?.AverageCost ?? price);
+
+            // ---- order caches: FilledQuantity, running AvgPrice, status ----
+            ApplyFillCache(bid, qty, price);
+            ApplyFillCache(ask, qty, price);
+
+            // ---- transaction: six-field split ----
+            _transactions.Add(new Transaction
+            {
+                Id               = Guid.NewGuid(),
+                BuyerOrderId     = bid.Id,
+                SellerOrderId    = ask.Id,
+                BuyerUserId      = bid.UserId,
+                SellerUserId     = ask.UserId,
+                InstrumentId     = instrument.Id,
+                ExecutedQuantity = qty,
+                ExecutedPrice    = price,
+                TotalAmount      = gross,
+                BuyerRealizedPnL = buyerFill.Realized,
+                SellerRealizedPnL = sellerFill.Realized,
+                TransactionDate  = DateTimeOffset.UtcNow
+            });
+
+            touched.Add(new OrderOutcome(bid.UserId, ToDto(bid, instrument, gross)));
+            touched.Add(new OrderOutcome(ask.UserId, ToDto(ask, instrument, gross)));
+            return true;
+        }
+                private static void ApplyFillCache(Order o, int qty, decimal price)
+        {
+            var newFilled = o.FilledQuantity + qty;
+            o.AvgPrice = ((o.AvgPrice * o.FilledQuantity) + price * qty) / newFilled;
+            o.FilledQuantity = newFilled;
+            o.Status = o.FilledQuantity >= o.Quantity
+                ? OrderStatus.Filled
+                : OrderStatus.PartiallyFilled;
+            o.UpdatedAt = DateTimeOffset.UtcNow;
         }
 
         private OrderOutcome Reject(
@@ -198,7 +310,7 @@ namespace FinSim.Application.Services
             }
             else if (portItem is not null)
             {
-                portItem.LockedQuantity -= Math.Min(portItem.LockedQuantity, order.Quantity);
+                portItem.LockedQuantity -= Math.Min(portItem.LockedQuantity, order.Quantity - order.FilledQuantity);
             }
 
             order.Status    = OrderStatus.Rejected;

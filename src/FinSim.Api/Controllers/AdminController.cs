@@ -18,6 +18,13 @@ namespace FinSim.Controllers
 
         public AdminController(AdminService admin) => _admin = admin;
 
+        [HttpGet("book/{instrumentId:guid}")]
+        public async Task<IActionResult> GetOrderBook(Guid instrumentId, CancellationToken ct)
+        {
+            var book = await _admin.GetOrderBookAsync(instrumentId, ct);
+            return book is null ? NotFound("InstrumentNotFound") : Ok(book);
+        }
+
         [HttpGet("users")]
         public async Task<IActionResult> GetUsers(CancellationToken ct) =>
             Ok(await _admin.GetUsersOverviewAsync(ct));

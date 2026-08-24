@@ -34,132 +34,30 @@ public class OrderService
     /// </summary>
     private static decimal Money(decimal value) =>
         Math.Round(value, 2, MidpointRounding.AwayFromZero);
-
+    //this is just limit order with Immidiately Or Cancel (same thing as market) within 0.95 and 1.05
     public async Task<(OrderResult Result, PlacedOrderDto? Order)> PlaceMarketOrderAsync(
         Guid userId, Guid instrumentId, int quantity, OrderDirection direction, CancellationToken ct)
     {
-        var user = await _users.GetByIdAsync(userId, ct);
-        if (user is null) return (OrderResult.UserNotFound, null);
-
         var instrument = await _instruments.GetByIdAsync(instrumentId, ct);
         if (instrument is null) return (OrderResult.InstrumentNotFound, null);
         if (!instrument.IsActive) return (OrderResult.InstrumentInactive, null);
 
-        var price = instrument.CurrentPrice;
-        var total = Money(price * quantity);
+        // A market order is an aggressive limit that sweeps the book within the
+        // collar and cancels any remainder (IOC). Buy prices up to +5%, sell down
+        // to -5%, so it crosses everything the collar allows.
+        var aggressivePrice = direction == OrderDirection.Buy
+            ? Money(instrument.CurrentPrice * 1.05m)
+            : Money(instrument.CurrentPrice * 0.95m);
 
-        var portItem = await _portfolio.GetAsync(userId, instrumentId, ct);
-        var currentQuantity = portItem?.TotalQuantity ?? 0;
-        decimal? realized = null;
-
-        if (direction == OrderDirection.Buy)
-        {
-            if (currentQuantity < 0) // covering a short
-            {
-                if (quantity > -currentQuantity) return (OrderResult.CrossingNotAllowed, null);
-                if (-currentQuantity - portItem!.LockedQuantity < quantity)
-                    return (OrderResult.InsufficientShares, null);
-
-                var quantityBefore = -currentQuantity;
-                var entry = portItem!.AverageCost;
-
-                var result = PortfolioFillExecutor.Apply(
-                    _portfolio, user, portItem, userId, instrumentId, direction, quantity, price);
-                realized = result.Realized;
-
-                var quantityAfter = quantityBefore - quantity;
-                var release = MarginCalculator.ReleaseOnCover(quantityBefore, quantityAfter, entry);
-
-                // Release what was actually credited when these shares were shorted —
-                // the ENTRY notional, not what they cost to buy back. The difference
-                // between the two is the realized P&L and belongs in Free.
-                var proceedsReleased = Money(entry * quantity);
-
-                user.LockedCashBalance -= proceedsReleased;
-                user.FreeCashBalance   += proceedsReleased;
-                user.FreeCashBalance   -= total;     // buy the shares back at the current price
-
-                user.LockedCashBalance -= release;   // margin no longer needed for the covered shares
-                user.FreeCashBalance   += release;
-                user.MarginUsed        -= release;
-            }
-            else
-            {
-                if (user.FreeCashBalance < total) return (OrderResult.InsufficientFunds, null);
-
-                user.FreeCashBalance -= total;
-                PortfolioFillExecutor.Apply(
-                    _portfolio, user, portItem, userId, instrumentId, direction, quantity, price);
-            }
-        }
-        else // sell
-        {
-            if (currentQuantity > 0) // reducing or closing a long
-            {
-                if (quantity > currentQuantity) return (OrderResult.CrossingNotAllowed, null);
-                if (currentQuantity - portItem!.LockedQuantity < quantity)
-                    return (OrderResult.InsufficientShares, null);
-
-                var result = PortfolioFillExecutor.Apply(
-                    _portfolio, user, portItem, userId, instrumentId, direction, quantity, price);
-                realized = result.Realized;
-                user.FreeCashBalance += total;
-            }
-            else // opening or adding to a short
-            {
-                var margin = MarginCalculator.InitialMargin(quantity, price);
-                if (user.FreeCashBalance < margin) return (OrderResult.InsufficientMargin, null);
-
-                PortfolioFillExecutor.Apply(
-                    _portfolio, user, portItem, userId, instrumentId, direction, quantity, price);
-
-                user.LockedCashBalance += total;    // short proceeds are collateral, not spendable cash
-                user.FreeCashBalance -= margin;
-                user.LockedCashBalance += margin;
-                user.MarginUsed += margin;
-            }
-        }
-
-        var order = new Order
-        {
-            Id = Guid.NewGuid(),
-            UserId = userId,
-            InstrumentId = instrumentId,
-            OrderType = OrderType.Market,
-            Direction = direction,
-            Quantity = quantity,
-            Price = null,
-            Status = OrderStatus.Filled,
-            CreatedAt = DateTimeOffset.UtcNow,
-            UpdatedAt = DateTimeOffset.UtcNow,
-            LockedAmount = 0m       // market orders settle immediately, nothing is ever held
-        };
-        _orders.Add(order);
-
-        _transactions.Add(new Transaction
-        {
-            Id = Guid.NewGuid(),
-            OrderId = order.Id,
-            UserId = userId,
-            InstrumentId = instrumentId,
-            ExecutedQuantity = quantity,
-            ExecutedPrice = price,
-            TotalAmount = total,
-            RealizedPnL = realized,
-            TransactionDate = DateTimeOffset.UtcNow
-        });
-
-        if (!await _orders.TrySaveChangesAsync(ct))
-            return (OrderResult.ConcurrencyConflict, null);
-
-        return (OrderResult.Success,
-                new PlacedOrderDto(order.Id, order.Status.ToString(), price, total));
+        return await PlaceLimitOrderAsync(
+            userId, instrumentId, quantity, aggressivePrice,
+            stopPrice: null, direction, ct, immediateOrCancel: true);
     }
-
     public async Task<(OrderResult Result, PlacedOrderDto? Order)> PlaceLimitOrderAsync(
         Guid userId, Guid instrumentId, int quantity, decimal limitPrice,
         decimal? stopPrice, OrderDirection direction, CancellationToken ct,
-        int expiryDays = 0, int expiryHours = 0, int expiryMinutes = 0, Guid? replacedFromOrderId = null)
+        int expiryDays = 0, int expiryHours = 0, int expiryMinutes = 0,
+        Guid? replacedFromOrderId = null, bool immediateOrCancel = false)
     {
         // Blank fields arrive as 0; all three at 0 means the order never expires.
         if (expiryDays < 0 || expiryHours < 0 || expiryMinutes < 0)
@@ -252,6 +150,7 @@ public class OrderService
             CreatedAt = DateTimeOffset.UtcNow,
             UpdatedAt = DateTimeOffset.UtcNow,
             LockedAmount = lockedAmount,
+            ImmediateOrCancel = immediateOrCancel,
             // Absolute deadline, not a stored duration — a restart must not shift it.
             ExpiresAt = expiryDuration > TimeSpan.Zero
                 ? DateTimeOffset.UtcNow + expiryDuration
@@ -270,7 +169,7 @@ public class OrderService
     {
         var order = await _orders.GetByIdAsync(orderId, ct);
         if (order is null || order.UserId != userId) return OrderResult.OrderNotFound;
-        if (order.Status != OrderStatus.Pending) return OrderResult.NotCancellable;
+        if (order.Status != OrderStatus.Pending && order.Status != OrderStatus.PartiallyFilled) return OrderResult.NotCancellable;
 
         var user = await _users.GetByIdAsync(order.UserId, ct);
         if (user is null) return OrderResult.UserNotFound;
@@ -320,7 +219,7 @@ var instruments = (await _instruments.GetActiveAsync(ct)).ToDictionary(i => i.Id
         return orders.Select(o => OrderDtoMapper.ToDto(
             o,
             instruments.TryGetValue(o.InstrumentId, out var i) ? i.Symbol! : "?",
-            lockedAmount: o.Status == OrderStatus.Pending && o.Direction == OrderDirection.Buy
+            lockedAmount: (o.Status == OrderStatus.Pending || o.Status == OrderStatus.PartiallyFilled) && o.Direction == OrderDirection.Buy
                 ? o.LockedAmount
                 : null,
             executedAmount: totals.TryGetValue(o.Id, out var spent) ? spent : null)).ToList();

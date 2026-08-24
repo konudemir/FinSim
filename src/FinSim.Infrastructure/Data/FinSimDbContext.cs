@@ -146,12 +146,31 @@ namespace FinSim.Infrastructure.Data
             {
                 e.Property(t => t.ExecutedPrice).HasPrecision(18, 2);
                 e.Property(t => t.TotalAmount).HasPrecision(18, 2);
-                e.HasIndex(t => t.OrderId);
-                e.Property(t => t.RealizedPnL).HasPrecision(18, 2);
+                e.Property(t => t.BuyerRealizedPnL).HasPrecision(18, 2);
+                e.Property(t => t.SellerRealizedPnL).HasPrecision(18, 2);
 
-                e.HasOne(t => t.Order)
-                 .WithMany(o => o.Transactions)
-                 .HasForeignKey(t => t.OrderId)
+                e.HasIndex(t => new { t.InstrumentId, t.TransactionDate });
+                e.HasIndex(t => t.BuyerUserId);
+                e.HasIndex(t => t.SellerUserId);
+
+                e.HasOne(t => t.BuyerOrder)
+                 .WithMany()
+                 .HasForeignKey(t => t.BuyerOrderId)
+                 .OnDelete(DeleteBehavior.Restrict);
+
+                e.HasOne(t => t.SellerOrder)
+                 .WithMany()
+                 .HasForeignKey(t => t.SellerOrderId)
+                 .OnDelete(DeleteBehavior.Restrict);
+
+                e.HasOne(t => t.Buyer)
+                 .WithMany()
+                 .HasForeignKey(t => t.BuyerUserId)
+                 .OnDelete(DeleteBehavior.Restrict);
+
+                e.HasOne(t => t.Seller)
+                 .WithMany()
+                 .HasForeignKey(t => t.SellerUserId)
                  .OnDelete(DeleteBehavior.Restrict);
             });
 

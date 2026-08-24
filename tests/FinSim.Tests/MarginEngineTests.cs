@@ -9,6 +9,7 @@ public class MarginEngineTests
 {
     private readonly MarginEngineTestContext _ctx = new();
     private readonly CancellationToken _ct = CancellationToken.None;
+    private static readonly DateTimeOffset Earlier = DateTimeOffset.UtcNow.AddMinutes(-1);
 
     [Fact]
     public async Task EquityWellAboveMaintenance_NoLiquidation()
@@ -33,12 +34,19 @@ public class MarginEngineTests
         var user = _ctx.GivenUser(free: 0m, locked: 1_500m, marginUsed: 500m);
         var instrument = MarginEngineTestContext.NewInstrument(116m);
         var position = _ctx.GivenPosition(user.Id, instrument.Id, quantity: -10, averageCost: 100m);
+        _ctx.GivenRestingOrder(instrument.Id, OrderDirection.Sell, 10, 116m, Earlier);
 
         // equity: 0 + 1500 - (10 x 116) = 340, maintenance: 30% x 1160 = 348 -> breached, still positive
         var touched = await _ctx.Engine.CheckAsync([instrument], _ct);
 
         Assert.Single(touched);
         Assert.True(touched[0].Order.Liquidated);
+
+        // CheckAsync only books the forced cover as an IOC order (ForcedCoverExecutor)
+        // -- it doesn't settle inline. The liquidation only completes once MatchAsync
+        // actually crosses it against a counterparty.
+        await _ctx.Matcher.MatchAsync([instrument], _ct);
+
         Assert.Equal(0, position.TotalQuantity);
         Assert.Equal(-160m, user.RealizedProfitLoss);   // (100 - 116) x 10, a loss
         // -160: realized loss on the cover (entry 100 - cover 116) x 10 now paid out of Free
@@ -58,11 +66,15 @@ public class MarginEngineTests
         var shortInstrument = MarginEngineTestContext.NewInstrument(140m, "SHORTY");
         var longPosition = _ctx.GivenPosition(user.Id, longInstrument.Id, quantity: 5, averageCost: 40m);
         var shortPosition = _ctx.GivenPosition(user.Id, shortInstrument.Id, quantity: -10, averageCost: 100m);
+        _ctx.GivenRestingOrder(shortInstrument.Id, OrderDirection.Sell, 10, 140m, Earlier);
 
         // equity: 0 + 1500 + (5 x 50) - (10 x 140) = 350, maintenance: 30% x 1400 = 420 -> breached
         var touched = await _ctx.Engine.CheckAsync([longInstrument, shortInstrument], _ct);
 
         Assert.Single(touched);
+
+        await _ctx.Matcher.MatchAsync([longInstrument, shortInstrument], _ct);
+
         Assert.Equal(0, shortPosition.TotalQuantity);
         Assert.Equal(5, longPosition.TotalQuantity);     // the long is never touched
         Assert.Equal(40m, longPosition.AverageCost);
@@ -92,9 +104,11 @@ public class MarginEngineTests
             UpdatedAt = DateTimeOffset.UtcNow,
             LockedAmount = 275m
         });
+        _ctx.GivenRestingOrder(instrument.Id, OrderDirection.Sell, 10, 160m, Earlier);
 
         // equity: 225 + 1775 - (10 x 160) = 400, maintenance: 30% x 1600 = 480 -> breached
         await _ctx.Engine.CheckAsync([instrument], _ct);
+        await _ctx.Matcher.MatchAsync([instrument], _ct);
 
         Assert.Equal(OrderStatus.Cancelled, pendingOrder.Status);
         Assert.Equal(0, position.TotalQuantity);

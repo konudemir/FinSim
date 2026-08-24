@@ -8,6 +8,15 @@ public record AdminUserDto(
     decimal LockedCashBalance,
     decimal RealizedProfitLoss,
     List<PortfolioItemDto> Holdings);
+    
+public record BookLevelDto(decimal Price, int Quantity, int OrderCount);
+
+public record OrderBookDto(
+    Guid InstrumentId,
+    string Symbol,
+    decimal CurrentPrice,
+    List<BookLevelDto> Bids,
+    List<BookLevelDto> Asks);
 
 public class AdjustCashRequest
 {

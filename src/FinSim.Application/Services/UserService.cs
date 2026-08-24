@@ -86,7 +86,7 @@ public class UserService
         // shows three days, not 87 blanks.
         if (created > from) from = created;
 
-        var rows = await _snapshots.GetRangeAsync(userId, from, today.AddDays(-1), ct);
+        var rows = await _snapshots.GetRangeAsync(userId, from, today, ct);
 
         var points = new List<PnlPointDto>(rows.Count + 2);
 

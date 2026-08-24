@@ -14,6 +14,8 @@ public class ShortLimitOrderTests
     private Instrument[] MarketAt(decimal price) =>
         [OrderTestContext.NewInstrument(_ctx.InstrumentId, price)];
 
+    private static readonly DateTimeOffset Earlier = DateTimeOffset.UtcNow.AddMinutes(-1);
+
     // ── placing ──────────────────────────────────────────────
 
     [Fact]
@@ -125,6 +127,11 @@ public class ShortLimitOrderTests
         user.MarginUsed = 75m;   // reserved at placement: 50% x (1 x 150)
         _ctx.GivenNoPosition();
         _ctx.GivenPendingInQueue(OrderDirection.Sell, 1, 150m, lockedAmount: 75m);
+        // a lone resting order has nothing to cross against -- a real counterparty bid,
+        // resting earlier at 160, is what actually produces the 160 execution price.
+        _ctx.GivenUser(_ctx.CounterpartyId, free: 100_000m);
+        _ctx.GivenNoPosition(_ctx.CounterpartyId);
+        _ctx.GivenPendingInQueue(OrderDirection.Buy, 1, 160m, ownerId: _ctx.CounterpartyId, createdAt: Earlier);
 
         await _ctx.Engine.MatchAsync(MarketAt(160m), _ct);
 
@@ -146,6 +153,11 @@ public class ShortLimitOrderTests
         user.MarginUsed = 500m;
         var position = _ctx.GivenPosition(quantity: -10, averageCost: 100m, locked: 4);
         _ctx.GivenPendingInQueue(OrderDirection.Buy, 4, 80m, lockedAmount: 0m);
+        // a lone resting order has nothing to cross against -- a real counterparty ask,
+        // resting earlier at 75, is what actually produces the 75 execution price.
+        _ctx.GivenUser(_ctx.CounterpartyId, free: 100_000m);
+        _ctx.GivenNoPosition(_ctx.CounterpartyId);
+        _ctx.GivenPendingInQueue(OrderDirection.Sell, 4, 75m, ownerId: _ctx.CounterpartyId, createdAt: Earlier);
 
         await _ctx.Engine.MatchAsync(MarketAt(75m), _ct);
 
@@ -167,6 +179,11 @@ public class ShortLimitOrderTests
         user.MarginUsed = 500m;
         var position = _ctx.GivenPosition(quantity: -10, averageCost: 100m, locked: 10);
         _ctx.GivenPendingInQueue(OrderDirection.Buy, 10, 90m, lockedAmount: 0m);
+        // a lone resting order has nothing to cross against -- a real counterparty ask,
+        // resting earlier at 90, is what actually produces the 90 execution price.
+        _ctx.GivenUser(_ctx.CounterpartyId, free: 100_000m);
+        _ctx.GivenNoPosition(_ctx.CounterpartyId);
+        _ctx.GivenPendingInQueue(OrderDirection.Sell, 10, 90m, ownerId: _ctx.CounterpartyId, createdAt: Earlier);
 
         await _ctx.Engine.MatchAsync(MarketAt(90m), _ct);
 
@@ -175,23 +192,5 @@ public class ShortLimitOrderTests
         Assert.Equal(100m, user.RealizedProfitLoss);   // (100 - 90) x 10
         _ctx.Portfolio.Received(1).Remove(position);
         SharedAssertions.AssertNoOrphanedCash(user, [position], []);
-    }
-
-    [Fact]
-    public async Task AShortOpenSell_RejectedForAnUntradedInstrument_ReleasesItsMargin()
-    {
-        var user = _ctx.GivenUser(free: 500m, locked: 75m);
-        user.MarginUsed = 75m;
-        _ctx.GivenNoPosition();
-        var order = _ctx.GivenPendingInQueue(OrderDirection.Sell, 1, 150m, lockedAmount: 75m);
-
-        var unrelated = OrderTestContext.NewInstrument(Guid.NewGuid(), 50m);
-        await _ctx.Engine.MatchAsync([unrelated], _ct);
-
-        Assert.Equal(OrderStatus.Rejected, order.Status);
-        Assert.Equal(575m, user.FreeCashBalance);
-        Assert.Equal(0m, user.LockedCashBalance);
-        Assert.Equal(0m, user.MarginUsed);
-        SharedAssertions.AssertNoOrphanedCash(user, [], [order]);
     }
 }

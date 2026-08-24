@@ -4,69 +4,40 @@ using FinSim.Domain.Models.Enums;
 
 namespace FinSim.Application.Services;
 
-/// Buys the whole shorted stock back at the current market price and releases the rest of the margin.
+/// <summary>
+/// Routes a forced cover through the order book instead of settling it directly.
+/// The fill then obeys the same collar and the same margin recompute as a voluntary
+/// cover, and a thin book simply closes part of the position — the rest is retried
+/// on the next tick, which is what the plan means by "kısmi kapatma".
+/// </summary>
 internal static class ForcedCoverExecutor
 {
     private static decimal Money(decimal value) =>
         Math.Round(value, 2, MidpointRounding.AwayFromZero);
-
-    public static (Order Order, decimal? Realized, decimal Amount) CoverEntirely(
-        IOrderRepository orders,
-        IPortfolioRepository portfolio,
-        ITransactionRepository transactions,
-        User user,
-        PortfolioItem position,
-        Instrument instrument)
+    public static Order? PlaceCover(
+        IOrderRepository orders, PortfolioItem position, Instrument instrument)
     {
-        var quantity = -position.TotalQuantity;
-        var price = instrument.CurrentPrice;
-        var entry = position.AverageCost;
+        var uncovered = -position.TotalQuantity - position.LockedQuantity;
+        if (uncovered <= 0) return null;
 
         var order = new Order
         {
             Id = Guid.NewGuid(),
-            UserId = user.Id,
+            UserId = position.UserId,
             InstrumentId = instrument.Id,
-            OrderType = OrderType.Market,
+            OrderType = OrderType.Limit,   // must carry a Price to enter the book
             Direction = OrderDirection.Buy,
-            Quantity = quantity,
-            Price = null,
-            Status = OrderStatus.Filled,
+            Quantity = uncovered,
+            Price = Money(instrument.CurrentPrice * 1.05m),
+            Status = OrderStatus.Pending,
             CreatedAt = DateTimeOffset.UtcNow,
             UpdatedAt = DateTimeOffset.UtcNow,
-            LockedAmount = 0m
+            LockedAmount = 0m,             // a cover reserves shares, not cash
+            ImmediateOrCancel = true
         };
+
+        position.LockedQuantity += uncovered;
         orders.Add(order);
-
-        var realized = PortfolioFillExecutor.Apply(
-            portfolio, user, position, user.Id, instrument.Id,
-            OrderDirection.Buy, quantity, price).Realized;
-
-        var release   = MarginCalculator.ReleaseOnCover(quantity, 0, entry);
-        var amount    = Money(quantity * price);
-        var proceeds  = Money(entry * quantity);   // what was actually locked at open
-
-        user.LockedCashBalance -= proceeds;
-        user.FreeCashBalance   += proceeds;
-        user.FreeCashBalance   -= amount;          // buy back at market
-
-        user.LockedCashBalance -= release;
-        user.FreeCashBalance   += release;
-        user.MarginUsed        -= release;
-
-        transactions.Add(new Transaction
-        {
-            Id = Guid.NewGuid(),
-            OrderId = order.Id,
-            UserId = user.Id,
-            InstrumentId = instrument.Id,
-            ExecutedQuantity = quantity,
-            ExecutedPrice = price,
-            TotalAmount = amount,
-            RealizedPnL = realized,
-            TransactionDate = DateTimeOffset.UtcNow
-        });
-
-        return (order, realized, amount);
+        return order;
     }
 }

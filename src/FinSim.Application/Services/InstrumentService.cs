@@ -13,6 +13,7 @@ public class InstrumentService
     private readonly ITransactionRepository _transactions;
     private readonly IUnitOfWork _unitOfWork;
     private readonly IRealtimeNotifier _notifier;
+    private readonly OrderCheckEngine _matcher;
 
     public InstrumentService(
         IInstrumentRepository instruments,
@@ -21,7 +22,8 @@ public class InstrumentService
         IPortfolioRepository portfolio,
         ITransactionRepository transactions,
         IUnitOfWork unitOfWork,
-        IRealtimeNotifier notifier)
+        IRealtimeNotifier notifier,
+        OrderCheckEngine matcher)
     {
         _instruments = instruments;
         _orders = orders;
@@ -30,6 +32,7 @@ public class InstrumentService
         _transactions = transactions;
         _unitOfWork = unitOfWork;
         _notifier = notifier;
+        _matcher = matcher;
     }
 
     private static decimal Money(decimal value) =>
@@ -188,7 +191,7 @@ public class InstrumentService
             }
             else if (positionsByUser.TryGetValue(order.UserId, out var lockedPosition))
             {
-                lockedPosition.LockedQuantity -= Math.Min(lockedPosition.LockedQuantity, order.Quantity);
+                lockedPosition.LockedQuantity -= Math.Min(lockedPosition.LockedQuantity, order.Quantity - order.FilledQuantity);
             }
 
             order.Status    = OrderStatus.Cancelled;
@@ -196,12 +199,15 @@ public class InstrumentService
             affectedUsers.Add(order.UserId);
         }
 
-        // 2) delist — GetActiveAsync stops returning it from here on
-        instrument.IsActive = false;
-
-        // 3) force-sell every remaining holding at the current price
+        // 2) force-sell every remaining long and force-cover every remaining short.
+        // Each goes into the real book as an IOC order first, so a genuine counterparty
+        // gets a fair fill under the normal collar; whatever the book can't match —
+        // the usual case, since this isn't a real trade — settles directly at the
+        // price below. The instrument stays active for this part: MatchAsync skips
+        // inactive instruments, so delisting has to happen after the walk, not before.
         var price = instrument.CurrentPrice;
         var totalShares = 0;
+        var forcedOrders = new List<(Order Order, PortfolioItem Position, User User)>();
 
         foreach (var position in positions.Where(p => p.TotalQuantity > 0))
         {
@@ -209,58 +215,80 @@ public class InstrumentService
             if (user is null) continue;
 
             var quantity = position.TotalQuantity;
-
             var order = new Order
             {
                 Id = Guid.NewGuid(),
                 UserId = position.UserId,
                 InstrumentId = id,
-                OrderType = OrderType.Market,
+                OrderType = OrderType.Limit,
                 Direction = OrderDirection.Sell,
                 Quantity = quantity,
-                Price = null,
-                Status = OrderStatus.Filled,
+                Price = Money(price * 0.95m),
+                Status = OrderStatus.Pending,
                 CreatedAt = DateTimeOffset.UtcNow,
                 UpdatedAt = DateTimeOffset.UtcNow,
-                LockedAmount = 0m
+                LockedAmount = 0m,
+                ImmediateOrCancel = true
             };
+            position.LockedQuantity += quantity;
             _orders.Add(order);
-
-            var realized = PortfolioFillExecutor.Apply(
-                _portfolio, user, position, position.UserId, id, OrderDirection.Sell, quantity, price).Realized;
-            var proceeds = Money(quantity * price);
-
-            user.FreeCashBalance += proceeds;
-
-            _transactions.Add(new Transaction
-            {
-                Id = Guid.NewGuid(),
-                OrderId = order.Id,
-                UserId = position.UserId,
-                InstrumentId = id,
-                ExecutedQuantity = quantity,
-                ExecutedPrice = price,
-                TotalAmount = proceeds,
-                RealizedPnL = realized,
-                TransactionDate = DateTimeOffset.UtcNow
-            });
-
-            affectedUsers.Add(position.UserId);
-            totalShares += quantity;
+            forcedOrders.Add((order, position, user));
         }
 
-        // 4) force-cover every remaining short at the current price, releasing its margin
         foreach (var position in positions.Where(p => p.TotalQuantity < 0))
         {
             var user = await ResolveUser(position.UserId);
             if (user is null) continue;
 
-            var quantity = -position.TotalQuantity;
-            ForcedCoverExecutor.CoverEntirely(_orders, _portfolio, _transactions, user, position, instrument);
-
-            affectedUsers.Add(position.UserId);
-            totalShares += quantity;
+            var order = ForcedCoverExecutor.PlaceCover(_orders, position, instrument);
+            if (order is not null) forcedOrders.Add((order, position, user));
         }
+
+        if (forcedOrders.Count > 0)
+        {
+            // The forced orders must be visible to GetOpenBookAsync's query before
+            // MatchAsync runs — it reads the book straight from the database.
+            if (!await _unitOfWork.TrySaveChangesAsync(ct))
+            {
+                await tx.RollbackAsync(ct);
+                return (DeactivateResult.ConcurrencyConflict, null);
+            }
+
+            await _matcher.MatchAsync([instrument], ct);
+
+            foreach (var (order, position, user) in forcedOrders)
+            {
+                affectedUsers.Add(order.UserId);
+                totalShares += order.Quantity;
+
+                var remainder = order.Quantity - order.FilledQuantity;
+                if (remainder <= 0) continue;
+
+                // Nothing left in the book to trade against — force-settle the rest
+                // directly at the price captured above, at the house's expense/gain.
+                if (order.Direction == OrderDirection.Sell)
+                {
+                    PortfolioFillExecutor.Apply(
+                        _portfolio, user, position, order.UserId, id, OrderDirection.Sell, remainder, price);
+                    user.FreeCashBalance += Money(remainder * price);
+                }
+                else
+                {
+                    var shortBefore = Math.Max(0, -position.TotalQuantity);
+                    var avgCostBefore = position.AverageCost;
+
+                    PortfolioFillExecutor.Apply(
+                        _portfolio, user, position, order.UserId, id, OrderDirection.Buy, remainder, price);
+                    user.FreeCashBalance -= Money(remainder * price);   // pays the buyback out of pocket
+
+                    var shortAfter = Math.Max(0, -position.TotalQuantity);
+                    MarginCalculator.ResyncShortCollateral(user, shortBefore, avgCostBefore, shortAfter, avgCostBefore);
+                }
+            }
+        }
+
+        // 3) delist — GetActiveAsync stops returning it from here on
+        instrument.IsActive = false;
 
         if (!await _unitOfWork.TrySaveChangesAsync(ct))
         {

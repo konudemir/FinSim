@@ -7,5 +7,6 @@ namespace FinSim.Domain.Models
         public Instrument? Instrument { get; set; }
         public decimal Price { get; set; }
         public DateTime Timestamp { get; set; }
+        public double Volume { get; set; }
     }
 }

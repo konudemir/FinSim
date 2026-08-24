@@ -2,6 +2,7 @@ using FinSim.Application.Interfaces;
 using FinSim.Application.Services;
 using FinSim.Domain.Models;
 using FinSim.Domain.Models.Enums;
+using Microsoft.Extensions.Logging.Abstractions;
 using NSubstitute;
 
 namespace FinSim.Tests;
@@ -10,7 +11,9 @@ namespace FinSim.Tests;
 /// Wires InstrumentService to substituted repositories, mirroring OrderTestContext.
 /// GetPendingByInstrumentAsync and GetByInstrumentAsync return live views over
 /// internal lists so GivenPosition/GivenPendingXOrder calls made after construction
-/// still show up.
+/// still show up. DeactivateAsync now routes forced liquidation through a real
+/// OrderCheckEngine, so the book (GetOpenBookAsync) and per-user position lookup
+/// (Portfolio.GetAsync) need the same live wiring the matching engine expects.
 /// </summary>
 public class InstrumentTestContext
 {
@@ -25,6 +28,7 @@ public class InstrumentTestContext
     public readonly Guid InstrumentId = Guid.NewGuid();
 
     private readonly List<Order> _pendingOrders = [];
+    private readonly List<Order> _bookOrders = [];
     private readonly List<PortfolioItem> _positions = [];
 
     public InstrumentTestContext()
@@ -37,10 +41,22 @@ public class InstrumentTestContext
               .Returns(_ => _pendingOrders.ToList());
         Portfolio.GetByInstrumentAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
                  .Returns(_ => _positions.ToList());
+        Portfolio.GetAsync(Arg.Any<Guid>(), Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+                 .Returns(ci => _positions.FirstOrDefault(p =>
+                     p.UserId == ci.ArgAt<Guid>(0) && p.InstrumentId == ci.ArgAt<Guid>(1)));
+
+        // Orders the matching engine places (forced sells/covers from DeactivateAsync)
+        // land here via Orders.Add, mirroring what SaveChangesAsync would persist.
+        Orders.When(x => x.Add(Arg.Any<Order>())).Do(ci => _bookOrders.Add(ci.Arg<Order>()));
+        Orders.GetOpenBookAsync(Arg.Any<Guid>(), Arg.Any<CancellationToken>())
+              .Returns(ci => _bookOrders.Where(o => o.InstrumentId == ci.Arg<Guid>()
+                          && (o.Status == OrderStatus.Pending || o.Status == OrderStatus.PartiallyFilled))
+                          .ToList());
     }
 
     public InstrumentService Service => new(
-        Instruments, Orders, Users, Portfolio, Transactions, UnitOfWork, Notifier);
+        Instruments, Orders, Users, Portfolio, Transactions, UnitOfWork, Notifier,
+        new OrderCheckEngine(Orders, Users, Portfolio, Transactions, NullLogger<OrderCheckEngine>.Instance));
 
     public Instrument GivenInstrument(decimal price = 100m, bool active = true)
     {

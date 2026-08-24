@@ -11,22 +11,33 @@ namespace FinSim.Infrastructure.Repositories
         private readonly FinSimDbContext _db;
         public OrderRepository(FinSimDbContext db) => _db = db;
 
+        public Task<List<Order>> GetOpenBookAsync(Guid instrumentId, CancellationToken ct) =>
+            _db.Orders
+               .Where(o => o.InstrumentId == instrumentId
+                        && (o.Status == OrderStatus.Pending
+                         || o.Status == OrderStatus.PartiallyFilled))
+               .OrderBy(o => o.CreatedAt)
+               .ToListAsync(ct);
+
         public Task<List<Order>> GetPendingByUserAsync(Guid userId, CancellationToken ct) =>
             _db.Orders
-            .Where(o => o.UserId == userId && o.Status == OrderStatus.Pending)
+            .Where(o => o.UserId == userId
+                     && (o.Status == OrderStatus.Pending || o.Status == OrderStatus.PartiallyFilled))
             .OrderByDescending(o => o.CreatedAt)
             .ToListAsync(ct);
 
         public Task<List<Order>> GetExpiredPendingAsync(DateTimeOffset now, CancellationToken ct) =>
             _db.Orders
-               .Where(o => o.Status == OrderStatus.Pending
+               .Where(o => (o.Status == OrderStatus.Pending || o.Status == OrderStatus.PartiallyFilled)
                         && o.ExpiresAt != null
                         && o.ExpiresAt <= now)
                .ToListAsync(ct);
 
         public Task<List<Order>> GetPendingLimitOrdersAsync(CancellationToken ct) =>
             _db.Orders
-               .Where(o => o.Status == OrderStatus.Pending && o.OrderType == OrderType.Limit)
+               .Where(o => (o.Status == OrderStatus.Pending
+                         || o.Status == OrderStatus.PartiallyFilled)
+                        && o.OrderType == OrderType.Limit)
                .ToListAsync(ct);
 
         public Task<List<Order>> GetPendingByInstrumentAsync(Guid instrumentId, CancellationToken ct) =>
@@ -39,7 +50,8 @@ namespace FinSim.Infrastructure.Repositories
 
         public Task<List<Order>> GetRecentByUserAsync(Guid userId, int take, CancellationToken ct) =>
             _db.Orders
-                .Where(o => o.UserId == userId && o.Status != OrderStatus.Pending)
+                .Where(o => o.UserId == userId
+                         && o.Status != OrderStatus.Pending && o.Status != OrderStatus.PartiallyFilled)
                 .OrderByDescending(o => o.CreatedAt)
                 .Take(take)
                 .ToListAsync(ct);

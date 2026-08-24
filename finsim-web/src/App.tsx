@@ -48,6 +48,8 @@ type Order = {
   orderType: string
   direction: string
   quantity: number
+  filledQuantity: number
+  avgPrice: number
   price: number | null
   stopPrice: number | null
   status: string
@@ -159,7 +161,7 @@ function OrderTable({ orders, pending, now, onCancel, onReplace, replacing }: {
         <thead>
           <tr>
             <th>{t('ledger.symbol')}</th>
-            <th className="hide-sm">{t('ledger.type')}</th>
+            <th className="hide-sm">{t('ledger.type')}</th>1
             <th>{t('ledger.side')}</th>
             <th className="num">{t('ledger.qty')}</th>
             <th className="num">{t('ledger.price')}</th>
@@ -176,7 +178,11 @@ function OrderTable({ orders, pending, now, onCancel, onReplace, replacing }: {
               <td className={o.direction === 'Buy' ? 'up' : 'down'}>
                 {o.direction === 'Buy' ? t('order.buy') : t('order.sell')}
               </td>
-              <td className="num">{o.quantity}</td>
+              <td className="num">
+                {o.filledQuantity > 0
+                  ? <>{o.filledQuantity}<span style={{ opacity: .5 }}> / {o.quantity}</span></>
+                  : o.quantity}
+              </td>
               <td className="num">
                 {o.price != null ? fmt(o.price) : '—'}
                 {o.stopPrice != null && (
@@ -464,8 +470,8 @@ const seeded = useRef<Set<string>>(new Set())
   }, [])
 
   const chosen = instruments.find(i => i.id === selected) ?? null
-  const pendingOrders = useMemo(() => orders.filter(o => o.status === 'Pending'), [orders])
-  const pastOrders    = useMemo(() => orders.filter(o => o.status !== 'Pending'), [orders])
+  const pendingOrders = useMemo(() => orders.filter(o => o.status === 'Pending' || o.status === 'PartiallyFilled'), [orders])
+  const pastOrders    = useMemo(() => orders.filter(o => o.status !== 'Pending' && o.status !== 'PartiallyFilled'), [orders])
   const livePortfolio = useMemo(() => {
     const priceBySymbol: Record<string, number> = {}
     for (const i of instruments) priceBySymbol[i.symbol] = i.currentPrice
