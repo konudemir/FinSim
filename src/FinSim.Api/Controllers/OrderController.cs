@@ -23,8 +23,9 @@ namespace FinSim.Controllers
         public async Task<IActionResult> CreateMarketOrder(
             [FromBody] CreateMarketOrderRequest request, CancellationToken ct)
         {
-            var (result, order) = await _orders.PlaceMarketOrderAsync(
-                CurrentUserId, request.InstrumentId, request.Quantity, request.Direction, ct);
+                var (result, order) = await _orders.PlaceMarketOrderAsync(
+                CurrentUserId, request.InstrumentId, request.Quantity,
+                request.Direction, ct);
 
             return result == OrderResult.Success ? Ok(order) : ToError(result);
         }

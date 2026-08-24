@@ -103,10 +103,10 @@ public class MarginEngine
 
     private OrderOutcome LiquidatePosition(User user, PortfolioItem position, Instrument instrument)
     {
-        var (order, realized, amount) = ForcedCoverExecutor.CoverEntirely(
+        var order = ForcedCoverExecutor.CoverEntirely(
             _orders, _portfolio, _transactions, user, position, instrument);
 
         return new OrderOutcome(user.Id, OrderDtoMapper.ToDto(
-            order, instrument.Symbol, executedAmount: amount, liquidated: true));
+            order, instrument.Symbol, executedAmount: null, liquidated: true));
     }
 }

@@ -11,6 +11,14 @@ namespace FinSim.Infrastructure.Repositories
         private readonly FinSimDbContext _db;
         public OrderRepository(FinSimDbContext db) => _db = db;
 
+        public Task<List<Order>> GetOpenBookAsync(Guid instrumentId, CancellationToken ct) =>
+            _db.Orders
+               .Where(o => o.InstrumentId == instrumentId
+                        && (o.Status == OrderStatus.Pending
+                         || o.Status == OrderStatus.PartiallyFilled))
+               .OrderBy(o => o.CreatedAt)
+               .ToListAsync(ct);
+
         public Task<List<Order>> GetPendingByUserAsync(Guid userId, CancellationToken ct) =>
             _db.Orders
             .Where(o => o.UserId == userId && o.Status == OrderStatus.Pending)

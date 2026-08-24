@@ -219,13 +219,13 @@ public class InstrumentService
                 Direction = OrderDirection.Sell,
                 Quantity = quantity,
                 Price = null,
-                Status = OrderStatus.Filled,
+                Status = OrderStatus.Pending,
                 CreatedAt = DateTimeOffset.UtcNow,
                 UpdatedAt = DateTimeOffset.UtcNow,
                 LockedAmount = 0m
             };
             _orders.Add(order);
-
+            /*
             var realized = PortfolioFillExecutor.Apply(
                 _portfolio, user, position, position.UserId, id, OrderDirection.Sell, quantity, price).Realized;
             var proceeds = Money(quantity * price);
@@ -247,8 +247,10 @@ public class InstrumentService
 
             affectedUsers.Add(position.UserId);
             totalShares += quantity;
+            */
         }
-
+        
+        /*
         // 4) force-cover every remaining short at the current price, releasing its margin
         foreach (var position in positions.Where(p => p.TotalQuantity < 0))
         {
@@ -261,6 +263,7 @@ public class InstrumentService
             affectedUsers.Add(position.UserId);
             totalShares += quantity;
         }
+        */
 
         if (!await _unitOfWork.TrySaveChangesAsync(ct))
         {

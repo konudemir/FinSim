@@ -10,7 +10,7 @@ internal static class ForcedCoverExecutor
     private static decimal Money(decimal value) =>
         Math.Round(value, 2, MidpointRounding.AwayFromZero);
 
-    public static (Order Order, decimal? Realized, decimal Amount) CoverEntirely(
+    public static Order CoverEntirely(
         IOrderRepository orders,
         IPortfolioRepository portfolio,
         ITransactionRepository transactions,
@@ -31,13 +31,13 @@ internal static class ForcedCoverExecutor
             Direction = OrderDirection.Buy,
             Quantity = quantity,
             Price = null,
-            Status = OrderStatus.Filled,
+            Status = OrderStatus.Pending,
             CreatedAt = DateTimeOffset.UtcNow,
             UpdatedAt = DateTimeOffset.UtcNow,
             LockedAmount = 0m
         };
         orders.Add(order);
-
+        /*
         var realized = PortfolioFillExecutor.Apply(
             portfolio, user, position, user.Id, instrument.Id,
             OrderDirection.Buy, quantity, price).Realized;
@@ -53,6 +53,7 @@ internal static class ForcedCoverExecutor
         user.LockedCashBalance -= release;
         user.FreeCashBalance   += release;
         user.MarginUsed        -= release;
+        
 
         transactions.Add(new Transaction
         {
@@ -66,7 +67,8 @@ internal static class ForcedCoverExecutor
             RealizedPnL = realized,
             TransactionDate = DateTimeOffset.UtcNow
         });
+        */
 
-        return (order, realized, amount);
+        return (order);
     }
 }

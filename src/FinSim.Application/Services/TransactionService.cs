@@ -24,7 +24,7 @@ public class TransactionService
         return transactions.Select(t => new TransactionDto(
             t.Id,
             instruments.TryGetValue(t.InstrumentId, out var i) ? i.Symbol! : "?",
-            t.Order.Direction.ToString(),
+            t.BuyerUserId == userId ? "Buy" : "Sell",
             t.ExecutedQuantity,
             t.ExecutedPrice,
             t.TotalAmount,

@@ -78,7 +78,8 @@ namespace FinSim.Api.Services
                     {
                         InstrumentId = i.Id,
                         Price        = i.CurrentPrice,
-                        Timestamp    = stamp
+                        Timestamp    = stamp,
+                        Volume       = matcher.LastTickVolume.GetValueOrDefault(i.Id)
                     }));
                     try
                     {
