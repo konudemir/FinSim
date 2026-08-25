@@ -161,7 +161,7 @@ function OrderTable({ orders, pending, now, onCancel, onReplace, replacing }: {
         <thead>
           <tr>
             <th>{t('ledger.symbol')}</th>
-            <th className="hide-sm">{t('ledger.type')}</th>1
+            <th className="hide-sm">{t('ledger.type')}</th>
             <th>{t('ledger.side')}</th>
             <th className="num">{t('ledger.qty')}</th>
             <th className="num">{t('ledger.price')}</th>
@@ -276,7 +276,7 @@ const InstrumentRow = memo(function InstrumentRow({ i, open, tick, pos, sparkDat
               <span className={dirOf(pos.profitLoss)}>{signed(pos.profitLoss)}</span>
             </>
           ) : (
-            <span className="empty">{i.isActive ? t('board.noPosition') : t('board.closed')}</span>
+            !i.isActive && <span className="empty">{t('board.closed')}</span>
           )}
         </div>
       </button>

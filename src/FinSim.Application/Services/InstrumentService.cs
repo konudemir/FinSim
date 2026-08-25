@@ -122,6 +122,12 @@ public class InstrumentService
                 .ToList();
     }
 
+    public async Task<List<decimal>> GetIndexHistoryAsync(int points, CancellationToken ct)
+    {
+        var clamped = Math.Clamp(points, 1, 500);
+        return await _instruments.GetIndexHistoryAsync(clamped, ct);
+    }
+
     /// <summary>Plain flag flip — used for reactivation, which has no side effects.</summary>
     public async Task<InstrumentDto?> SetActiveAsync(Guid id, bool isActive, CancellationToken ct)
     {

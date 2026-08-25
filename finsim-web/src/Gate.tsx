@@ -32,6 +32,12 @@ function useLiveMarket() {
         for (const i of res.data) baseline.current[i.symbol] ??= i.currentPrice
       })
       .catch(() => {})
+    api.get<number[]>('/api/instruments/index-history?points=120')
+      .then(res => {
+        if (cancelled) return
+        setIndexHistory(prev => [...res.data, ...prev])
+      })
+      .catch(() => {})
     return () => { cancelled = true }
   }, [])
 
@@ -169,12 +175,7 @@ export default function GateLayout({ children }: { children: ReactNode }) {
                 </div>
                 <HeroChart data={indexHistory} rising={marketMove >= 0} />
               </>
-            ) : (
-              <div className="hero-wait">
-                <span className="hero-wait-dot" />
-                {t('landing.connecting')}
-              </div>
-            )}
+            ) : null}
           </div>
 
           <ul className="gate-features">

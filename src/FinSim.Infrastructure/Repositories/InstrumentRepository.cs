@@ -50,5 +50,28 @@ namespace FinSim.Infrastructure.Repositories
                     && p.Timestamp <= to)
         .OrderBy(p => p.Timestamp)
         .ToListAsync(ct);
+
+        public async Task<List<decimal>> GetIndexHistoryAsync(int points, CancellationToken ct)
+        {
+            var stockCount = await _db.Instruments
+                .CountAsync(i => i.IsActive && i.Type == InstrumentType.Stock, ct);
+
+            if (stockCount == 0) return [];
+
+            var grouped = await (
+                from p in _db.PriceHistory.AsNoTracking()
+                join i in _db.Instruments on p.InstrumentId equals i.Id
+                where i.IsActive && i.Type == InstrumentType.Stock
+                group p.Price / i.BasePrice by p.Timestamp into g
+                where g.Count() == stockCount
+                orderby g.Key descending
+                select new { Timestamp = g.Key, Avg = g.Average() }
+            ).Take(points).ToListAsync(ct);
+
+            return grouped
+                .OrderBy(g => g.Timestamp)
+                .Select(g => Math.Round(g.Avg * 10_000m, 2))
+                .ToList();
+        }
     }
 }

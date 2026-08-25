@@ -329,16 +329,16 @@ input  { font-family: var(--mono); }
 .cell-value {
   font-family: var(--mono);
   font-size: 32px;
-  font-weight: 500;
+  font-weight: 700;
   line-height: 1;
-  letter-spacing: -0.035em;
+  letter-spacing: -0.045em;
 }
 
 .cell-value.sm {
   font-family: var(--mono);
   font-size: 20px;
-  font-weight: 500;
-  letter-spacing: -0.02em;
+  font-weight: 700;
+  letter-spacing: -0.03em;
 }
 
 .cell-delta {
@@ -356,14 +356,16 @@ input  { font-family: var(--mono); }
   align-items: baseline;
   gap: 14px;
   margin: 34px 0 16px;
+  padding-bottom: 9px;
+  border-bottom: 3px solid var(--edge);
 }
 
 .section-head h2 {
   font-family: var(--serif);
   font-size: 19px;
-  font-weight: 700;
+  font-weight: 800;
   font-stretch: 112%;
-  letter-spacing: 0.01em;
+  letter-spacing: 0.035em;
   text-transform: uppercase;
   margin: 0;
 }
@@ -384,6 +386,11 @@ input  { font-family: var(--mono); }
 
 .search-input .field-input {
   padding-right: 30px;
+  font-family: var(--mono);
+}
+
+.search-input .field-input::placeholder {
+  color: var(--faint);
 }
 
 .search-input .ghost-btn {
@@ -394,6 +401,18 @@ input  { font-family: var(--mono); }
 .board-controls select.field-input {
   width: auto;
   flex: 0 0 auto;
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  padding-right: 28px;
+  background-image:
+    linear-gradient(45deg, transparent 50%, var(--mute) 50%),
+    linear-gradient(135deg, var(--mute) 50%, transparent 50%);
+  background-position:
+    calc(100% - 16px) center,
+    calc(100% - 11px) center;
+  background-size: 5px 5px, 5px 5px;
+  background-repeat: no-repeat;
 }
 
 @media (max-width: 560px) {
@@ -417,7 +436,7 @@ input  { font-family: var(--mono); }
   gap: 0;
   background: transparent;
   border: none;
-  border-top: 2px solid var(--edge);
+  border-top: 1px solid var(--edge);
 }
 
 .tile {
@@ -546,7 +565,7 @@ input  { font-family: var(--mono); }
   flex-direction: column;
   background: transparent;
   border: none;
-  border-top: 2px solid var(--edge);
+  border-top: 1px solid var(--edge);
 }
 
 .row { border-bottom: 1px solid color-mix(in srgb, var(--edge) 40%, transparent); }
@@ -558,7 +577,7 @@ input  { font-family: var(--mono); }
   align-items: center;
   width: 100%;
   gap: 12px;
-  padding: 14px 18px;
+  padding: 7px 18px;
   background: transparent;
   box-shadow: none;
   text-align: left;
@@ -765,13 +784,13 @@ input  { font-family: var(--mono); }
 
 .ledger td {
   padding: 11px 12px 11px 0;
-  border-bottom: 1px solid rgba(29, 40, 49, 0.6);
+  border-bottom: 1px solid color-mix(in srgb, var(--edge) 55%, transparent);
   color: var(--mute);
 }
 
 .ledger tr:hover td { color: var(--bone); }
 
-.ledger .num { text-align: right; }
+.ledger .num { text-align: right; white-space: nowrap; }
 
 .ledger .sym {
   color: var(--bone);
@@ -792,6 +811,7 @@ input  { font-family: var(--mono); }
 
 .pill.pending   { color: var(--amber); }
 .pill.filled    { color: var(--rise); }
+.pill.partiallyfilled { color: var(--amber); }
 .pill.cancelled { color: var(--faint); }
 .pill.expired   { color: var(--faint); }
 
@@ -1199,30 +1219,6 @@ input  { font-family: var(--mono); }
   animation: hero-pulse 2.2s ease-in-out infinite;
   transform-origin: center;
   transform-box: fill-box;
-}
-
-.hero-wait {
-  display: flex;
-  align-items: center;
-  gap: 9px;
-  height: 220px;
-  font-family: var(--mono);
-  font-size: 12px;
-  letter-spacing: 0.04em;
-  color: var(--faint);
-}
-
-.hero-wait-dot {
-  width: 7px;
-  height: 7px;
-  border-radius: 50%;
-  background: var(--amber);
-  animation: hero-wait-blink 1.4s ease-in-out infinite;
-}
-
-@keyframes hero-wait-blink {
-  0%, 100% { opacity: 0.25; }
-  50%      { opacity: 1; }
 }
 
 .gate-features {
@@ -1682,7 +1678,7 @@ input  { font-family: var(--mono); }
 .pnl-ranges .ghost-btn[aria-pressed="true"] { border-color: var(--mute); color: var(--bone); }
 
 .pnl-head { display: flex; align-items: baseline; gap: 10px; margin: 6px 0 10px; }
-.pnl-value { font-family: var(--mono); font-size: 24px; font-variant-numeric: tabular-nums; }
+.pnl-value { font-family: var(--mono); font-size: 24px; font-weight: 700; letter-spacing: -0.03em; font-variant-numeric: tabular-nums; }
 .pnl-date { font-family: var(--mono); font-size: 11px; color: var(--faint); }
 
 .pnl-plot { position: relative; height: 160px; cursor: crosshair; }
