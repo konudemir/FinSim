@@ -1,4 +1,3 @@
-using System.ComponentModel;
 using FinSim.Application.Interfaces;
 using FinSim.Domain.Models;
 using FinSim.Domain.Services;
@@ -11,25 +10,36 @@ namespace FinSim.Application.Services
 
         public PriceSimEngine(IInstrumentRepository instruments) => _instruments = instruments;
 
-                /// <summary>
-        /// Moves every active stock one tick, then reprices funds off the new
-        /// stock prices. Does not save.
+        /// <summary>
+        /// Reads current stock prices (set by fills, not here), reprices funds off
+        /// them, and reports the index plus its move since the previous tick.
+        /// Does not save.
         /// </summary>
-        public async Task<PriceTickResult> TickAsync(double bias, CancellationToken ct)
+        /// <param name="previousIndex">
+        /// Index value from the last tick, or null on the first tick — in which
+        /// case MarketMove is reported as zero.
+        /// </param>
+        public async Task<PriceTickResult> TickAsync(decimal? previousIndex, CancellationToken ct)
         {
             var stocks = await _instruments.GetActiveStocksAsync(ct);
             var funds  = await _instruments.GetActiveFundsAsync(ct);
 
-            var marketMove = (decimal)(Random.Shared.NextDouble() * 2 - bias) * 0.02m;
-
+            // CurrentPrice is owned by the fill handler now. This only guards
+            // against a non-positive price left behind by bad data.
             foreach (var i in stocks)
-                i.CurrentPrice = NextValue(i.CurrentPrice, i.BasePrice, marketMove);
+                if (i.CurrentPrice <= 0) i.CurrentPrice = 0.01m;
 
             // Index tracks the market itself, so funds are excluded — including
             // them would count their constituents a second time.
             var index = stocks.Count == 0
                 ? 10_000m
                 : Math.Round(stocks.Sum(i => i.CurrentPrice / i.BasePrice) / stocks.Count * 10_000m, 2);
+
+            // Market move is now an observation, not an input: the fractional
+            // change in the index caused by whatever traded this tick.
+            var marketMove = previousIndex is > 0
+                ? Math.Round((index - previousIndex.Value) / previousIndex.Value, 6)
+                : 0m;
 
             var prices = stocks.ToDictionary(i => i.Id, i => i.CurrentPrice);
 
@@ -38,22 +48,6 @@ namespace FinSim.Application.Services
                     FundPricer.Nav(f.Holdings, prices), f.Divisor ?? 1m);
 
             return new PriceTickResult(marketMove, index, [.. stocks, .. funds]);
-        }
-
-        private static decimal NextValue(decimal currVal, decimal baseVal, decimal marketMove)
-        {
-            if (currVal <= 0) return 0.01m;
-
-            // hisseye özgü rastgele hareket, ortalaması sıfır
-            var idio = (decimal)(Random.Shared.NextDouble() * 2 - 1.01) * 0.02m;
-
-            const decimal drift = 0.00002m;
-
-            var pull = (baseVal - currVal) / baseVal * 0.002m;
-
-            return Math.Round(
-                currVal * (1 + marketMove + idio + drift + pull),
-                2, MidpointRounding.AwayFromZero);
         }
     }
 
