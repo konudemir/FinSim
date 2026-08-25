@@ -108,7 +108,11 @@ namespace FinSim.Api.Services
                     {
                         marketMove = tick.MarketMove,
                         indexValue = tick.IndexValue,
-                        prices = tick.Instruments.Select(i => new { i.Symbol, i.CurrentPrice })
+                        prices = tick.Instruments.Select(i => new {
+                            i.Symbol,
+                            i.CurrentPrice,
+                            Volume = matcher.LastTickVolume.GetValueOrDefault(i.Id)
+                        })
                     }, stoppingToken);
                     foreach (var group in touched.GroupBy(o => o.UserId))
                     {

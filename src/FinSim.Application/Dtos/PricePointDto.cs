@@ -1,4 +1,4 @@
 namespace FinSim.Domain.Dtos
 {
-    public record PricePointDto(DateTime Timestamp, decimal Price);
+    public record PricePointDto(DateTime Timestamp, decimal Price, double Volume);
 }
