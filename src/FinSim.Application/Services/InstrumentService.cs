@@ -118,7 +118,7 @@ public class InstrumentService
         var step = rows.Count <= maxPoints ? 1 : (rows.Count / maxPoints) + 1;
 
         return rows.Where((_, idx) => idx % step == 0 || idx == rows.Count - 1)
-                .Select(p => new PricePointDto(p.Timestamp, p.Price))
+                .Select(p => new PricePointDto(p.Timestamp, p.Price, p.Volume))
                 .ToList();
     }
 

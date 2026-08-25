@@ -23,7 +23,9 @@ type Instrument = {
 type PricePoint = {
   timestamp: string
   price: number
+  volume: number
 }
+
 type PnlPoint = {
   date: string
   portfolioValue: number
@@ -89,13 +91,11 @@ type LiquidationAlert = {
   quantity: number
   amount: number
 }
-
 type PriceUpdate = {
   marketMove: number
   indexValue: number
-  prices: { symbol: string; currentPrice: number }[]
+  prices: { symbol: string; currentPrice: number; volume: number }[]
 }
-
 type Tick = 'up' | 'down'
 
 type OrderUpdate = {
@@ -417,7 +417,7 @@ const seeded = useRef<Set<string>>(new Set())
         const now = new Date().toISOString()
         for (const u of payload.prices) {
           next[u.symbol] = [...(prev[u.symbol] ?? []),
-          { timestamp: now, price: u.currentPrice }].slice(-MAX_POINTS)
+          { timestamp: now, price: u.currentPrice, volume: u.volume }].slice(-MAX_POINTS)
         }
         return next
       })
@@ -1207,6 +1207,8 @@ function AreaSpark({ data, className }: { data: PricePoint[]; className: string 
   const py = (idx: number) => 30 - ((data[idx].price - min) / range) * 26
 
   const pts = data.map((_, idx) => `${px(idx).toFixed(2)},${py(idx).toFixed(2)}`)
+  const maxVol = Math.max(...data.map(p => p.volume), 1)
+  const barW = 100 / data.length
 
   const rising = data[last].price >= data[0].price
   const stroke = rising ? 'var(--rise)' : 'var(--fall)'
@@ -1227,6 +1229,12 @@ function AreaSpark({ data, className }: { data: PricePoint[]; className: string 
             <stop offset="100%" stopColor={stroke} stopOpacity="0" />
           </linearGradient>
         </defs>
+        {data.map((p, idx) => p.volume > 0 && (
+        <rect key={idx}
+              x={px(idx) - barW / 2} width={barW * 0.8}
+              y={30 - (p.volume / maxVol) * 7} height={(p.volume / maxVol) * 7}
+              fill={stroke} opacity="0.25" />
+      ))}
         <polygon points={`0,30 ${pts.join(' ')} 100,30`} fill={`url(#${id})`} />
         <polyline points={pts.join(' ')} fill="none" stroke={stroke}
                   strokeWidth="1.5" vectorEffect="non-scaling-stroke" />
@@ -1245,6 +1253,7 @@ function AreaSpark({ data, className }: { data: PricePoint[]; className: string 
         <div className="spark-tip">
           <strong>{fmt(data[hover].price)}</strong>
           <span>{ago(data[hover].timestamp, lang)}</span>
+          <span>{data[hover].volume > 0 ? `${data[hover].volume} adet` : '—'}</span>
         </div>
       )}
     </div>
