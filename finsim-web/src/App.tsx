@@ -347,6 +347,8 @@ const seeded = useRef<Set<string>>(new Set())
   const prevPrices = useRef<Record<string, number>>({})
   const [online, setOnline] = useState(true)
   const [showAdmin, setShowAdmin] = useState(false)
+  const [query, setQuery] = useState('')
+  const [sort, setSort] = useState('symbol-asc')
 
   const loadOrders = () =>
     api.get<Order[]>('/api/order').then(r => setOrders(r.data)).catch(console.error)
@@ -657,9 +659,25 @@ const loadHistory = (i: Instrument) => {
     return { ...i, pct }
   })
 
+  const visible = useMemo(() => {
+    const q = query.trim().toLocaleLowerCase('tr')
+    const filtered = q
+      ? instruments.filter(i =>
+          i.symbol.toLocaleLowerCase('tr').includes(q) ||
+          i.name.toLocaleLowerCase('tr').includes(q))
+      : instruments
+    const cmp: Record<string, (a: Instrument, b: Instrument) => number> = {
+      'symbol-asc':  (a, b) => a.symbol.localeCompare(b.symbol, 'tr'),
+      'symbol-desc': (a, b) => b.symbol.localeCompare(a.symbol, 'tr'),
+      'price-asc':   (a, b) => a.currentPrice - b.currentPrice,
+      'price-desc':  (a, b) => b.currentPrice - a.currentPrice,
+    }
+    return [...filtered].sort(cmp[sort])
+  }, [instruments, query, sort])
+
   const portfolioInstruments = instruments.filter(i => portfolio[i.symbol])
-  const otherStocks = instruments.filter(i => !portfolio[i.symbol] && i.type === 'Stock')
-  const otherFunds = instruments.filter(i => !portfolio[i.symbol] && i.type === 'Fund')
+  const otherStocks = visible.filter(i => !portfolio[i.symbol] && i.type === 'Stock')
+  const otherFunds = visible.filter(i => !portfolio[i.symbol] && i.type === 'Fund')
 
 
   return (
@@ -772,6 +790,33 @@ const loadHistory = (i: Instrument) => {
 
         <div className="terminal-layout">
           <div className="terminal-left">
+            <div className="board-controls">
+              <div className="search-input">
+                <input
+                  className="field-input"
+                  type="text"
+                  value={query}
+                  onChange={e => setQuery(e.target.value)}
+                  placeholder={t('search.placeholder')}
+                />
+                {query && (
+                  <button
+                    className="ghost-btn"
+                    onClick={() => setQuery('')}
+                    aria-label={t('app.close')}
+                  >
+                    ×
+                  </button>
+                )}
+              </div>
+              <select className="field-input" value={sort} onChange={e => setSort(e.target.value)}>
+                <option value="symbol-asc">{t('sort.symbolAsc')}</option>
+                <option value="symbol-desc">{t('sort.symbolDesc')}</option>
+                <option value="price-desc">{t('sort.priceDesc')}</option>
+                <option value="price-asc">{t('sort.priceAsc')}</option>
+              </select>
+            </div>
+
             {portfolioInstruments.length > 0 && (
               <>
                 <div className="section-head">
@@ -800,19 +845,23 @@ const loadHistory = (i: Instrument) => {
               <span className="section-note">{t('board.otherNote', { n: otherStocks.length })}</span>
             </div>
 
-            <div className="board">
-              {otherStocks.map(i => (
-                <InstrumentRow
-                  key={i.id}
-                  i={i}
-                  open={selected === i.id}
-                  tick={ticks[i.symbol]}
-                  pos={undefined}
-                  sparkData={history[i.symbol] ?? []}
-                  onClick={() => pick(i)}
-                />
-              ))}
-            </div>
+            {query && otherStocks.length === 0 ? (
+              <div className="empty-state">{t('search.noResults')}</div>
+            ) : (
+              <div className="board">
+                {otherStocks.map(i => (
+                  <InstrumentRow
+                    key={i.id}
+                    i={i}
+                    open={selected === i.id}
+                    tick={ticks[i.symbol]}
+                    pos={undefined}
+                    sparkData={history[i.symbol] ?? []}
+                    onClick={() => pick(i)}
+                  />
+                ))}
+              </div>
+            )}
 
             <div className="section-head">
               <h2>{t('board.fundsTitle')}</h2>
