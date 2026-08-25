@@ -214,6 +214,31 @@ input  { font-family: var(--mono); }
 
 .rail-spacer { flex: 1; }
 
+.live-dot {
+  position: relative;
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--rise);
+  flex: none;
+}
+
+.live-dot::after {
+  content: "";
+  position: absolute;
+  inset: -4px;
+  border-radius: 50%;
+  background: var(--rise);
+  opacity: 0.4;
+  animation: live-ping 1.8s ease-out infinite;
+}
+
+@keyframes live-ping {
+  0%   { transform: scale(0.6); opacity: 0.45; }
+  100% { transform: scale(2.2); opacity: 0; }
+}
+
 .ghost-btn {
   background: none;
   border: var(--rail);
@@ -223,12 +248,13 @@ input  { font-family: var(--mono); }
   text-transform: uppercase;
   padding: 6px 12px;
   border-radius: 2px;
-  transition: color 0.15s, border-color 0.15s;
+  transition: color 0.15s, border-color 0.15s, background 0.15s;
 }
 
 .ghost-btn:hover {
   color: var(--bone);
   border-color: var(--mute);
+  background: color-mix(in srgb, var(--mute) 10%, transparent);
 }
 
 /* ── ticker tape ─────────────────────────────────────────── */
@@ -801,10 +827,12 @@ input  { font-family: var(--mono); }
 .pill {
   display: inline-block;
   font-size: 10px;
+  font-weight: 600;
   letter-spacing: 0.1em;
   text-transform: uppercase;
   padding: 3px 7px;
   border-radius: 2px;
+  background: color-mix(in srgb, currentColor 12%, transparent);
   border: 1px solid currentColor;
 }
 .pill.rejected  { color: var(--fall); }
@@ -844,7 +872,10 @@ input  { font-family: var(--mono); }
   padding: 34px 24px;
   text-align: center;
   color: var(--faint);
-  font-size: 13px;
+  font-family: var(--serif);
+  font-style: italic;
+  font-size: 14px;
+  letter-spacing: 0.01em;
 }
 
 /* ── notice ──────────────────────────────────────────────── */
@@ -992,6 +1023,15 @@ input  { font-family: var(--mono); }
   color: var(--bone);
   font-size: 14px;
   padding: 8px 10px;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.field-input:hover:not(:disabled) { border-color: var(--mute); }
+
+.field-input:focus {
+  outline: none;
+  border-color: var(--amber);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--amber) 40%, transparent);
 }
 
 .field-input:disabled { opacity: 0.4; }
@@ -1032,11 +1072,15 @@ input  { font-family: var(--mono); }
   letter-spacing: 0.08em;
   text-transform: uppercase;
   padding: 8px 14px;
+  transition: background 0.15s, color 0.15s;
 }
+
+.seg button:hover { color: var(--bone); }
 
 .seg button[aria-pressed="true"] {
   background: var(--raise);
   color: var(--bone);
+  box-shadow: inset 0 -2px 0 var(--amber);
 }
 
 .trade {
@@ -1045,19 +1089,31 @@ input  { font-family: var(--mono); }
   padding: 10px 26px;
   font-family: var(--mono);
   font-size: 13px;
-  font-weight: 600;
-  letter-spacing: 0.12em;
+  font-weight: 700;
+  letter-spacing: 0.14em;
   text-transform: uppercase;
   color: var(--on-trade);
-  transition: filter 0.15s;
+  transition: filter 0.15s, transform 0.1s ease-out, box-shadow 0.15s;
+  box-shadow: 0 1px 0 rgba(0, 0, 0, 0.15);
 }
 
-.trade:hover:not(:disabled) { filter: brightness(1.12); }
+.trade:hover:not(:disabled) {
+  filter: brightness(1.12);
+  transform: translateY(-1px);
+  box-shadow: 0 3px 8px -2px rgba(0, 0, 0, 0.35);
+}
+
+.trade:active:not(:disabled) {
+  transform: translateY(0);
+  filter: brightness(0.96);
+  box-shadow: 0 1px 0 rgba(0, 0, 0, 0.15);
+}
 
 .trade:disabled {
   background: var(--raise) !important;
   color: var(--faint);
   cursor: not-allowed;
+  box-shadow: none;
 }
 
 .trade.buy  { background: var(--rise); }

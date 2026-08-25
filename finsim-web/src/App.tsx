@@ -688,7 +688,8 @@ const loadHistory = (i: Instrument) => {
           <span className="mark">Fin<em>Sim</em></span>
           <span className="mark-sub">{t('app.tagline')}</span>
           <span className="rail-spacer" />
-          <span style={{ fontFamily: 'var(--mono)', fontSize: 13 }}>
+          <span style={{ fontFamily: 'var(--mono)', fontSize: 13, display: 'inline-flex', alignItems: 'baseline', gap: 6 }}>
+            {online && <span className="live-dot" aria-hidden="true" />}
             <span style={{ color: 'var(--faint)', letterSpacing: '0.08em' }}>{t('app.market')} </span>
             {indexValue ? fmt(indexValue) : '—'}
             <span className={dirOf(marketMove)}>
