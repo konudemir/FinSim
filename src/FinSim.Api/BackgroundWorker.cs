@@ -12,8 +12,6 @@ namespace FinSim.Api.Services
         private double _bias = 1.0;
         private int _ticksLeft;
         private int _sinceCleanup;
-        // Previous tick's index, so the engine can report the realised move.
-        private decimal? _lastIndex;
         public const double Every = 15;
         private readonly IHubContext<PriceHub> _hub;
         private readonly ILogger<MarketTickWorker> _logger;
@@ -68,19 +66,12 @@ namespace FinSim.Api.Services
 
                     await using var tx = await db.Database.BeginTransactionAsync(stoppingToken);
 
-                    var expired = await expiry.SweepAsync(stoppingToken);
-
-                    // Load instruments and match first — prices move here, if at all.
-                    var preTick = await prices.TickAsync(_lastIndex, stoppingToken);
-                    var touched = await matcher.MatchAsync(preTick.Instruments, stoppingToken);
-                    var liquidated = await margin.CheckAsync(preTick.Instruments, stoppingToken);
+                    var tick       = await prices.TickAsync(_bias, stoppingToken);
+                    var expired    = await expiry.SweepAsync(stoppingToken);
+                    var touched    = await matcher.MatchAsync(tick.Instruments, stoppingToken);
+                    var liquidated = await margin.CheckAsync(tick.Instruments, stoppingToken);
                     touched.AddRange(expired);
                     touched.AddRange(liquidated);
-
-                    // Reprice funds and measure the index again, now that fills
-                    // have moved CurrentPrice.
-                    var tick = await prices.TickAsync(_lastIndex, stoppingToken);
-                    _lastIndex = tick.IndexValue;
 
                     var stamp = DateTime.UtcNow;
                     db.PriceHistory.AddRange(tick.Instruments.Select(i => new PriceHistory
@@ -109,7 +100,6 @@ namespace FinSim.Api.Services
                         // Someone cancelled or traded mid-tick. Roll back and let the
                         // same orders get matched on the next pass.
                         await tx.RollbackAsync(stoppingToken);
-                        _lastIndex = null;   // this tick's index was never committed
                         _logger.LogWarning("Concurrency conflict during tick; retrying next tick.");
                         continue;
                     }
