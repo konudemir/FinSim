@@ -33,6 +33,7 @@ builder.Services.AddIdentityCore<User>()
 
 builder.Services.AddHostedService<MarketTickWorker>();
 builder.Services.AddScoped<IEmailSender, EmailSender>();
+builder.Services.AddScoped<ExternalPriceEngine>();
 builder.Services.AddScoped<PriceSimEngine>();
 builder.Services.AddScoped<OrderCheckEngine>();
 builder.Services.AddScoped<MarginEngine>();
@@ -58,6 +59,8 @@ builder.Services.AddScoped<OrderExpiryEngine>();
 builder.Services.AddScoped<ISnapshotRepository, SnapshotRepository>();
 builder.Services.AddScoped<SnapshotService>();
 builder.Services.AddHostedService<DailySnapshotWorker>();
+
+
 
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
@@ -113,7 +116,9 @@ using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<FinSimDbContext>();
     await db.Database.MigrateAsync();
-    await DbSeeder.SeedInstrumentsAsync(db);
+
+    var priceSource = scope.ServiceProvider.GetRequiredService<IExternalPriceSource>();
+    await DbSeeder.SeedInstrumentsAsync(db, priceSource);
     //await DbSeeder.SeedFundsAsync(db);
 
     var roleManager = scope.ServiceProvider.GetRequiredService<RoleManager<IdentityRole<Guid>>>();

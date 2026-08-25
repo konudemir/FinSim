@@ -11,7 +11,7 @@ namespace FinSim.Application.Services
     /// </summary>
     public class ExternalPriceEngine
     {
-        private static readonly TimeSpan PollInterval = TimeSpan.FromMinutes(15);
+        private static readonly TimeSpan PollInterval = TimeSpan.FromMinutes(5);
         private const int MaxPerTick = 2;
         private const decimal MaxRatio = 1.15m;
 

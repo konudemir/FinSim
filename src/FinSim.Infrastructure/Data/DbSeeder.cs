@@ -4,6 +4,8 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using FinSim.Domain.Models.Enums;
 using FinSim.Domain.Services;
+using System.Text.Json;
+using FinSim.Application.Interfaces;
 
 namespace FinSim.Infrastructure.Data;
 
@@ -48,31 +50,6 @@ public static class DbSeeder
         ("MGROS", "Migros Ticaret",                520m,  true),
         ("HEKTS", "Hektaş",                          4m, false),   // inactive on purpose, for testing
     ];
-
-    public static async Task SeedInstrumentsAsync(FinSimDbContext db, CancellationToken ct = default)
-    {
-        var existing = await db.Instruments
-            .Select(i => i.Symbol!)
-            .ToListAsync(ct);
-
-        var missing = Instruments
-            .Where(x => !existing.Contains(x.Symbol))
-            .Select(x => new Instrument
-            {
-                Id           = Guid.NewGuid(),
-                Symbol       = x.Symbol,
-                Name         = x.Name,
-                BasePrice    = x.Price,
-                CurrentPrice = x.Price,
-                IsActive     = x.Active
-            })
-            .ToList();
-
-        if (missing.Count == 0) return;
-
-        db.Instruments.AddRange(missing);
-        await db.SaveChangesAsync(ct);
-    }
 
     public static async Task SeedFundsAsync(FinSimDbContext db, CancellationToken ct = default)
     {
@@ -172,4 +149,80 @@ public static class DbSeeder
         if (!await users.IsInRoleAsync(user, AdminRole))
             await users.AddToRoleAsync(user, AdminRole);
     }
+
+
+private sealed record SeedInstrument(
+    string Symbol,
+    string Name,
+    decimal FallbackPrice,
+    bool Active = true);
+
+private static List<SeedInstrument> LoadSeedInstruments()
+{
+    var path = Path.Combine(AppContext.BaseDirectory, "Data", "seed.json");
+    if (!File.Exists(path))
+        throw new FileNotFoundException($"Instrument seed file not found at {path}", path);
+
+    var json = File.ReadAllText(path);
+    var items = JsonSerializer.Deserialize<List<SeedInstrument>>(json, new JsonSerializerOptions
+    {
+        PropertyNameCaseInsensitive = true
+    });
+
+    if (items is null || items.Count == 0)
+        throw new InvalidOperationException("Instrument seed file is empty or malformed.");
+
+    return items;
+}
+
+public static async Task SeedInstrumentsAsync(
+    FinSimDbContext db,
+    IExternalPriceSource? prices = null,
+    CancellationToken ct = default)
+{
+    var seed = LoadSeedInstruments();
+
+    var existing = await db.Instruments
+        .Select(i => i.Symbol!)
+        .ToListAsync(ct);
+
+    var missing = new List<Instrument>();
+
+    foreach (var x in seed.Where(x => !existing.Contains(x.Symbol)))
+    {
+        var realSymbol = x.Symbol + ".IS";
+
+        // Real price when we can get one, fallback otherwise — a Yahoo outage
+        // must not leave the DB full of implausible prices.
+        decimal? real = prices is null || !x.Active
+            ? null
+            : await prices.TryGetPriceAsync(realSymbol, ct);
+
+        var price = real ?? x.FallbackPrice;
+
+        missing.Add(new Instrument
+        {
+            Id              = Guid.NewGuid(),
+            Symbol          = x.Symbol,
+            Name            = x.Name,
+            BasePrice       = price,
+            CurrentPrice    = price,
+            IsActive        = x.Active,
+            // Inactive instruments are never polled, so don't give them a mapping.
+            RealSymbol      = x.Active ? realSymbol : null,
+            // Only anchor on a successful fetch — otherwise leave null so the
+            // engine seeds it on first poll rather than computing a ratio
+            // against a made-up number.
+            LastRealPrice   = real,
+            LastRealPriceAt = real is null ? null : DateTimeOffset.UtcNow
+        });
+    }
+
+    if (missing.Count == 0) return;
+
+    db.Instruments.AddRange(missing);
+    await db.SaveChangesAsync(ct);
+}
+
+
 }

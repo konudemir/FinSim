@@ -4,13 +4,12 @@ using Microsoft.AspNetCore.SignalR;
 using FinSim.Application.Services;
 using Microsoft.EntityFrameworkCore;
 using FinSim.Domain.Models;
+using FinSim.Application.Interfaces;
 
 namespace FinSim.Api.Services
 {
     public class MarketTickWorker : BackgroundService
     {
-        private double _bias = 1.0;
-        private int _ticksLeft;
         private int _sinceCleanup;
         public const double Every = 15;
         private readonly IHubContext<PriceHub> _hub;
@@ -35,25 +34,6 @@ namespace FinSim.Api.Services
             {
                 try
                 {
-                    if (--_ticksLeft <= 0)
-                    {
-                        if (Random.Shared.NextDouble() < 0.2)
-                        {
-                            _bias = Random.Shared.NextDouble() < 0.6
-                                ? 0.94 + Random.Shared.NextDouble() * 0.04
-                                : 1.02 + Random.Shared.NextDouble() * 0.04;
-                            _ticksLeft = Random.Shared.Next(30, 90);
-                        }
-                        else
-                        {
-                            _bias = 1.0;
-                            _ticksLeft = Random.Shared.Next(120, 300);
-                        }
-
-                        _logger.LogInformation(
-                            "Market bias -> {Bias:F3} for {Ticks} ticks", _bias, _ticksLeft);
-                    }
-
                     using var scope = _scopeFactory.CreateScope();
                     var sp = scope.ServiceProvider;
 
@@ -63,10 +43,24 @@ namespace FinSim.Api.Services
                     var margin  = sp.GetRequiredService<MarginEngine>();
                     var users   = sp.GetRequiredService<UserService>();
                     var expiry  = sp.GetRequiredService<OrderExpiryEngine>();
+                    var external = sp.GetRequiredService<ExternalPriceEngine>();
+                    var instRepo = sp.GetRequiredService<IInstrumentRepository>();
+
+                    // Outside the transaction on purpose: this makes HTTP calls, and holding a
+                    // Postgres transaction open across an 8s timeout would overlap the next tick.
+                    try
+                    {
+                        var stocks = await instRepo.GetActiveStocksAsync(stoppingToken);
+                        await external.ApplyAsync(stocks, stoppingToken);
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogError(ex, "External price step failed; continuing tick");
+                    }
 
                     await using var tx = await db.Database.BeginTransactionAsync(stoppingToken);
 
-                    var tick       = await prices.TickAsync(_bias, stoppingToken);
+                    var tick       = await prices.TickAsync(stoppingToken);
                     var expired    = await expiry.SweepAsync(stoppingToken);
                     var touched    = await matcher.MatchAsync(tick.Instruments, stoppingToken);
                     var liquidated = await margin.CheckAsync(tick.Instruments, stoppingToken);

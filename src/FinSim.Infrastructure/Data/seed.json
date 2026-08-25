@@ -1,0 +1,602 @@
+[
+  {
+    "symbol": "AKBNK",
+    "name": "Akbank",
+    "fallbackPrice": 72.0,
+    "active": true
+  },
+  {
+    "symbol": "AKSA",
+    "name": "Aksa Akrilik",
+    "fallbackPrice": 11.09,
+    "active": true
+  },
+  {
+    "symbol": "AKSEN",
+    "name": "Aksa Enerji",
+    "fallbackPrice": 81.5,
+    "active": true
+  },
+  {
+    "symbol": "ALARK",
+    "name": "Alarko Holding",
+    "fallbackPrice": 104.7,
+    "active": true
+  },
+  {
+    "symbol": "ALTNY",
+    "name": "Altınay Savunma",
+    "fallbackPrice": 18.63,
+    "active": true
+  },
+  {
+    "symbol": "ANSGR",
+    "name": "Anadolu Sigorta",
+    "fallbackPrice": 27.86,
+    "active": true
+  },
+  {
+    "symbol": "AEFES",
+    "name": "Anadolu Efes",
+    "fallbackPrice": 18.76,
+    "active": true
+  },
+  {
+    "symbol": "ARCLK",
+    "name": "Arçelik",
+    "fallbackPrice": 92.35,
+    "active": true
+  },
+  {
+    "symbol": "ASELS",
+    "name": "Aselsan",
+    "fallbackPrice": 405.25,
+    "active": true
+  },
+  {
+    "symbol": "ASTOR",
+    "name": "Astor Enerji",
+    "fallbackPrice": 336.75,
+    "active": true
+  },
+  {
+    "symbol": "BALSU",
+    "name": "Balsu Gıda",
+    "fallbackPrice": 10.65,
+    "active": true
+  },
+  {
+    "symbol": "BTCIM",
+    "name": "Batıçim",
+    "fallbackPrice": 4.64,
+    "active": true
+  },
+  {
+    "symbol": "BSOKE",
+    "name": "Batısöke Çimento",
+    "fallbackPrice": 32.94,
+    "active": true
+  },
+  {
+    "symbol": "BERA",
+    "name": "Bera Holding",
+    "fallbackPrice": 13.49,
+    "active": true
+  },
+  {
+    "symbol": "BIMAS",
+    "name": "BİM",
+    "fallbackPrice": 410.25,
+    "active": true
+  },
+  {
+    "symbol": "BRSAN",
+    "name": "Borusan Boru",
+    "fallbackPrice": 714.0,
+    "active": true
+  },
+  {
+    "symbol": "BRYAT",
+    "name": "Borusan Yatırım",
+    "fallbackPrice": 1722.0,
+    "active": true
+  },
+  {
+    "symbol": "CCOLA",
+    "name": "Coca-Cola İçecek",
+    "fallbackPrice": 77.55,
+    "active": true
+  },
+  {
+    "symbol": "CVKMD",
+    "name": "CVK Maden",
+    "fallbackPrice": 16.11,
+    "active": true
+  },
+  {
+    "symbol": "CWENE",
+    "name": "CW Enerji",
+    "fallbackPrice": 36.02,
+    "active": true
+  },
+  {
+    "symbol": "CANTE",
+    "name": "Çan2 Termik",
+    "fallbackPrice": 1.22,
+    "active": true
+  },
+  {
+    "symbol": "CIMSA",
+    "name": "Çimsa",
+    "fallbackPrice": 46.02,
+    "active": true
+  },
+  {
+    "symbol": "DAPGM",
+    "name": "DAP Gayrimenkul",
+    "fallbackPrice": 8.59,
+    "active": true
+  },
+  {
+    "symbol": "DSTKF",
+    "name": "Destek Faktoring",
+    "fallbackPrice": 2273.0,
+    "active": true
+  },
+  {
+    "symbol": "DOHOL",
+    "name": "Doğan Holding",
+    "fallbackPrice": 21.0,
+    "active": true
+  },
+  {
+    "symbol": "DOAS",
+    "name": "Doğuş Otomotiv",
+    "fallbackPrice": 166.8,
+    "active": true
+  },
+  {
+    "symbol": "EFOR",
+    "name": "Efor Yatırım",
+    "fallbackPrice": 18.2,
+    "active": true
+  },
+  {
+    "symbol": "ECILC",
+    "name": "Eczacıbaşı İlaç",
+    "fallbackPrice": 77.5,
+    "active": true
+  },
+  {
+    "symbol": "EKGYO",
+    "name": "Emlak Konut GYO",
+    "fallbackPrice": 20.1,
+    "active": true
+  },
+  {
+    "symbol": "ENJSA",
+    "name": "Enerjisa",
+    "fallbackPrice": 108.8,
+    "active": true
+  },
+  {
+    "symbol": "ENERY",
+    "name": "Enerya",
+    "fallbackPrice": 9.04,
+    "active": true
+  },
+  {
+    "symbol": "ENKAI",
+    "name": "Enka İnşaat",
+    "fallbackPrice": 83.55,
+    "active": true
+  },
+  {
+    "symbol": "EREGL",
+    "name": "Erdemir",
+    "fallbackPrice": 38.0,
+    "active": true
+  },
+  {
+    "symbol": "ESEN",
+    "name": "Esenboğa Elektrik",
+    "fallbackPrice": 3.57,
+    "active": true
+  },
+  {
+    "symbol": "EUREN",
+    "name": "Europen Endüstri",
+    "fallbackPrice": 3.91,
+    "active": true
+  },
+  {
+    "symbol": "EUPWR",
+    "name": "Europower Enerji",
+    "fallbackPrice": 95.2,
+    "active": true
+  },
+  {
+    "symbol": "FENER",
+    "name": "Fenerbahçe Futbol",
+    "fallbackPrice": 3.13,
+    "active": true
+  },
+  {
+    "symbol": "FROTO",
+    "name": "Ford Otosan",
+    "fallbackPrice": 78.25,
+    "active": true
+  },
+  {
+    "symbol": "GSRAY",
+    "name": "Galatasaray Sportif",
+    "fallbackPrice": 1.13,
+    "active": true
+  },
+  {
+    "symbol": "GENIL",
+    "name": "Gen İlaç",
+    "fallbackPrice": 12.06,
+    "active": true
+  },
+  {
+    "symbol": "GESAN",
+    "name": "Girişim Elektrik",
+    "fallbackPrice": 89.3,
+    "active": true
+  },
+  {
+    "symbol": "GRTHO",
+    "name": "GrainTurk Holding",
+    "fallbackPrice": 221.1,
+    "active": true
+  },
+  {
+    "symbol": "GUBRF",
+    "name": "Gübre Fabrikaları",
+    "fallbackPrice": 477.25,
+    "active": true
+  },
+  {
+    "symbol": "GLRMK",
+    "name": "Gülermak",
+    "fallbackPrice": 177.2,
+    "active": true
+  },
+  {
+    "symbol": "GRSEL",
+    "name": "Gür-Sel Turizm",
+    "fallbackPrice": 321.0,
+    "active": true
+  },
+  {
+    "symbol": "SAHOL",
+    "name": "Sabancı Holding",
+    "fallbackPrice": 93.2,
+    "active": true
+  },
+  {
+    "symbol": "HEKTS",
+    "name": "Hektaş",
+    "fallbackPrice": 2.82,
+    "active": true
+  },
+  {
+    "symbol": "IEYHO",
+    "name": "Işıklar Enerji",
+    "fallbackPrice": 190.4,
+    "active": true
+  },
+  {
+    "symbol": "ISMEN",
+    "name": "İş Yatırım",
+    "fallbackPrice": 32.34,
+    "active": true
+  },
+  {
+    "symbol": "IZENR",
+    "name": "İzdemir Enerji",
+    "fallbackPrice": 8.37,
+    "active": true
+  },
+  {
+    "symbol": "KRDMD",
+    "name": "Kardemir (D)",
+    "fallbackPrice": 44.54,
+    "active": true
+  },
+  {
+    "symbol": "KTLEV",
+    "name": "Katılımevim",
+    "fallbackPrice": 57.85,
+    "active": true
+  },
+  {
+    "symbol": "KLRHO",
+    "name": "Kiler Holding",
+    "fallbackPrice": 68.15,
+    "active": true
+  },
+  {
+    "symbol": "KCHOL",
+    "name": "Koç Holding",
+    "fallbackPrice": 212.7,
+    "active": true
+  },
+  {
+    "symbol": "KUYAS",
+    "name": "Kuyaş Yatırım",
+    "fallbackPrice": 63.85,
+    "active": true
+  },
+  {
+    "symbol": "MAGEN",
+    "name": "Margün Enerji",
+    "fallbackPrice": 33.1,
+    "active": true
+  },
+  {
+    "symbol": "MAVI",
+    "name": "Mavi Giyim",
+    "fallbackPrice": 38.16,
+    "active": true
+  },
+  {
+    "symbol": "MIATK",
+    "name": "MİA Teknoloji",
+    "fallbackPrice": 29.76,
+    "active": true
+  },
+  {
+    "symbol": "MGROS",
+    "name": "Migros",
+    "fallbackPrice": 554.5,
+    "active": true
+  },
+  {
+    "symbol": "MPARK",
+    "name": "MLP Sağlık",
+    "fallbackPrice": 436.0,
+    "active": true
+  },
+  {
+    "symbol": "OBAMS",
+    "name": "Oba Makarna",
+    "fallbackPrice": 5.62,
+    "active": true
+  },
+  {
+    "symbol": "ODAS",
+    "name": "Odaş Elektrik",
+    "fallbackPrice": 7.06,
+    "active": true
+  },
+  {
+    "symbol": "ODINE",
+    "name": "Odine Solutions",
+    "fallbackPrice": 1723.0,
+    "active": true
+  },
+  {
+    "symbol": "OTKAR",
+    "name": "Otokar",
+    "fallbackPrice": 333.5,
+    "active": true
+  },
+  {
+    "symbol": "OYAKC",
+    "name": "Oyak Çimento",
+    "fallbackPrice": 22.7,
+    "active": true
+  },
+  {
+    "symbol": "PASEU",
+    "name": "Pasifik Eurasia",
+    "fallbackPrice": 226.0,
+    "active": true
+  },
+  {
+    "symbol": "PSGYO",
+    "name": "Pasifik GYO",
+    "fallbackPrice": 3.41,
+    "active": true
+  },
+  {
+    "symbol": "PAHOL",
+    "name": "Pasifik Holding",
+    "fallbackPrice": 1.32,
+    "active": true
+  },
+  {
+    "symbol": "PATEK",
+    "name": "Pasifik Teknoloji",
+    "fallbackPrice": 22.5,
+    "active": true
+  },
+  {
+    "symbol": "PGSUS",
+    "name": "Pegasus",
+    "fallbackPrice": 150.0,
+    "active": true
+  },
+  {
+    "symbol": "PETKM",
+    "name": "Petkim",
+    "fallbackPrice": 19.65,
+    "active": true
+  },
+  {
+    "symbol": "QUAGR",
+    "name": "Qua Granite",
+    "fallbackPrice": 3.39,
+    "active": true
+  },
+  {
+    "symbol": "RALYH",
+    "name": "RAL Yatırım",
+    "fallbackPrice": 268.5,
+    "active": true
+  },
+  {
+    "symbol": "REEDR",
+    "name": "Reeder",
+    "fallbackPrice": 5.97,
+    "active": true
+  },
+  {
+    "symbol": "SARKY",
+    "name": "Sarkuysan",
+    "fallbackPrice": 25.52,
+    "active": true
+  },
+  {
+    "symbol": "SASA",
+    "name": "Sasa Polyester",
+    "fallbackPrice": 2.3,
+    "active": true
+  },
+  {
+    "symbol": "SKBNK",
+    "name": "Şekerbank",
+    "fallbackPrice": 6.19,
+    "active": true
+  },
+  {
+    "symbol": "SOKM",
+    "name": "ŞOK Marketler",
+    "fallbackPrice": 56.95,
+    "active": true
+  },
+  {
+    "symbol": "TAVHL",
+    "name": "TAV Havalimanları",
+    "fallbackPrice": 281.0,
+    "active": true
+  },
+  {
+    "symbol": "TKFEN",
+    "name": "Tekfen Holding",
+    "fallbackPrice": 212.8,
+    "active": true
+  },
+  {
+    "symbol": "TOASO",
+    "name": "Tofaş",
+    "fallbackPrice": 270.75,
+    "active": true
+  },
+  {
+    "symbol": "TRMET",
+    "name": "TR Anadolu Metal",
+    "fallbackPrice": 140.3,
+    "active": true
+  },
+  {
+    "symbol": "TRENJ",
+    "name": "TR Doğal Enerji",
+    "fallbackPrice": 105.3,
+    "active": true
+  },
+  {
+    "symbol": "TUKAS",
+    "name": "Tukaş",
+    "fallbackPrice": 2.01,
+    "active": true
+  },
+  {
+    "symbol": "TCELL",
+    "name": "Turkcell",
+    "fallbackPrice": 103.1,
+    "active": true
+  },
+  {
+    "symbol": "TUPRS",
+    "name": "Tüpraş",
+    "fallbackPrice": 378.0,
+    "active": true
+  },
+  {
+    "symbol": "TRALT",
+    "name": "Türk Altın",
+    "fallbackPrice": 53.65,
+    "active": true
+  },
+  {
+    "symbol": "THYAO",
+    "name": "Türk Hava Yolları",
+    "fallbackPrice": 301.5,
+    "active": true
+  },
+  {
+    "symbol": "GARAN",
+    "name": "Garanti BBVA",
+    "fallbackPrice": 132.9,
+    "active": true
+  },
+  {
+    "symbol": "HALKB",
+    "name": "Halkbank",
+    "fallbackPrice": 34.64,
+    "active": true
+  },
+  {
+    "symbol": "ISCTR",
+    "name": "İş Bankası",
+    "fallbackPrice": 12.58,
+    "active": true
+  },
+  {
+    "symbol": "TSKB",
+    "name": "TSKB",
+    "fallbackPrice": 11.01,
+    "active": true
+  },
+  {
+    "symbol": "TURSG",
+    "name": "Türkiye Sigorta",
+    "fallbackPrice": 6.13,
+    "active": true
+  },
+  {
+    "symbol": "SISE",
+    "name": "Şişecam",
+    "fallbackPrice": 39.52,
+    "active": true
+  },
+  {
+    "symbol": "VAKBN",
+    "name": "VakıfBank",
+    "fallbackPrice": 31.52,
+    "active": true
+  },
+  {
+    "symbol": "TTKOM",
+    "name": "Türk Telekom",
+    "fallbackPrice": 53.35,
+    "active": true
+  },
+  {
+    "symbol": "ULKER",
+    "name": "Ülker",
+    "fallbackPrice": 89.95,
+    "active": true
+  },
+  {
+    "symbol": "VESTL",
+    "name": "Vestel",
+    "fallbackPrice": 21.8,
+    "active": true
+  },
+  {
+    "symbol": "YKBNK",
+    "name": "Yapı Kredi",
+    "fallbackPrice": 36.66,
+    "active": true
+  },
+  {
+    "symbol": "ZOREN",
+    "name": "Zorlu Enerji",
+    "fallbackPrice": 2.28,
+    "active": true
+  }
+]
