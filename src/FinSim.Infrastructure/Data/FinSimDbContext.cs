@@ -112,6 +112,10 @@ namespace FinSim.Infrastructure.Data
                  .WithOne(h => h.Fund)
                  .HasForeignKey(h => h.FundId)
                  .OnDelete(DeleteBehavior.Cascade);
+                e.Property(i => i.BasePrice).HasPrecision(18, 2);
+                e.Property(i => i.CurrentPrice).HasPrecision(18, 2);
+                e.Property(i => i.LastRealPrice).HasPrecision(18, 4);
+                e.Property(i => i.RealSymbol).HasMaxLength(20);
             });
             modelBuilder.Entity<FundHolding>(e =>
             {

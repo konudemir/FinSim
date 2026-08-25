@@ -262,7 +262,7 @@ input  { font-family: var(--mono); }
   display: flex;
   width: max-content;
   height: 100%;
-  animation: tape 150s linear infinite;
+  animation: tape 600s linear infinite;
 }
 
 @keyframes tape {

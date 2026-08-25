@@ -51,7 +51,7 @@ namespace FinSim.Infrastructure.Repositories
         public Task<List<Order>> GetRecentByUserAsync(Guid userId, int take, CancellationToken ct) =>
             _db.Orders
                 .Where(o => o.UserId == userId
-                         && o.Status != OrderStatus.Pending && o.Status != OrderStatus.PartiallyFilled)
+                         && o.Status != OrderStatus.Pending)
                 .OrderByDescending(o => o.CreatedAt)
                 .Take(take)
                 .ToListAsync(ct);

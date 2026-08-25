@@ -206,9 +206,10 @@ function OrderTable({ orders, pending, now, onCancel, onReplace, replacing }: {
                   <td>
                     <span className={`pill ${o.status.toLowerCase()}`}>
                       {o.status === 'Filled' ? t('status.filled')
-                     : o.status === 'Rejected' ? t('status.rejected')
-                     : o.status === 'Expired' ? t('status.expired')
-                     : t('status.cancelled')}
+                      : o.status === 'PartiallyFilled' ? t('status.partiallyFilled')
+                      : o.status === 'Rejected' ? t('status.rejected')
+                      : o.status === 'Expired' ? t('status.expired')
+                      : t('status.cancelled')}
                     </span>
                     {o.status === 'Expired' && (
                       <button
@@ -471,7 +472,7 @@ const seeded = useRef<Set<string>>(new Set())
 
   const chosen = instruments.find(i => i.id === selected) ?? null
   const pendingOrders = useMemo(() => orders.filter(o => o.status === 'Pending' || o.status === 'PartiallyFilled'), [orders])
-  const pastOrders    = useMemo(() => orders.filter(o => o.status !== 'Pending' && o.status !== 'PartiallyFilled'), [orders])
+  const pastOrders = useMemo(() => orders.filter(o => o.status !== 'Pending'), [orders])
   const livePortfolio = useMemo(() => {
     const priceBySymbol: Record<string, number> = {}
     for (const i of instruments) priceBySymbol[i.symbol] = i.currentPrice

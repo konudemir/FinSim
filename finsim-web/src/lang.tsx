@@ -230,9 +230,12 @@ const tr = {
   'pnl.range.30': '30G',
   'pnl.range.90': '90G',
   'pnl.range.365': '1Y',
+
+  'status.partiallyFilled': 'Kısmen Gerçekleşti'
 }
 
 const en: typeof tr = {
+  'status.partiallyFilled': 'Partially Filled',
   'app.tagline': 'Stock Market Simulator',
   'app.market': 'Market',
   'app.logout': 'Sign out',

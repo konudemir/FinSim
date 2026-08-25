@@ -33,6 +33,7 @@ builder.Services.AddIdentityCore<User>()
 
 builder.Services.AddHostedService<MarketTickWorker>();
 builder.Services.AddScoped<IEmailSender, EmailSender>();
+builder.Services.AddScoped<ExternalPriceEngine>();
 builder.Services.AddScoped<PriceSimEngine>();
 builder.Services.AddScoped<OrderCheckEngine>();
 builder.Services.AddScoped<MarginEngine>();
@@ -58,6 +59,8 @@ builder.Services.AddScoped<OrderExpiryEngine>();
 builder.Services.AddScoped<ISnapshotRepository, SnapshotRepository>();
 builder.Services.AddScoped<SnapshotService>();
 builder.Services.AddHostedService<DailySnapshotWorker>();
+
+
 
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
@@ -95,13 +98,27 @@ builder.Services.AddCors(o => o.AddPolicy("dev", p => p
     .AllowAnyMethod()
     .AllowCredentials()));
 
+builder.Services.AddScoped<PriceSimEngine>();
+
+// The browser User-Agent is required — without it Yahoo returns 429.
+builder.Services.AddHttpClient<IExternalPriceSource, YahooChartPriceSource>(c =>
+{
+    c.BaseAddress = new Uri("https://query1.finance.yahoo.com/");
+    c.Timeout = TimeSpan.FromSeconds(8);
+    c.DefaultRequestHeaders.UserAgent.ParseAdd(
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 " +
+        "(KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36");
+});
+
 
 var app = builder.Build();
 using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<FinSimDbContext>();
     await db.Database.MigrateAsync();
-    await DbSeeder.SeedInstrumentsAsync(db);
+
+    var priceSource = scope.ServiceProvider.GetRequiredService<IExternalPriceSource>();
+    await DbSeeder.SeedInstrumentsAsync(db, priceSource);
     //await DbSeeder.SeedFundsAsync(db);
 
     var roleManager = scope.ServiceProvider.GetRequiredService<RoleManager<IdentityRole<Guid>>>();
