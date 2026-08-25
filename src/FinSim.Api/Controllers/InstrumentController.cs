@@ -29,6 +29,14 @@ namespace FinSim.Controllers
                 : Ok(result);
         }
 
+        [HttpGet("index-history")]
+        [AllowAnonymous]
+        public async Task<IActionResult> GetIndexHistory([FromQuery] int points, CancellationToken ct)
+        {
+            var result = await _inst.GetIndexHistoryAsync(points == 0 ? 120 : points, ct);
+            return Ok(result);
+        }
+
         [HttpGet]
         [AllowAnonymous]
         public async Task<IActionResult> GetAll(CancellationToken ct)

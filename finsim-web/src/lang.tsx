@@ -145,7 +145,7 @@ const tr = {
   'gate.showPassword': 'Parolayı göster',
   'gate.hidePassword': 'Parolayı gizle',
 
-  'landing.headline': 'Rastgele Piyasa Simülasyonu',
+  'landing.headline': 'Canlı Piyasa Simülasyonu',
   'landing.sub': 'FinSim, BIST enstrümanlarında canlı fiyat akışıyla çalışan bir borsa simülasyonudur. Sanal TL bakiyenle piyasa ve limit emirleri ver, portföyünü anlık izle.',
   'landing.f1': 'Canlı fiyat akışı',
   'landing.f2': 'Piyasa ve limit emirleri',
@@ -383,7 +383,7 @@ const en: typeof tr = {
   'gate.showPassword': 'Show password',
   'gate.hidePassword': 'Hide password',
 
-  'landing.headline': 'Random Market Simulation',
+  'landing.headline': 'Live Market Simulation',
   'landing.sub': 'FinSim is a stock market simulator running on live BIST-style pricing. Place market and limit orders with a virtual TL balance and watch your portfolio move in real time.',
   'landing.f1': 'Live price feed',
   'landing.f2': 'Market and limit orders',
