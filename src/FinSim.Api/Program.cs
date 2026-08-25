@@ -95,6 +95,18 @@ builder.Services.AddCors(o => o.AddPolicy("dev", p => p
     .AllowAnyMethod()
     .AllowCredentials()));
 
+builder.Services.AddScoped<PriceSimEngine>();
+
+// The browser User-Agent is required — without it Yahoo returns 429.
+builder.Services.AddHttpClient<IExternalPriceSource, YahooChartPriceSource>(c =>
+{
+    c.BaseAddress = new Uri("https://query1.finance.yahoo.com/");
+    c.Timeout = TimeSpan.FromSeconds(8);
+    c.DefaultRequestHeaders.UserAgent.ParseAdd(
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 " +
+        "(KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36");
+});
+
 
 var app = builder.Build();
 using (var scope = app.Services.CreateScope())
