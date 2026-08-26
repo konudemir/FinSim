@@ -457,6 +457,23 @@ const seeded = useRef<Set<string>>(new Set())
   const [online, setOnline] = useState(true)
   const [view, setView] = useState<'portfolio' | 'market' | 'admin'>('portfolio')
   const [menuOpen, setMenuOpen] = useState(false)
+  const menuCloseTimer = useRef<number | null>(null)
+
+  const openMenu = () => {
+    if (menuCloseTimer.current !== null) {
+      window.clearTimeout(menuCloseTimer.current)
+      menuCloseTimer.current = null
+    }
+    setMenuOpen(true)
+  }
+
+  const scheduleCloseMenu = () => {
+    menuCloseTimer.current = window.setTimeout(() => setMenuOpen(false), 150)
+  }
+
+  useEffect(() => () => {
+    if (menuCloseTimer.current !== null) window.clearTimeout(menuCloseTimer.current)
+  }, [])
   const [query, setQuery] = useState('')
   const [sort, setSort] = useState('symbol-asc')
   const [marketQuery, setMarketQuery] = useState('')
@@ -829,7 +846,12 @@ const loadHistory = (i: Instrument) => {
     <div className="shell">
       {menuOpen && (
         <div className="nav-backdrop" onClick={() => setMenuOpen(false)}>
-          <nav className="nav-drawer" onClick={e => e.stopPropagation()}>
+          <nav
+            className="nav-drawer"
+            onClick={e => e.stopPropagation()}
+            onMouseEnter={openMenu}
+            onMouseLeave={scheduleCloseMenu}
+          >
             <div className="nav-drawer-head">
               <span className="mark">Fin<em>Sim</em></span>
               <button className="ghost-btn" onClick={() => setMenuOpen(false)} aria-label={t('app.close')}>×</button>
@@ -866,6 +888,8 @@ const loadHistory = (i: Instrument) => {
           className="nav-toggle"
           style={{ left: navTogglePos }}
           onClick={() => setMenuOpen(true)}
+          onMouseEnter={openMenu}
+          onMouseLeave={scheduleCloseMenu}
           aria-label={t('nav.toggle')}
         >
           <span />
