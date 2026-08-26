@@ -301,26 +301,40 @@ function OrderTable({ orders, pending, now, onCancel, onReplace, replacing, minR
 }
 
 
-const InstrumentRow = memo(function InstrumentRow({ i, open, tick, pos, sparkData, onClick }: {
+const InstrumentRow = memo(function InstrumentRow({
+  i, open, tick, pos, sparkData, onClick, isFavorite, onToggleFavorite,
+}: {
   i: Instrument
   open: boolean
   tick: Tick | undefined
   pos: PortfolioItem | undefined
   sparkData: PricePoint[]
   onClick: () => void
+  isFavorite: boolean
+  onToggleFavorite: () => void
 }) {
   const { t } = useLang()
   return (
     <div className="row" data-open={open}>
-      <button
-        type="button"
-        className="row-head"
-        data-selected={open}
-        data-inactive={!i.isActive}
-        aria-expanded={open}
-        onClick={onClick}
-        disabled={!i.isActive}
-      >
+      <div className="row-line">
+        <button
+          type="button"
+          className="row-fav"
+          aria-pressed={isFavorite}
+          aria-label={t(isFavorite ? 'board.unfavorite' : 'board.favorite')}
+          onClick={e => { e.stopPropagation(); onToggleFavorite() }}
+        >
+          {isFavorite ? '♥' : '♡'}
+        </button>
+        <button
+          type="button"
+          className="row-head"
+          data-selected={open}
+          data-inactive={!i.isActive}
+          aria-expanded={open}
+          onClick={onClick}
+          disabled={!i.isActive}
+        >
         <span className="row-sym">{i.symbol}</span>
         {i.type === 'Fund' && <span className="fund-badge">{t('board.fundBadge')}</span>}
         {pos?.isShort && <span className="short-badge">{t('board.shortBadge')}</span>}
@@ -346,7 +360,8 @@ const InstrumentRow = memo(function InstrumentRow({ i, open, tick, pos, sparkDat
         <span className="row-px" data-tick={tick} key={i.currentPrice}>
           {fmt(i.currentPrice)}
         </span>
-      </button>
+        </button>
+      </div>
       <div className="row-body">
         <div className="row-body-in">
           {open && <AreaSpark data={sparkData} className="row-spark" />}
@@ -393,6 +408,9 @@ function Terminal({ onLogout }: { onLogout: () => void }) {
   const [orders, setOrders] = useState<Order[]>([])
   const [transactions, setTransactions] = useState<Transaction[]>([])
   const [marketMove, setMarketMove] = useState(0)
+  const [favorites, setFavorites] = useState<Set<string>>(new Set())
+  const [showFavorites, setShowFavorites] = useState(false)
+  const [favPage, setFavPage] = useState(1)
 // Must match MarketTickWorker.Every in src/FinSim.Api/BackgroundWorker.cs — the
 // worker writes one PriceHistory row per instrument at that cadence, and this
 // constant is how many seconds of real history each chart point represents.
@@ -402,6 +420,7 @@ const MAX_POINTS = (WINDOW_HOURS * 3600) / TICK_SECONDS
 const [history, setHistory] = useState<Record<string, PricePoint[]>>({})
 const seeded = useRef<Set<string>>(new Set())
   const [selected, setSelected] = useState<string | null>(null)
+  const [selectedPanel, setSelectedPanel] = useState<string | null>(null)
   const [mode, setMode] = useState<'market' | 'limit'>('market')
   const [qty, setQty] = useState('1')
   const [limitPrice, setLimitPrice] = useState('')
@@ -474,11 +493,33 @@ const seeded = useRef<Set<string>>(new Set())
         for (const i of res.data) prevPrices.current[i.symbol] = i.currentPrice
       })
       .catch(console.error)
+    api.get<string[]>('/api/favorites')
+      .then(res => setFavorites(new Set(res.data)))
+      .catch(console.error)
     loadOrders()
     loadTransactions()
     loadBalance()
     loadPortfolio()
   }, [])
+
+  const toggleFavorite = (i: Instrument) => {
+    const isFav = favorites.has(i.id)
+    setFavorites(prev => {
+      const next = new Set(prev)
+      if (isFav) next.delete(i.id); else next.add(i.id)
+      return next
+    })
+    const req = isFav
+      ? api.delete(`/api/favorites/${i.id}`)
+      : api.post(`/api/favorites/${i.id}`)
+    req.catch(() => {
+      setFavorites(prev => {
+        const next = new Set(prev)
+        if (isFav) next.add(i.id); else next.delete(i.id)
+        return next
+      })
+    })
+  }
 
   useEffect(() => {
     for (const i of instruments) {
@@ -730,9 +771,11 @@ const seeded = useRef<Set<string>>(new Set())
   const dismissLiquidation = (id: string) =>
     setLiquidations(prev => prev.filter(l => l.id !== id))
 
-  const pick = (i: Instrument) => {
+  const pick = (i: Instrument, panel: string) => {
   if (!i.isActive) return
-  setSelected(prev => (prev === i.id ? null : i.id))
+  const isOpen = selected === i.id && selectedPanel === panel
+  setSelected(isOpen ? null : i.id)
+  setSelectedPanel(isOpen ? null : panel)
   setLimitPrice(prev => (prev === '' ? i.currentPrice.toFixed(2).replace('.', ',') : prev))
   loadHistory(i)
 }
@@ -767,8 +810,13 @@ const loadHistory = (i: Instrument) => {
     () => filterSortInstruments(instruments.filter(i => i.type === 'Stock'), marketQuery, marketSort),
     [instruments, marketQuery, marketSort]
   )
+  const favoriteInstruments = useMemo(
+    () => filterSortInstruments(instruments.filter(i => favorites.has(i.id)), '', 'symbol-asc'),
+    [instruments, favorites]
+  )
 
   const portfolioPaged = paginate(portfolioInstruments, portfolioPage)
+  const favPaged = paginate(favoriteInstruments, favPage)
   const marketPaged = paginate(marketStocks, marketPage, MARKET_PAGE_SIZE)
   const marketLeft = marketPaged.items.slice(0, MARKET_PAGE_SIZE / 2)
   const marketRight = marketPaged.items.slice(MARKET_PAGE_SIZE / 2)
@@ -857,6 +905,13 @@ const loadHistory = (i: Instrument) => {
             {lang === 'tr' ? 'EN' : 'TR'}
           </button>
           <button className="ghost-btn" onClick={onLogout}>{t('app.logout')}</button>
+          <button
+            className="ghost-btn"
+            aria-pressed={showFavorites}
+            onClick={() => setShowFavorites(v => !v)}
+          >
+            ♥ {t('nav.favorites')}
+          </button>
         </div>
       </header>
 
@@ -952,11 +1007,13 @@ const loadHistory = (i: Instrument) => {
                     <InstrumentRow
                       key={i.id}
                       i={i}
-                      open={selected === i.id}
+                      open={selected === i.id && selectedPanel === 'market'}
                       tick={ticks[i.symbol]}
                       pos={livePortfolio[i.symbol]}
                       sparkData={history[i.symbol] ?? []}
-                      onClick={() => pick(i)}
+                      onClick={() => pick(i, 'market')}
+                      isFavorite={favorites.has(i.id)}
+                      onToggleFavorite={() => toggleFavorite(i)}
                     />
                   ))}
                 </div>
@@ -965,11 +1022,13 @@ const loadHistory = (i: Instrument) => {
                     <InstrumentRow
                       key={i.id}
                       i={i}
-                      open={selected === i.id}
+                      open={selected === i.id && selectedPanel === 'market'}
                       tick={ticks[i.symbol]}
                       pos={livePortfolio[i.symbol]}
                       sparkData={history[i.symbol] ?? []}
-                      onClick={() => pick(i)}
+                      onClick={() => pick(i, 'market')}
+                      isFavorite={favorites.has(i.id)}
+                      onToggleFavorite={() => toggleFavorite(i)}
                     />
                   ))}
                 </div>
@@ -991,7 +1050,7 @@ const loadHistory = (i: Instrument) => {
           </div>
         )}
 
-        <div className="terminal-layout">
+        <div className="terminal-layout" data-favs={showFavorites}>
           <div className="terminal-left">
             <div className="board-controls">
               <div className="search-input">
@@ -1034,11 +1093,13 @@ const loadHistory = (i: Instrument) => {
                   <InstrumentRow
                     key={i.id}
                     i={i}
-                    open={selected === i.id}
+                    open={selected === i.id && selectedPanel === 'portfolio'}
                     tick={ticks[i.symbol]}
                     pos={livePortfolio[i.symbol]}
                     sparkData={history[i.symbol] ?? []}
-                    onClick={() => pick(i)}
+                    onClick={() => pick(i, 'portfolio')}
+                    isFavorite={favorites.has(i.id)}
+                    onToggleFavorite={() => toggleFavorite(i)}
                   />
                 ))}
                 {Array.from({ length: Math.max(0, PAGE_SIZE - portfolioPaged.items.length) }).map((_, idx) => (
@@ -1145,6 +1206,40 @@ const loadHistory = (i: Instrument) => {
               )}
             </div>
           </div>
+
+          {showFavorites && (
+            <div className="terminal-fav">
+              <div className="section-head">
+                <h2>{t('nav.favorites')}</h2>
+                <span className="section-note">{t('board.favoritesNote', { n: favoriteInstruments.length })}</span>
+                <button className="ghost-btn" onClick={() => setShowFavorites(false)} aria-label={t('app.close')}>
+                  ×
+                </button>
+              </div>
+              {favoriteInstruments.length === 0 ? (
+                <div className="empty-state">{t('board.favoritesEmpty')}</div>
+              ) : (
+                <>
+                  <div className="board">
+                    {favPaged.items.map(i => (
+                      <InstrumentRow
+                        key={i.id}
+                        i={i}
+                        open={selected === i.id && selectedPanel === 'favorites'}
+                        tick={ticks[i.symbol]}
+                        pos={livePortfolio[i.symbol]}
+                        sparkData={history[i.symbol] ?? []}
+                        onClick={() => pick(i, 'favorites')}
+                        isFavorite
+                        onToggleFavorite={() => toggleFavorite(i)}
+                      />
+                    ))}
+                  </div>
+                  <Pager page={favPaged.page} totalPages={favPaged.totalPages} onChange={setFavPage} />
+                </>
+              )}
+            </div>
+          )}
         </div>
         </>
         )}

@@ -715,7 +715,30 @@ input  { font-family: var(--mono); }
 }
 
 .row { border-bottom: 1px solid color-mix(in srgb, var(--edge) 40%, transparent); }
-.board .row:nth-child(even) .row-head { background: var(--zebra-alt); }
+.board .row:nth-child(even) .row-line { background: var(--zebra-alt); }
+
+.row-line {
+  display: flex;
+  align-items: stretch;
+}
+
+.row-fav {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  background: transparent;
+  border: none;
+  color: var(--faint);
+  font-size: 16px;
+  line-height: 1;
+  cursor: pointer;
+  transition: color 0.15s, transform 0.1s;
+}
+
+.row-fav:hover { color: var(--amber); transform: scale(1.1); }
+.row-fav[aria-pressed="true"] { color: var(--amber); }
 
 .row-head {
   position: relative;
@@ -724,7 +747,7 @@ input  { font-family: var(--mono); }
   align-items: center;
   width: 100%;
   gap: 12px;
-  padding: 7px 18px;
+  padding: 7px 18px 7px 8px;
   background: transparent;
   box-shadow: none;
   text-align: left;
@@ -833,7 +856,8 @@ input  { font-family: var(--mono); }
 .row-px[data-tick="down"] { animation: flash-down 0.9s ease-out; }
 
 @media (max-width: 560px) {
-  .row-head { padding: 11px 14px; gap: 8px; }
+  .row-head { padding: 11px 14px 11px 6px; gap: 8px; }
+  .row-fav { width: 30px; font-size: 15px; }
   .row-name { flex-basis: 90px; font-size: 10px; }
   .row-px { font-size: 13px; min-width: 58px; }
   .row-pos { font-size: 10px; gap: 6px; }
@@ -847,6 +871,11 @@ input  { font-family: var(--mono); }
   grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   align-items: start;
   gap: 32px;
+  transition: grid-template-columns 0.2s ease;
+}
+
+.terminal-layout[data-favs="true"] {
+  grid-template-columns: minmax(0, 0.85fr) minmax(0, 0.85fr) minmax(260px, 320px);
 }
 
 .terminal-left { min-width: 0; }
@@ -858,8 +887,19 @@ input  { font-family: var(--mono); }
   min-width: 0;
 }
 
+.terminal-fav {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 0;
+  position: sticky;
+  top: 12px;
+}
+
 @media (max-width: 1080px) {
   .terminal-layout { grid-template-columns: minmax(0, 1fr); }
+  .terminal-layout[data-favs="true"] { grid-template-columns: minmax(0, 1fr); }
+  .terminal-fav { position: static; }
 }
 
 /* ── stock market page: two 5-a-side columns ─────────────────── */

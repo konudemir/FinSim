@@ -60,6 +60,8 @@ builder.Services.AddScoped<OrderExpiryEngine>();
 builder.Services.AddScoped<ISnapshotRepository, SnapshotRepository>();
 builder.Services.AddScoped<SnapshotService>();
 builder.Services.AddHostedService<DailySnapshotWorker>();
+builder.Services.AddScoped<IFavoriteRepository, FavoriteRepository>();
+builder.Services.AddScoped<FavoriteService>();
 
 
 
