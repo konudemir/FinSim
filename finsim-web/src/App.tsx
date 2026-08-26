@@ -325,9 +325,6 @@ const InstrumentRow = memo(function InstrumentRow({ i, open, tick, pos, sparkDat
         {i.type === 'Fund' && <span className="fund-badge">{t('board.fundBadge')}</span>}
         {pos?.isShort && <span className="short-badge">{t('board.shortBadge')}</span>}
         <span className="row-name">{i.name}</span>
-        <span className="row-px" data-tick={tick} key={i.currentPrice}>
-          {fmt(i.currentPrice)}
-        </span>
         <div className="row-pos">
           {pos ? (
             <>
@@ -346,6 +343,9 @@ const InstrumentRow = memo(function InstrumentRow({ i, open, tick, pos, sparkDat
             !i.isActive && <span className="empty">{t('board.closed')}</span>
           )}
         </div>
+        <span className="row-px" data-tick={tick} key={i.currentPrice}>
+          {fmt(i.currentPrice)}
+        </span>
       </button>
       <div className="row-body">
         <div className="row-body-in">
@@ -1423,9 +1423,12 @@ function AreaSpark({ data, className }: { data: PricePoint[]; className: string 
   if (data.length < 2) return null
   const { lang } = useLang()
   const prices = data.map(p => p.price)
-  const min = Math.min(...prices)
-  const max = Math.max(...prices)
-  const range = max - min || 1
+  const dataMin = Math.min(...prices)
+  const dataMax = Math.max(...prices)
+  const pad = (dataMax - dataMin) * 0.15 || dataMax * 0.05 || 1
+  const min = Math.max(0, dataMin - pad)
+  const top = dataMax + pad
+  const range = top - min || 1
   const last = data.length - 1
 
   const px = (idx: number) => (idx / last) * 100

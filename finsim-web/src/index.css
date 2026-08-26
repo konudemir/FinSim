@@ -770,6 +770,7 @@ input  { font-family: var(--mono); }
   letter-spacing: -0.02em;
   padding: 1px 4px;
   margin: -1px -4px;
+  margin-left: auto;
   border-radius: 2px;
   min-width: 68px;
   text-align: right;

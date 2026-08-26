@@ -64,6 +64,9 @@ namespace FinSim.Infrastructure.Repositories
                 : result.Errors.Select(e => e.Code).ToList();
         }
 
+        public Task<List<User>> GetBotsAsync(CancellationToken ct) =>
+            _db.Users.Where(u => u.IsBot).ToListAsync(ct);
+
         
     }
 }

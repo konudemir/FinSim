@@ -45,6 +45,7 @@ namespace FinSim.Api.Services
                     var expiry  = sp.GetRequiredService<OrderExpiryEngine>();
                     var external = sp.GetRequiredService<ExternalPriceEngine>();
                     var instRepo = sp.GetRequiredService<IInstrumentRepository>();
+                    var bots = sp.GetRequiredService<BotEngine>();
 
                     // Outside the transaction on purpose: this makes HTTP calls, and holding a
                     // Postgres transaction open across an 8s timeout would overlap the next tick.
@@ -60,9 +61,12 @@ namespace FinSim.Api.Services
 
                     await using var tx = await db.Database.BeginTransactionAsync(stoppingToken);
 
-                    var tick       = await prices.TickAsync(stoppingToken);
-                    var expired    = await expiry.SweepAsync(stoppingToken);
-                    var touched    = await matcher.MatchAsync(tick.Instruments, stoppingToken);
+                    var tick    = await prices.TickAsync(stoppingToken);
+                    var expired = await expiry.SweepAsync(stoppingToken);
+
+                    await bots.RunAsync(tick.Instruments, stoppingToken);
+
+                    var touched = await matcher.MatchAsync(tick.Instruments, stoppingToken);
                     var liquidated = await margin.CheckAsync(tick.Instruments, stoppingToken);
                     touched.AddRange(expired);
                     touched.AddRange(liquidated);
