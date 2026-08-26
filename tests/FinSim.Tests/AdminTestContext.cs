@@ -1,6 +1,7 @@
 using FinSim.Application.Interfaces;
 using FinSim.Application.Services;
 using FinSim.Domain.Models;
+using Microsoft.Extensions.Logging.Abstractions;
 using NSubstitute;
 
 namespace FinSim.Tests;
@@ -15,6 +16,10 @@ public class AdminTestContext
     public readonly IOrderRepository Orders = Substitute.For<IOrderRepository>();
     public readonly IUnitOfWork UnitOfWork = Substitute.For<IUnitOfWork>();
 
+    /// <summary>Reachable so reload-path tests can configure real returns; a null
+    /// price (the default) makes every reload resolve to SourceUnavailable.</summary>
+    public readonly IExternalPriceSource PriceSource = Substitute.For<IExternalPriceSource>();
+
     public readonly Guid AdminId = Guid.NewGuid();
     public readonly Guid UserId = Guid.NewGuid();
     public readonly Guid InstrumentId = Guid.NewGuid();
@@ -22,9 +27,12 @@ public class AdminTestContext
     public AdminTestContext()
     {
         UnitOfWork.TrySaveChangesAsync(Arg.Any<CancellationToken>()).Returns(true);
+        PriceSource.TryGetPriceAsync(Arg.Any<string>(), Arg.Any<CancellationToken>()).Returns((decimal?)null);
     }
 
-    public AdminService Service => new(Users, Portfolio, Instruments, Audit, Orders, UnitOfWork);
+    public AdminService Service => new(
+        Users, Portfolio, Instruments, Audit, Orders, UnitOfWork,
+        new ExternalPriceEngine(PriceSource, NullLogger<ExternalPriceEngine>.Instance));
 
     public User GivenUser(decimal free = 1_000m, decimal netDeposits = 1_000m)
     {
