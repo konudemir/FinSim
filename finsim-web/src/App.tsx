@@ -11,7 +11,7 @@ import GateLayout from './Gate'
 import Admin from './Admin'
 import { fmt } from './format'
 
-const PAGE_SIZE = 5
+export const PAGE_SIZE = 5
 const MARKET_PAGE_SIZE = 20
 
 type Instrument = {
@@ -166,7 +166,7 @@ function filterSortInstruments(list: Instrument[], query: string, sort: string):
   return [...filtered].sort(cmp[sort])
 }
 
-function paginate<T>(items: T[], page: number, pageSize = PAGE_SIZE) {
+export function paginate<T>(items: T[], page: number, pageSize = PAGE_SIZE) {
   const totalPages = Math.max(1, Math.ceil(items.length / pageSize))
   const clampedPage = Math.min(Math.max(page, 1), totalPages)
   return { items: items.slice((clampedPage - 1) * pageSize, clampedPage * pageSize), totalPages, page: clampedPage }
@@ -176,7 +176,7 @@ function paginate<T>(items: T[], page: number, pageSize = PAGE_SIZE) {
 // (1 2 3 ... 9 10) is noisy — prev/next plus a "page / total" label scales to
 // any page count without it, and collapses to a bare "1" when there's nothing
 // to page through.
-function Pager({ page, totalPages, onChange }: { page: number; totalPages: number; onChange: (page: number) => void }) {
+export function Pager({ page, totalPages, onChange }: { page: number; totalPages: number; onChange: (page: number) => void }) {
   const { t } = useLang()
   const clamped = Math.min(Math.max(page, 1), totalPages)
   if (totalPages <= 1) return <div className="pager">1</div>

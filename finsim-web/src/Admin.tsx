@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import api from './api'
 import { useLang, type LangKey } from './lang'
 import { fmt } from './format'
+import { paginate, Pager } from './App'
 
 type Instrument = {
   id: string
@@ -61,8 +62,12 @@ export default function Admin({ onClose }: { onClose: () => void }) {
 
   const [instrumentQuery, setInstrumentQuery] = useState('')
   const [instrumentSort, setInstrumentSort] = useState('symbol-asc')
+  const [instrumentPage, setInstrumentPage] = useState(1)
   const [userQuery, setUserQuery] = useState('')
   const [userSort, setUserSort] = useState('name-asc')
+  const [userPage, setUserPage] = useState(1)
+  const [askPage, setAskPage] = useState(1)
+  const [bidPage, setBidPage] = useState(1)
 
   const [cashDelta, setCashDelta] = useState<Record<string, string>>({})
   const [cashReason, setCashReason] = useState<Record<string, string>>({})
@@ -95,6 +100,10 @@ export default function Admin({ onClose }: { onClose: () => void }) {
     const h = setInterval(load, 10000)
     return () => clearInterval(h)
   }, [bookSymbol])
+
+  useEffect(() => { setAskPage(1); setBidPage(1) }, [bookSymbol])
+  useEffect(() => { setInstrumentPage(1) }, [instrumentQuery, instrumentSort])
+  useEffect(() => { setUserPage(1) }, [userQuery, userSort])
 
   const fail = (e: any, fallback: LangKey) =>
     setNotice(e.response ? tServer(e.response.data) : t(fallback))
@@ -187,6 +196,8 @@ export default function Admin({ onClose }: { onClose: () => void }) {
     return [...filtered].sort(cmp[instrumentSort])
   })()
 
+  const instrumentPaged = paginate(visibleInstruments, instrumentPage)
+
   const visibleUsers = (() => {
     const q = userQuery.trim().toLocaleLowerCase('tr')
     const filtered = q
@@ -200,6 +211,10 @@ export default function Admin({ onClose }: { onClose: () => void }) {
     }
     return [...filtered].sort(cmp[userSort])
   })()
+
+  const userPaged = paginate(visibleUsers, userPage)
+  const askPaged = paginate(book ? [...book.asks].reverse() : [], askPage)
+  const bidPaged = paginate(book ? book.bids : [], bidPage)
 
   return (
     <div className="admin">
@@ -284,7 +299,7 @@ export default function Admin({ onClose }: { onClose: () => void }) {
         </tr>
       </thead>
       <tbody>
-        {visibleInstruments.map(i => (
+        {instrumentPaged.items.map(i => (
           <tr key={i.id}>
             <td className="sym">{i.symbol}</td>
             <td>{i.name}</td>
@@ -312,6 +327,7 @@ export default function Admin({ onClose }: { onClose: () => void }) {
         ))}
       </tbody>
     </table>
+    <Pager page={instrumentPaged.page} totalPages={instrumentPaged.totalPages} onChange={setInstrumentPage} />
   </div>
 
       <div className="panel">
@@ -325,38 +341,66 @@ export default function Admin({ onClose }: { onClose: () => void }) {
           </select>
         </div>
         {book && (
-          <table className="ledger">
-            <thead>
-              <tr>
-                <th>Side</th>
-                <th className="num">Price</th>
-                <th className="num">Qty</th>
-                <th className="num">Orders</th>
-              </tr>
-            </thead>
-            <tbody>
-              {[...book.asks].reverse().map(l => (
-                <tr key={`a${l.price}`}>
-                  <td className="down">Sell</td>
-                  <td className="num down">{fmt(l.price)}</td>
-                  <td className="num">{l.quantity}</td>
-                  <td className="num">{l.orderCount}</td>
+          <>
+            <div className="section-head">
+              <span className="section-note">Sell</span>
+            </div>
+            <table className="ledger">
+              <thead>
+                <tr>
+                  <th>Side</th>
+                  <th className="num">Price</th>
+                  <th className="num">Qty</th>
+                  <th className="num">Orders</th>
                 </tr>
-              ))}
-              <tr>
-                <td colSpan={2}>Last</td>
-                <td className="num" colSpan={2}>{fmt(book.currentPrice)}</td>
-              </tr>
-              {book.bids.map(l => (
-                <tr key={`b${l.price}`}>
-                  <td className="up">Buy</td>
-                  <td className="num up">{fmt(l.price)}</td>
-                  <td className="num">{l.quantity}</td>
-                  <td className="num">{l.orderCount}</td>
+              </thead>
+              <tbody>
+                {askPaged.items.map(l => (
+                  <tr key={`a${l.price}`}>
+                    <td className="down">Sell</td>
+                    <td className="num down">{fmt(l.price)}</td>
+                    <td className="num">{l.quantity}</td>
+                    <td className="num">{l.orderCount}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            <Pager page={askPaged.page} totalPages={askPaged.totalPages} onChange={setAskPage} />
+
+            <table className="ledger">
+              <tbody>
+                <tr>
+                  <td colSpan={2}>Last</td>
+                  <td className="num" colSpan={2}>{fmt(book.currentPrice)}</td>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </tbody>
+            </table>
+
+            <div className="section-head">
+              <span className="section-note">Buy</span>
+            </div>
+            <table className="ledger">
+              <thead>
+                <tr>
+                  <th>Side</th>
+                  <th className="num">Price</th>
+                  <th className="num">Qty</th>
+                  <th className="num">Orders</th>
+                </tr>
+              </thead>
+              <tbody>
+                {bidPaged.items.map(l => (
+                  <tr key={`b${l.price}`}>
+                    <td className="up">Buy</td>
+                    <td className="num up">{fmt(l.price)}</td>
+                    <td className="num">{l.quantity}</td>
+                    <td className="num">{l.orderCount}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            <Pager page={bidPaged.page} totalPages={bidPaged.totalPages} onChange={setBidPage} />
+          </>
         )}
       </div>
 
@@ -390,7 +434,7 @@ export default function Admin({ onClose }: { onClose: () => void }) {
           </select>
         </div>
 
-        {visibleUsers.map(u => (
+        {userPaged.items.map(u => (
           <div key={u.id} className="admin-user">
             <div className="admin-user-head">
               <strong>{u.username}</strong>
@@ -442,6 +486,7 @@ export default function Admin({ onClose }: { onClose: () => void }) {
             </div>
           </div>
         ))}
+        <Pager page={userPaged.page} totalPages={userPaged.totalPages} onChange={setUserPage} />
       </div>
     </div>
   )
