@@ -164,7 +164,8 @@ function OrderTable({ orders, pending, now, onCancel, onReplace, replacing }: {
             <th className="hide-sm">{t('ledger.type')}</th>
             <th>{t('ledger.side')}</th>
             <th className="num">{t('ledger.qty')}</th>
-            <th className="num">{t('ledger.price')}</th>
+            <th className="num">{t('ledger.limit')}</th>
+            <th className="num">{t('ledger.avgFill')}</th>
             {pending
               ? <><th className="num">{t('ledger.locked')}</th><th /></>
               : <><th>{t('ledger.status')}</th><th className="num">{t('ledger.spent')}</th></>}
@@ -184,10 +185,13 @@ function OrderTable({ orders, pending, now, onCancel, onReplace, replacing }: {
                   : o.quantity}
               </td>
               <td className="num">
-                {o.price != null ? fmt(o.price) : '—'}
+                {o.orderType === 'Market' ? '—' : (o.price != null ? fmt(o.price) : '—')}
                 {o.stopPrice != null && (
                   <span className="down" style={{ fontSize: 11, marginLeft: 4 }}>↓{fmt(o.stopPrice)}</span>
                 )}
+              </td>
+              <td className="num">
+                {o.filledQuantity > 0 ? fmt(o.avgPrice) : '—'}
               </td>
               {pending ? (
                 <>
@@ -222,7 +226,7 @@ function OrderTable({ orders, pending, now, onCancel, onReplace, replacing }: {
                       </button>
                     )}
                   </td>
-                  <td className="num">{o.executedAmount != null ? fmt(o.executedAmount) : '—'}</td>
+                  <td className="num">{o.filledQuantity > 0 ? fmt(o.avgPrice * o.filledQuantity) : '—'}</td>
                 </>
               )}
             </tr>

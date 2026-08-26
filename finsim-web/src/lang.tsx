@@ -6,6 +6,7 @@ const KEY = 'finsim_lang'
 
 const tr = {
   'app.tagline': 'Borsa Simülasyonu',
+  'admin.reloadPrice': 'Fiyatı Yenile',
   'app.market': 'Market',
   'app.logout': 'Çıkış',
   'app.toDay': 'Gündüz moduna geç',
@@ -52,6 +53,8 @@ const tr = {
   'ledger.side': 'Yön',
   'ledger.qty': 'Adet',
   'ledger.price': 'Fiyat',
+  'ledger.limit': 'Limit',
+  'ledger.avgFill': 'Ort. Fiyat',
   'ledger.status': 'Durum',
   'ledger.locked': 'Kilitli',
   'ledger.cancel': 'iptal et',
@@ -189,6 +192,9 @@ const tr = {
   'admin.panelButton': 'Yönetim',
   'admin.title': 'Yönetim Paneli',
   'admin.instrumentsTitle': 'Enstrümanlar',
+  'admin.userSearchPlaceholder': 'Kullanıcı adı veya e-posta ara',
+  'sort.nameAsc': 'İsim A→Z',
+  'sort.nameDesc': 'İsim Z→A',
   'admin.symbol': 'Sembol',
   'admin.name': 'İsim',
   'admin.basePrice': 'Taban Fiyat',
@@ -241,6 +247,7 @@ const tr = {
 }
 
 const en: typeof tr = {
+  'admin.reloadPrice': 'Reload Price',
   'status.partiallyFilled': 'Partially Filled',
   'app.tagline': 'Stock Market Simulator',
   'app.market': 'Market',
@@ -289,6 +296,8 @@ const en: typeof tr = {
   'ledger.side': 'Side',
   'ledger.qty': 'Qty',
   'ledger.price': 'Price',
+  'ledger.limit': 'Limit',
+  'ledger.avgFill': 'Avg Fill',
   'ledger.status': 'Status',
   'ledger.locked': 'Locked',
   'ledger.cancel': 'cancel',
@@ -427,6 +436,9 @@ const en: typeof tr = {
   'admin.panelButton': 'Admin',
   'admin.title': 'Admin Panel',
   'admin.instrumentsTitle': 'Instruments',
+  'admin.userSearchPlaceholder': 'Search username or email',
+  'sort.nameAsc': 'Name A→Z',
+  'sort.nameDesc': 'Name Z→A',
   'admin.symbol': 'Symbol',
   'admin.name': 'Name',
   'admin.basePrice': 'Base Price',

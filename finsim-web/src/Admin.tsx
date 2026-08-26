@@ -56,12 +56,13 @@ export default function Admin({ onClose }: { onClose: () => void }) {
   const [bookSymbol, setBookSymbol] = useState<string>('')
   const [book, setBook] = useState<OrderBook | null>(null)
 
-  const [symbol, setSymbol] = useState('')
-  const [name, setName] = useState('')
-  const [basePrice, setBasePrice] = useState('')
-
   const [pendingDeactivate, setPendingDeactivate] =
     useState<{ instrument: Instrument; preview: LiquidationPreview } | null>(null)
+
+  const [instrumentQuery, setInstrumentQuery] = useState('')
+  const [instrumentSort, setInstrumentSort] = useState('symbol-asc')
+  const [userQuery, setUserQuery] = useState('')
+  const [userSort, setUserSort] = useState('name-asc')
 
   const [cashDelta, setCashDelta] = useState<Record<string, string>>({})
   const [cashReason, setCashReason] = useState<Record<string, string>>({})
@@ -73,6 +74,15 @@ export default function Admin({ onClose }: { onClose: () => void }) {
 
   const loadUsers = () =>
     api.get<AdminUser[]>('/api/admin/users').then(r => setUsers(r.data)).catch(console.error)
+
+  const reloadPrice = async (i: Instrument) => {
+    setNotice(''); setBusy(true)
+    try {
+      const r = await api.post(`/api/admin/instruments/${i.id}/reload-price`)
+      setNotice(`${i.symbol}: ${r.data.outcome} ${fmt(r.data.oldPrice)} → ${fmt(r.data.newPrice)}`)
+      loadInstruments()
+    } catch (e: any) { fail(e, 'err.orderFailed') } finally { setBusy(false) }
+  }
   
 
   useEffect(() => { loadInstruments(); loadUsers() }, [])
@@ -88,28 +98,6 @@ export default function Admin({ onClose }: { onClose: () => void }) {
 
   const fail = (e: any, fallback: LangKey) =>
     setNotice(e.response ? tServer(e.response.data) : t(fallback))
-
-  const createInstrument = async () => {
-    setNotice('')
-    const price = parseFloat(basePrice.replace(',', '.'))
-    if (!symbol.trim() || !name.trim() || !Number.isFinite(price) || price <= 0) {
-      setNotice(t('err.minPrice'))
-      return
-    }
-    setBusy(true)
-    try {
-      await api.post('/api/instruments/create', {
-        symbol: symbol.trim(), name: name.trim(), basePrice: price
-      })
-      setSymbol(''); setName(''); setBasePrice('')
-      setNotice(t('admin.instrumentCreated'))
-      loadInstruments()
-    } catch (e: any) {
-      fail(e, 'err.orderFailed')
-    } finally {
-      setBusy(false)
-    }
-  }
 
   const reactivate = async (i: Instrument) => {
     setNotice('')
@@ -183,6 +171,36 @@ export default function Admin({ onClose }: { onClose: () => void }) {
     }
   }
 
+  const visibleInstruments = (() => {
+    const q = instrumentQuery.trim().toLocaleLowerCase('tr')
+    const filtered = q
+      ? instruments.filter(i =>
+          i.symbol.toLocaleLowerCase('tr').includes(q) ||
+          i.name.toLocaleLowerCase('tr').includes(q))
+      : instruments
+    const cmp: Record<string, (a: Instrument, b: Instrument) => number> = {
+      'symbol-asc':  (a, b) => a.symbol.localeCompare(b.symbol, 'tr'),
+      'symbol-desc': (a, b) => b.symbol.localeCompare(a.symbol, 'tr'),
+      'price-asc':   (a, b) => a.currentPrice - b.currentPrice,
+      'price-desc':  (a, b) => b.currentPrice - a.currentPrice,
+    }
+    return [...filtered].sort(cmp[instrumentSort])
+  })()
+
+  const visibleUsers = (() => {
+    const q = userQuery.trim().toLocaleLowerCase('tr')
+    const filtered = q
+      ? users.filter(u =>
+          u.username.toLocaleLowerCase('tr').includes(q) ||
+          u.email.toLocaleLowerCase('tr').includes(q))
+      : users
+    const cmp: Record<string, (a: AdminUser, b: AdminUser) => number> = {
+      'name-asc':  (a, b) => a.username.localeCompare(b.username, 'tr'),
+      'name-desc': (a, b) => b.username.localeCompare(a.username, 'tr'),
+    }
+    return [...filtered].sort(cmp[userSort])
+  })()
+
   return (
     <div className="admin">
       <div className="section-head">
@@ -223,55 +241,78 @@ export default function Admin({ onClose }: { onClose: () => void }) {
       )}
 
       <div className="panel">
-        <div className="section-head">
-          <h3>{t('admin.instrumentsTitle')}</h3>
-        </div>
+    <div className="section-head">
+      <h3>{t('admin.instrumentsTitle')}</h3>
+    </div>
 
-        <div className="admin-form">
-          <input className="field-input" placeholder={t('admin.symbol')} value={symbol}
-            onChange={e => setSymbol(e.target.value)} />
-          <input className="field-input" placeholder={t('admin.name')} value={name}
-            onChange={e => setName(e.target.value)} />
-          <input className="field-input" placeholder={t('admin.basePrice')} value={basePrice}
-            onChange={e => setBasePrice(e.target.value)} />
-          <button className="trade buy" disabled={busy} onClick={createInstrument}>
-            {t('admin.create')}
+    <div className="board-controls" style={{ marginBottom: 16 }}>
+      <div className="search-input">
+        <input
+          className="field-input"
+          type="text"
+          value={instrumentQuery}
+          onChange={e => setInstrumentQuery(e.target.value)}
+          placeholder={t('search.placeholder')}
+        />
+        {instrumentQuery && (
+          <button
+            className="ghost-btn"
+            onClick={() => setInstrumentQuery('')}
+            aria-label={t('app.close')}
+          >
+            ×
           </button>
-        </div>
-
-        <table className="ledger">
-          <thead>
-            <tr>
-              <th>{t('admin.symbol')}</th>
-              <th>{t('admin.name')}</th>
-              <th className="num">{t('ledger.price')}</th>
-              <th>{t('admin.active')}</th>
-              <th />
-            </tr>
-          </thead>
-          <tbody>
-            {instruments.map(i => (
-              <tr key={i.id}>
-                <td className="sym">{i.symbol}</td>
-                <td>{i.name}</td>
-                <td className="num">{fmt(i.currentPrice)}</td>
-                <td>{i.isActive ? t('admin.active') : t('admin.inactive')}</td>
-                <td className="num">
-                  {i.isActive ? (
-                    <button className="link-btn" onClick={() => requestDeactivate(i)}>
-                      {t('admin.deactivate')}
-                    </button>
-                  ) : (
-                    <button className="link-btn" onClick={() => reactivate(i)}>
-                      {t('admin.reactivate')}
-                    </button>
-                  )}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+        )}
       </div>
+      <select className="field-input" value={instrumentSort} onChange={e => setInstrumentSort(e.target.value)}>
+        <option value="symbol-asc">{t('sort.symbolAsc')}</option>
+        <option value="symbol-desc">{t('sort.symbolDesc')}</option>
+        <option value="price-desc">{t('sort.priceDesc')}</option>
+        <option value="price-asc">{t('sort.priceAsc')}</option>
+      </select>
+    </div>
+
+    <table className="ledger">
+      <thead>
+        <tr>
+          <th>{t('admin.symbol')}</th>
+          <th>{t('admin.name')}</th>
+          <th className="num">{t('ledger.price')}</th>
+          <th>{t('admin.active')}</th>
+          <th />
+          <th />
+        </tr>
+      </thead>
+      <tbody>
+        {visibleInstruments.map(i => (
+          <tr key={i.id}>
+            <td className="sym">{i.symbol}</td>
+            <td>{i.name}</td>
+            <td className="num">{fmt(i.currentPrice)}</td>
+            <td>{i.isActive ? t('admin.active') : t('admin.inactive')}</td>
+            <td className="num">
+              {i.isActive && (
+                <button className="link-btn" disabled={busy} onClick={() => reloadPrice(i)}>
+                  {t('admin.reloadPrice')}
+                </button>
+              )}
+            </td>
+            <td className="num">
+              {i.isActive ? (
+                <button className="link-btn" onClick={() => requestDeactivate(i)}>
+                  {t('admin.deactivate')}
+                </button>
+              ) : (
+                <button className="link-btn" onClick={() => reactivate(i)}>
+                  {t('admin.reactivate')}
+                </button>
+              )}
+            </td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  </div>
 
       <div className="panel">
         <div className="section-head">
@@ -324,7 +365,32 @@ export default function Admin({ onClose }: { onClose: () => void }) {
           <h3>{t('admin.usersTitle')}</h3>
         </div>
 
-        {users.map(u => (
+        <div className="board-controls">
+          <div className="search-input">
+            <input
+              className="field-input"
+              type="text"
+              value={userQuery}
+              onChange={e => setUserQuery(e.target.value)}
+              placeholder={t('admin.userSearchPlaceholder')}
+            />
+            {userQuery && (
+              <button
+                className="ghost-btn"
+                onClick={() => setUserQuery('')}
+                aria-label={t('app.close')}
+              >
+                ×
+              </button>
+            )}
+          </div>
+          <select className="field-input" value={userSort} onChange={e => setUserSort(e.target.value)}>
+            <option value="name-asc">{t('sort.nameAsc')}</option>
+            <option value="name-desc">{t('sort.nameDesc')}</option>
+          </select>
+        </div>
+
+        {visibleUsers.map(u => (
           <div key={u.id} className="admin-user">
             <div className="admin-user-head">
               <strong>{u.username}</strong>
