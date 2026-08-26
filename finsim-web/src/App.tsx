@@ -11,6 +11,7 @@ import GateLayout from './Gate'
 import Admin from './Admin'
 import { fmt } from './format'
 
+const PAGE_SIZE = 5
 
 type Instrument = {
   id: string
@@ -148,11 +149,51 @@ const countdown = (expiresAt: string, now: number): string | null => {
   return hours > 0 ? `${hours}h ${minutes}m` : `${minutes}m`
 }
 
-function OrderTable({ orders, pending, now, onCancel, onReplace, replacing }: {
+function paginate<T>(items: T[], page: number, pageSize = PAGE_SIZE) {
+  const totalPages = Math.max(1, Math.ceil(items.length / pageSize))
+  const clampedPage = Math.min(Math.max(page, 1), totalPages)
+  return { items: items.slice((clampedPage - 1) * pageSize, clampedPage * pageSize), totalPages, page: clampedPage }
+}
+
+// Right-aligned page control. With up to 10 pages, listing every page number
+// (1 2 3 ... 9 10) is noisy — prev/next plus a "page / total" label scales to
+// any page count without it, and collapses to a bare "1" when there's nothing
+// to page through.
+function Pager({ page, totalPages, onChange }: { page: number; totalPages: number; onChange: (page: number) => void }) {
+  const { t } = useLang()
+  const clamped = Math.min(Math.max(page, 1), totalPages)
+  if (totalPages <= 1) return <div className="pager">1</div>
+  return (
+    <div className="pager">
+      <button
+        type="button"
+        className="ghost-btn"
+        disabled={clamped <= 1}
+        onClick={() => onChange(clamped - 1)}
+        aria-label={t('pager.prev')}
+      >
+        ‹
+      </button>
+      <span className="pager-label">{clamped} / {totalPages}</span>
+      <button
+        type="button"
+        className="ghost-btn"
+        disabled={clamped >= totalPages}
+        onClick={() => onChange(clamped + 1)}
+        aria-label={t('pager.next')}
+      >
+        ›
+      </button>
+    </div>
+  )
+}
+
+function OrderTable({ orders, pending, now, onCancel, onReplace, replacing, minRows = PAGE_SIZE }: {
   orders: Order[]; pending: boolean; now: number
   onCancel: (id: string) => void
   onReplace: (id: string) => void
   replacing: Set<string>
+  minRows?: number
 }) {
   const { t } = useLang()
   return (
@@ -229,6 +270,11 @@ function OrderTable({ orders, pending, now, onCancel, onReplace, replacing }: {
                   <td className="num">{o.filledQuantity > 0 ? fmt(o.avgPrice * o.filledQuantity) : '—'}</td>
                 </>
               )}
+            </tr>
+          ))}
+          {Array.from({ length: Math.max(0, minRows - orders.length) }).map((_, idx) => (
+            <tr key={`filler-${idx}`} className="filler-row" aria-hidden="true">
+              <td colSpan={8}>&nbsp;</td>
             </tr>
           ))}
         </tbody>
@@ -350,12 +396,38 @@ const seeded = useRef<Set<string>>(new Set())
   const [now, setNow] = useState(() => Date.now())
   const [replacing, setReplacing] = useState<Set<string>>(new Set())
 
+  // The menu button sits at the midpoint between the true left edge of the
+  // screen and the logo's left edge. That gap isn't a fixed CSS value — the
+  // .wrap column centers itself (max-width + auto margins) on wide viewports,
+  // so the logo can sit well past the 28px padding alone. Measure it instead.
+  const railRef = useRef<HTMLElement>(null)
+  const logoRef = useRef<HTMLSpanElement>(null)
+  const [navTogglePos, setNavTogglePos] = useState(14)
+
+  useEffect(() => {
+    const recalc = () => {
+      if (!railRef.current || !logoRef.current) return
+      const railLeft = railRef.current.getBoundingClientRect().left
+      const logoLeft = logoRef.current.getBoundingClientRect().left
+      setNavTogglePos((logoLeft - railLeft) / 2)
+    }
+    recalc()
+    window.addEventListener('resize', recalc)
+    return () => window.removeEventListener('resize', recalc)
+  }, [])
+
   const [ticks, setTicks] = useState<Record<string, Tick>>({})
   const prevPrices = useRef<Record<string, number>>({})
   const [online, setOnline] = useState(true)
-  const [showAdmin, setShowAdmin] = useState(false)
+  const [view, setView] = useState<'portfolio' | 'market' | 'admin'>('portfolio')
+  const [menuOpen, setMenuOpen] = useState(false)
   const [query, setQuery] = useState('')
   const [sort, setSort] = useState('symbol-asc')
+
+  const [portfolioPage, setPortfolioPage] = useState(1)
+  const [pendingPage, setPendingPage] = useState(1)
+  const [pastPage, setPastPage] = useState(1)
+  const [txPage, setTxPage] = useState(1)
 
   const loadOrders = () =>
     api.get<Order[]>('/api/order').then(r => setOrders(r.data)).catch(console.error)
@@ -685,14 +757,64 @@ const loadHistory = (i: Instrument) => {
 
   const portfolioInstruments = instruments.filter(i => portfolio[i.symbol])
   const otherStocks = visible.filter(i => !portfolio[i.symbol] && i.type === 'Stock')
-  const otherFunds = visible.filter(i => !portfolio[i.symbol] && i.type === 'Fund')
+
+  const portfolioPaged = paginate(portfolioInstruments, portfolioPage)
+  const pendingPaged = paginate(pendingOrders, pendingPage)
+  const pastPaged = paginate(pastOrders, pastPage)
+  const txPaged = paginate(transactions, txPage)
 
 
   return (
     <div className="shell">
-      <header className="rail">
+      {menuOpen && (
+        <div className="nav-backdrop" onClick={() => setMenuOpen(false)}>
+          <nav className="nav-drawer" onClick={e => e.stopPropagation()}>
+            <div className="nav-drawer-head">
+              <span className="mark">Fin<em>Sim</em></span>
+              <button className="ghost-btn" onClick={() => setMenuOpen(false)} aria-label={t('app.close')}>×</button>
+            </div>
+            <button
+              className="nav-item"
+              aria-pressed={view === 'portfolio'}
+              onClick={() => { setView('portfolio'); setMenuOpen(false) }}
+            >
+              {t('nav.portfolio')}
+            </button>
+            <button
+              className="nav-item"
+              aria-pressed={view === 'market'}
+              onClick={() => { setView('market'); setMenuOpen(false) }}
+            >
+              {t('nav.market')}
+            </button>
+            {balance?.isAdmin && (
+              <button
+                className="nav-item"
+                aria-pressed={view === 'admin'}
+                onClick={() => { setView('admin'); setMenuOpen(false) }}
+              >
+                {t('admin.panelButton')}
+              </button>
+            )}
+          </nav>
+        </div>
+      )}
+
+      <header className="rail" ref={railRef}>
+        <button
+          className="nav-toggle"
+          style={{ left: navTogglePos }}
+          onClick={() => setMenuOpen(true)}
+          aria-label={t('nav.toggle')}
+        >
+          <span />
+          <span />
+          <span />
+        </button>
         <div className="wrap rail-in">
-          <Logomark size={26} />
+          <span ref={logoRef}>
+            <Logomark size={26} />
+          </span>
           <span className="mark">Fin<em>Sim</em></span>
           <span className="mark-sub">{t('app.tagline')}</span>
           <span className="rail-spacer" />
@@ -721,15 +843,6 @@ const loadHistory = (i: Instrument) => {
           <button className="ghost-btn" onClick={toggleLang} aria-label="Language">
             {lang === 'tr' ? 'EN' : 'TR'}
           </button>
-          {balance?.isAdmin && (
-            <button
-              className="ghost-btn"
-              aria-pressed={showAdmin}
-              onClick={() => setShowAdmin(v => !v)}
-            >
-              {t('admin.panelButton')}
-            </button>
-          )}
           <button className="ghost-btn" onClick={onLogout}>{t('app.logout')}</button>
         </div>
       </header>
@@ -782,7 +895,9 @@ const loadHistory = (i: Instrument) => {
       )}
 
       <main className="wrap">
-        {showAdmin ? <Admin onClose={() => setShowAdmin(false)} /> : (
+        {view === 'admin' ? <Admin onClose={() => setView('portfolio')} /> : view === 'market' ? (
+          <div className="empty-state">{t('nav.comingSoon')}</div>
+        ) : (
         <>
         {marginCallActive && (
           <div className="notice warn">
@@ -831,10 +946,11 @@ const loadHistory = (i: Instrument) => {
                 <div className="section-head">
                   <h2>{t('board.portfolioTitle')}</h2>
                   <span className="section-note">{t('board.portfolioNote', { n: portfolioInstruments.length })}</span>
+                  <Pager page={portfolioPaged.page} totalPages={portfolioPaged.totalPages} onChange={setPortfolioPage} />
                 </div>
 
                 <div className="board">
-                  {portfolioInstruments.map(i => (
+                  {portfolioPaged.items.map(i => (
                     <InstrumentRow
                       key={i.id}
                       i={i}
@@ -845,9 +961,85 @@ const loadHistory = (i: Instrument) => {
                       onClick={() => pick(i)}
                     />
                   ))}
+                  {Array.from({ length: Math.max(0, PAGE_SIZE - portfolioPaged.items.length) }).map((_, idx) => (
+                    <div className="row" key={`filler-${idx}`} aria-hidden="true">
+                      <div className="row-head" style={{ visibility: 'hidden' }}>
+                        <span className="row-sym">&nbsp;</span>
+                      </div>
+                    </div>
+                  ))}
                 </div>
               </>
             )}
+
+            <div className="panel">
+              <div className="section-head">
+                <h2>{t('pending.title')}</h2>
+                <span className="section-note">{t('pending.note')}</span>
+                <Pager page={pendingPaged.page} totalPages={pendingPaged.totalPages} onChange={setPendingPage} />
+              </div>
+
+              {pendingOrders.length === 0 ? (
+                <div className="empty-state">{t('pending.empty')}</div>
+              ) : (
+                <OrderTable
+                  orders={pendingPaged.items}
+                  pending
+                  now={now}
+                  onCancel={cancelOrder}
+                  onReplace={replaceOrder}
+                  replacing={replacing}
+                />
+              )}
+            </div>
+
+            <div className="panel">
+              <div className="section-head">
+                <h2>{t('tx.title')}</h2>
+                <span className="section-note">{t('tx.note')}</span>
+                <Pager page={txPaged.page} totalPages={txPaged.totalPages} onChange={setTxPage} />
+              </div>
+
+              {transactions.length === 0 ? (
+                <div className="empty-state">
+                  {t('tx.empty')}
+                </div>
+              ) : (
+                <div className="panel-scroll">
+                  <table className="ledger">
+                    <thead>
+                      <tr>
+                        <th>{t('tx.symbol')}</th>
+                        <th>{t('tx.side')}</th>
+                        <th className="num">{t('tx.qty')}</th>
+                        <th className="num">{t('tx.price')}</th>
+                        <th className="num">{t('tx.total')}</th>
+                        <th>{t('tx.date')}</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {txPaged.items.map(tx => (
+                        <tr key={tx.id}>
+                          <td className="sym">{tx.symbol}</td>
+                          <td className={tx.direction === 'Buy' ? 'up' : 'down'}>
+                            {tx.direction === 'Buy' ? t('order.buy') : t('order.sell')}
+                          </td>
+                          <td className="num">{tx.executedQuantity}</td>
+                          <td className="num">{fmt(tx.executedPrice)}</td>
+                          <td className="num">{fmt(tx.totalAmount)}</td>
+                          <td>{fmtDate(tx.transactionDate)}</td>
+                        </tr>
+                      ))}
+                      {Array.from({ length: Math.max(0, PAGE_SIZE - txPaged.items.length) }).map((_, idx) => (
+                        <tr key={`filler-${idx}`} className="filler-row" aria-hidden="true">
+                          <td colSpan={6}>&nbsp;</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
 
             <div className="section-head">
               <h2>{t('board.otherTitle')}</h2>
@@ -871,38 +1063,24 @@ const loadHistory = (i: Instrument) => {
                 ))}
               </div>
             )}
+          </div>
 
-            <div className="section-head">
-              <h2>{t('board.fundsTitle')}</h2>
-              <span className="section-note">{t('board.fundsNote', { n: otherFunds.length })}</span>
-            </div>
-
-            <div className="board">
-              {otherFunds.map(i => (
-                <InstrumentRow
-                  key={i.id}
-                  i={i}
-                  open={selected === i.id}
-                  tick={ticks[i.symbol]}
-                  pos={undefined}
-                  sparkData={history[i.symbol] ?? []}
-                  onClick={() => pick(i)}
-                />
-              ))}
-            </div>
+          <div className="terminal-right">
+            <PnlChart live={livePnl} />
 
             <div className="panel">
               <div className="section-head">
-                <h2>{t('pending.title')}</h2>
-                <span className="section-note">{t('pending.note')}</span>
+                <h2>{t('ledger.title')}</h2>
+                <span className="section-note">{t('ledger.note')}</span>
+                <Pager page={pastPaged.page} totalPages={pastPaged.totalPages} onChange={setPastPage} />
               </div>
 
-              {pendingOrders.length === 0 ? (
-                <div className="empty-state">{t('pending.empty')}</div>
+              {pastOrders.length === 0 ? (
+                <div className="empty-state">{t('ledger.empty')}</div>
               ) : (
                 <OrderTable
-                  orders={pendingOrders}
-                  pending
+                  orders={pastPaged.items}
+                  pending={false}
                   now={now}
                   onCancel={cancelOrder}
                   onReplace={replaceOrder}
@@ -911,80 +1089,12 @@ const loadHistory = (i: Instrument) => {
               )}
             </div>
           </div>
-
-          <div className="terminal-right">
-            <PnlChart live={livePnl} />
-
-            <div className="history-row">
-              <div className="panel">
-                <div className="section-head">
-                  <h2>{t('ledger.title')}</h2>
-                  <span className="section-note">{t('ledger.note')}</span>
-                </div>
-
-                {pastOrders.length === 0 ? (
-                  <div className="empty-state">{t('ledger.empty')}</div>
-                ) : (
-                  <OrderTable
-                    orders={pastOrders}
-                    pending={false}
-                    now={now}
-                    onCancel={cancelOrder}
-                    onReplace={replaceOrder}
-                    replacing={replacing}
-                  />
-                )}
-              </div>
-
-              <div className="panel">
-                <div className="section-head">
-                  <h2>{t('tx.title')}</h2>
-                  <span className="section-note">{t('tx.note')}</span>
-                </div>
-
-                {transactions.length === 0 ? (
-                  <div className="empty-state">
-                    {t('tx.empty')}
-                  </div>
-                ) : (
-                  <div className="panel-scroll">
-                    <table className="ledger">
-                      <thead>
-                        <tr>
-                          <th>{t('tx.symbol')}</th>
-                          <th>{t('tx.side')}</th>
-                          <th className="num">{t('tx.qty')}</th>
-                          <th className="num">{t('tx.price')}</th>
-                          <th className="num">{t('tx.total')}</th>
-                          <th>{t('tx.date')}</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {transactions.map(tx => (
-                          <tr key={tx.id}>
-                            <td className="sym">{tx.symbol}</td>
-                            <td className={tx.direction === 'Buy' ? 'up' : 'down'}>
-                              {tx.direction === 'Buy' ? t('order.buy') : t('order.sell')}
-                            </td>
-                            <td className="num">{tx.executedQuantity}</td>
-                            <td className="num">{fmt(tx.executedPrice)}</td>
-                            <td className="num">{fmt(tx.totalAmount)}</td>
-                            <td>{fmtDate(tx.transactionDate)}</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
         </div>
         </>
         )}
       </main>
 
-      {!showAdmin && (
+      {view === 'portfolio' && (
       <div className="ticket">
         <div className="wrap ticket-in">
           <div className="ticket-slot" style={{ minWidth: 172 }}>

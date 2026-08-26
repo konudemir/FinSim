@@ -14,6 +14,11 @@ const tr = {
   'app.close': 'Kapat',
   'app.offline': 'connection lost',
 
+  'nav.toggle': 'Menü',
+  'nav.portfolio': 'Portföyüm',
+  'nav.market': 'Borsa',
+  'nav.comingSoon': 'Yakında',
+
   'strip.equity': 'Hesap Değeri',
   'strip.openPL': 'Açık pozisyon',
   'strip.free': 'Hesap Bakiyesi',
@@ -60,6 +65,9 @@ const tr = {
   'ledger.cancel': 'iptal et',
   'ledger.expiresIn': '{n} sonra dolar',
   'ledger.replace': 'yeniden ver',
+
+  'pager.prev': 'Önceki sayfa',
+  'pager.next': 'Sonraki sayfa',
 
   'order.market': 'Piyasa',
   'order.limit': 'Limit',
@@ -257,6 +265,11 @@ const en: typeof tr = {
   'app.close': 'Close',
   'app.offline': 'connection lost',
 
+  'nav.toggle': 'Menu',
+  'nav.portfolio': 'My Portfolio',
+  'nav.market': 'Stock Market',
+  'nav.comingSoon': 'Coming soon',
+
   'strip.equity': 'Account Value',
   'strip.openPL': 'Open position',
   'strip.free': 'Account Balance',
@@ -303,6 +316,9 @@ const en: typeof tr = {
   'ledger.cancel': 'cancel',
   'ledger.expiresIn': 'expires in {n}',
   'ledger.replace': 're-place',
+
+  'pager.prev': 'Previous page',
+  'pager.next': 'Next page',
 
   'order.market': 'Market',
   'order.limit': 'Limit',
