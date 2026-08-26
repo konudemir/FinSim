@@ -46,6 +46,13 @@ namespace FinSim.Controllers
             return result == ShareAdjustResult.Success ? Ok("SharesAdjusted") : ToError(result);
         }
 
+        [HttpPost("instruments/{id:guid}/reload-price")]
+        public async Task<IActionResult> ReloadPrice(Guid id, CancellationToken ct)
+        {
+            var result = await _admin.ReloadPriceAsync(id, ct);
+            return result is null ? NotFound("InstrumentNotFound") : Ok(result);
+        }
+
         private IActionResult ToError(CashAdjustResult result) => result switch
         {
             CashAdjustResult.UserNotFound        => NotFound("UserNotFound"),

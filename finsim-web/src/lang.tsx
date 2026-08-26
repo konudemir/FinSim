@@ -6,6 +6,7 @@ const KEY = 'finsim_lang'
 
 const tr = {
   'app.tagline': 'Borsa Simülasyonu',
+  'admin.reloadPrice': 'Fiyatı Yenile',
   'app.market': 'Market',
   'app.logout': 'Çıkış',
   'app.toDay': 'Gündüz moduna geç',
@@ -241,6 +242,7 @@ const tr = {
 }
 
 const en: typeof tr = {
+  'admin.reloadPrice': 'Reload Price',
   'status.partiallyFilled': 'Partially Filled',
   'app.tagline': 'Stock Market Simulator',
   'app.market': 'Market',

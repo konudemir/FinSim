@@ -73,6 +73,15 @@ export default function Admin({ onClose }: { onClose: () => void }) {
 
   const loadUsers = () =>
     api.get<AdminUser[]>('/api/admin/users').then(r => setUsers(r.data)).catch(console.error)
+
+  const reloadPrice = async (i: Instrument) => {
+    setNotice(''); setBusy(true)
+    try {
+      const r = await api.post(`/api/admin/instruments/${i.id}/reload-price`)
+      setNotice(`${i.symbol}: ${r.data.outcome} ${fmt(r.data.oldPrice)} → ${fmt(r.data.newPrice)}`)
+      loadInstruments()
+    } catch (e: any) { fail(e, 'err.orderFailed') } finally { setBusy(false) }
+  }
   
 
   useEffect(() => { loadInstruments(); loadUsers() }, [])
@@ -223,55 +232,63 @@ export default function Admin({ onClose }: { onClose: () => void }) {
       )}
 
       <div className="panel">
-        <div className="section-head">
-          <h3>{t('admin.instrumentsTitle')}</h3>
-        </div>
+    <div className="section-head">
+      <h3>{t('admin.instrumentsTitle')}</h3>
+    </div>
 
-        <div className="admin-form">
-          <input className="field-input" placeholder={t('admin.symbol')} value={symbol}
-            onChange={e => setSymbol(e.target.value)} />
-          <input className="field-input" placeholder={t('admin.name')} value={name}
-            onChange={e => setName(e.target.value)} />
-          <input className="field-input" placeholder={t('admin.basePrice')} value={basePrice}
-            onChange={e => setBasePrice(e.target.value)} />
-          <button className="trade buy" disabled={busy} onClick={createInstrument}>
-            {t('admin.create')}
-          </button>
-        </div>
+    <div className="admin-form">
+      <input className="field-input" placeholder={t('admin.symbol')} value={symbol}
+        onChange={e => setSymbol(e.target.value)} />
+      <input className="field-input" placeholder={t('admin.name')} value={name}
+        onChange={e => setName(e.target.value)} />
+      <input className="field-input" placeholder={t('admin.basePrice')} value={basePrice}
+        onChange={e => setBasePrice(e.target.value)} />
+      <button className="trade buy" disabled={busy} onClick={createInstrument}>
+        {t('admin.create')}
+      </button>
+    </div>
 
-        <table className="ledger">
-          <thead>
-            <tr>
-              <th>{t('admin.symbol')}</th>
-              <th>{t('admin.name')}</th>
-              <th className="num">{t('ledger.price')}</th>
-              <th>{t('admin.active')}</th>
-              <th />
-            </tr>
-          </thead>
-          <tbody>
-            {instruments.map(i => (
-              <tr key={i.id}>
-                <td className="sym">{i.symbol}</td>
-                <td>{i.name}</td>
-                <td className="num">{fmt(i.currentPrice)}</td>
-                <td>{i.isActive ? t('admin.active') : t('admin.inactive')}</td>
-                <td className="num">
-                  {i.isActive ? (
-                    <button className="link-btn" onClick={() => requestDeactivate(i)}>
-                      {t('admin.deactivate')}
-                    </button>
-                  ) : (
-                    <button className="link-btn" onClick={() => reactivate(i)}>
-                      {t('admin.reactivate')}
-                    </button>
-                  )}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+    <table className="ledger">
+      <thead>
+        <tr>
+          <th>{t('admin.symbol')}</th>
+          <th>{t('admin.name')}</th>
+          <th className="num">{t('ledger.price')}</th>
+          <th>{t('admin.active')}</th>
+          <th />
+          <th />
+        </tr>
+      </thead>
+      <tbody>
+        {instruments.map(i => (
+          <tr key={i.id}>
+            <td className="sym">{i.symbol}</td>
+            <td>{i.name}</td>
+            <td className="num">{fmt(i.currentPrice)}</td>
+            <td>{i.isActive ? t('admin.active') : t('admin.inactive')}</td>
+            <td className="num">
+              {i.isActive && (
+                <button className="link-btn" disabled={busy} onClick={() => reloadPrice(i)}>
+                  {t('admin.reloadPrice')}
+                </button>
+              )}
+            </td>
+            <td className="num">
+              {i.isActive ? (
+                <button className="link-btn" onClick={() => requestDeactivate(i)}>
+                  {t('admin.deactivate')}
+                </button>
+              ) : (
+                <button className="link-btn" onClick={() => reactivate(i)}>
+                  {t('admin.reactivate')}
+                </button>
+              )}
+            </td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  </div>
 
       <div className="panel">
         <div className="section-head">

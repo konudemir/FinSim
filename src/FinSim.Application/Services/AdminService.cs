@@ -13,6 +13,7 @@ public class AdminService
     private readonly IAdminAuditRepository _audit;
     private readonly IOrderRepository _orders;
     private readonly IUnitOfWork _unitOfWork;
+    private readonly ExternalPriceEngine _prices;
 
     public AdminService(
         IUserRepository users,
@@ -20,7 +21,8 @@ public class AdminService
         IInstrumentRepository instruments,
         IAdminAuditRepository audit,
         IOrderRepository orders,
-        IUnitOfWork unitOfWork)
+        IUnitOfWork unitOfWork,
+        ExternalPriceEngine prices)
     {
         _users = users;
         _portfolio = portfolio;
@@ -28,6 +30,7 @@ public class AdminService
         _audit = audit;
         _orders = orders;
         _unitOfWork = unitOfWork;
+        _prices = prices;
     }
 
     private static decimal Money(decimal value) =>
@@ -188,5 +191,15 @@ public class AdminService
             instrument.Id, instrument.Symbol!, instrument.CurrentPrice,
             Levels(book.Where(o => o.Direction == OrderDirection.Buy  && InBook(o)), descending: true),
             Levels(book.Where(o => o.Direction == OrderDirection.Sell && InBook(o)), descending: false));
+    }
+
+    public async Task<PriceReloadResult?> ReloadPriceAsync(Guid instrumentId, CancellationToken ct)
+    {
+        var inst = await _instruments.GetByIdAsync(instrumentId, ct);
+        if (inst is null || !inst.IsActive) return null;
+
+        var result = await _prices.ReloadAsync(inst, ct);
+        await _instruments.UpdateAsync(inst, ct);   // saves; anchor is persisted even when no move
+        return result;
     }
 }

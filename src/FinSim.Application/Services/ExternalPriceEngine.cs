@@ -89,5 +89,51 @@ namespace FinSim.Application.Services
                 inst.LastRealPriceAt = now;
             }
         }
+
+        public async Task<PriceReloadResult> ReloadAsync(Instrument inst, CancellationToken ct)
+        {
+            if (string.IsNullOrWhiteSpace(inst.RealSymbol))
+                return new(PriceReloadOutcome.NoRealSymbol, null, inst.CurrentPrice, inst.CurrentPrice);
+
+            var now = DateTimeOffset.UtcNow;
+            var old = inst.CurrentPrice;
+            var real = await _source.TryGetPriceAsync(inst.RealSymbol!, ct);
+            if (real is null)
+                return new(PriceReloadOutcome.SourceUnavailable, null, old, old);
+
+            // First poll ever / anchor reset: seed only.
+            if (inst.LastRealPrice is not > 0)
+            {
+                inst.LastRealPrice = real;
+                inst.LastRealPriceAt = now;
+                return new(PriceReloadOutcome.Anchored, real, old, old);
+            }
+
+            var ratio = real.Value / inst.LastRealPrice.Value;
+
+            if (ratio > MaxRatio || ratio < 1m / MaxRatio)
+            {
+                _log.LogWarning("{Symbol}: implausible ratio {Ratio:F4} on manual reload; resetting anchor",
+                    inst.RealSymbol, ratio);
+                inst.LastRealPrice = real;
+                inst.LastRealPriceAt = now;
+                return new(PriceReloadOutcome.Implausible, real, old, old);
+            }
+
+            inst.LastRealPrice = real;
+            inst.LastRealPriceAt = now;
+
+            if (ratio == 1m) return new(PriceReloadOutcome.Unchanged, real, old, old);
+
+            var next = Math.Round(old * ratio, 2, MidpointRounding.AwayFromZero);
+            if (next < 0.01m) next = 0.01m;
+            if (next == old) return new(PriceReloadOutcome.Unchanged, real, old, old);
+
+            _log.LogInformation("{Symbol}: manual reload {Ratio:F4}, {Old} -> {New}", inst.RealSymbol, ratio, old, next);
+            inst.CurrentPrice = next;
+            return new(PriceReloadOutcome.Applied, real, old, next);
+        }
+
+
     }
 }
