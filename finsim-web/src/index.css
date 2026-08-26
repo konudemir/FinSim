@@ -460,6 +460,27 @@ input  { font-family: var(--mono); }
   color: var(--faint);
 }
 
+.pager {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--mute);
+}
+
+.pager .ghost-btn {
+  padding: 2px 9px;
+  font-size: 12px;
+  line-height: 1;
+}
+
+.pager-label {
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
 /* ── portfolio tiles (grid, always-on chart) ────────────────── */
 
 .tiles {
@@ -743,19 +764,8 @@ input  { font-family: var(--mono); }
   min-width: 0;
 }
 
-.history-row {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-  gap: 24px;
-}
-
 @media (max-width: 1080px) {
   .terminal-layout { grid-template-columns: minmax(0, 1fr); }
-  .history-row { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
-}
-
-@media (max-width: 640px) {
-  .history-row { grid-template-columns: minmax(0, 1fr); }
 }
 
 /* ── order book / transaction history panels ────────────────── */

@@ -11,6 +11,7 @@ import GateLayout from './Gate'
 import Admin from './Admin'
 import { fmt } from './format'
 
+const PAGE_SIZE = 5
 
 type Instrument = {
   id: string
@@ -146,6 +147,45 @@ const countdown = (expiresAt: string, now: number): string | null => {
   const hours = Math.floor(totalMinutes / 60)
   const minutes = totalMinutes % 60
   return hours > 0 ? `${hours}h ${minutes}m` : `${minutes}m`
+}
+
+function paginate<T>(items: T[], page: number, pageSize = PAGE_SIZE) {
+  const totalPages = Math.max(1, Math.ceil(items.length / pageSize))
+  const clampedPage = Math.min(Math.max(page, 1), totalPages)
+  return { items: items.slice((clampedPage - 1) * pageSize, clampedPage * pageSize), totalPages, page: clampedPage }
+}
+
+// Right-aligned page control. With up to 10 pages, listing every page number
+// (1 2 3 ... 9 10) is noisy — prev/next plus a "page / total" label scales to
+// any page count without it, and collapses to a bare "1" when there's nothing
+// to page through.
+function Pager({ page, totalPages, onChange }: { page: number; totalPages: number; onChange: (page: number) => void }) {
+  const { t } = useLang()
+  const clamped = Math.min(Math.max(page, 1), totalPages)
+  if (totalPages <= 1) return <div className="pager">1</div>
+  return (
+    <div className="pager">
+      <button
+        type="button"
+        className="ghost-btn"
+        disabled={clamped <= 1}
+        onClick={() => onChange(clamped - 1)}
+        aria-label={t('pager.prev')}
+      >
+        ‹
+      </button>
+      <span className="pager-label">{clamped} / {totalPages}</span>
+      <button
+        type="button"
+        className="ghost-btn"
+        disabled={clamped >= totalPages}
+        onClick={() => onChange(clamped + 1)}
+        aria-label={t('pager.next')}
+      >
+        ›
+      </button>
+    </div>
+  )
 }
 
 function OrderTable({ orders, pending, now, onCancel, onReplace, replacing }: {
@@ -356,6 +396,11 @@ const seeded = useRef<Set<string>>(new Set())
   const [showAdmin, setShowAdmin] = useState(false)
   const [query, setQuery] = useState('')
   const [sort, setSort] = useState('symbol-asc')
+
+  const [portfolioPage, setPortfolioPage] = useState(1)
+  const [pendingPage, setPendingPage] = useState(1)
+  const [pastPage, setPastPage] = useState(1)
+  const [txPage, setTxPage] = useState(1)
 
   const loadOrders = () =>
     api.get<Order[]>('/api/order').then(r => setOrders(r.data)).catch(console.error)
@@ -685,7 +730,11 @@ const loadHistory = (i: Instrument) => {
 
   const portfolioInstruments = instruments.filter(i => portfolio[i.symbol])
   const otherStocks = visible.filter(i => !portfolio[i.symbol] && i.type === 'Stock')
-  const otherFunds = visible.filter(i => !portfolio[i.symbol] && i.type === 'Fund')
+
+  const portfolioPaged = paginate(portfolioInstruments, portfolioPage)
+  const pendingPaged = paginate(pendingOrders, pendingPage)
+  const pastPaged = paginate(pastOrders, pastPage)
+  const txPaged = paginate(transactions, txPage)
 
 
   return (
@@ -831,10 +880,11 @@ const loadHistory = (i: Instrument) => {
                 <div className="section-head">
                   <h2>{t('board.portfolioTitle')}</h2>
                   <span className="section-note">{t('board.portfolioNote', { n: portfolioInstruments.length })}</span>
+                  <Pager page={portfolioPaged.page} totalPages={portfolioPaged.totalPages} onChange={setPortfolioPage} />
                 </div>
 
                 <div className="board">
-                  {portfolioInstruments.map(i => (
+                  {portfolioPaged.items.map(i => (
                     <InstrumentRow
                       key={i.id}
                       i={i}
@@ -848,6 +898,70 @@ const loadHistory = (i: Instrument) => {
                 </div>
               </>
             )}
+
+            <div className="panel">
+              <div className="section-head">
+                <h2>{t('pending.title')}</h2>
+                <span className="section-note">{t('pending.note')}</span>
+                <Pager page={pendingPaged.page} totalPages={pendingPaged.totalPages} onChange={setPendingPage} />
+              </div>
+
+              {pendingOrders.length === 0 ? (
+                <div className="empty-state">{t('pending.empty')}</div>
+              ) : (
+                <OrderTable
+                  orders={pendingPaged.items}
+                  pending
+                  now={now}
+                  onCancel={cancelOrder}
+                  onReplace={replaceOrder}
+                  replacing={replacing}
+                />
+              )}
+            </div>
+
+            <div className="panel">
+              <div className="section-head">
+                <h2>{t('tx.title')}</h2>
+                <span className="section-note">{t('tx.note')}</span>
+                <Pager page={txPaged.page} totalPages={txPaged.totalPages} onChange={setTxPage} />
+              </div>
+
+              {transactions.length === 0 ? (
+                <div className="empty-state">
+                  {t('tx.empty')}
+                </div>
+              ) : (
+                <div className="panel-scroll">
+                  <table className="ledger">
+                    <thead>
+                      <tr>
+                        <th>{t('tx.symbol')}</th>
+                        <th>{t('tx.side')}</th>
+                        <th className="num">{t('tx.qty')}</th>
+                        <th className="num">{t('tx.price')}</th>
+                        <th className="num">{t('tx.total')}</th>
+                        <th>{t('tx.date')}</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {txPaged.items.map(tx => (
+                        <tr key={tx.id}>
+                          <td className="sym">{tx.symbol}</td>
+                          <td className={tx.direction === 'Buy' ? 'up' : 'down'}>
+                            {tx.direction === 'Buy' ? t('order.buy') : t('order.sell')}
+                          </td>
+                          <td className="num">{tx.executedQuantity}</td>
+                          <td className="num">{fmt(tx.executedPrice)}</td>
+                          <td className="num">{fmt(tx.totalAmount)}</td>
+                          <td>{fmtDate(tx.transactionDate)}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+            </div>
 
             <div className="section-head">
               <h2>{t('board.otherTitle')}</h2>
@@ -871,112 +985,30 @@ const loadHistory = (i: Instrument) => {
                 ))}
               </div>
             )}
+          </div>
 
-            <div className="section-head">
-              <h2>{t('board.fundsTitle')}</h2>
-              <span className="section-note">{t('board.fundsNote', { n: otherFunds.length })}</span>
-            </div>
-
-            <div className="board">
-              {otherFunds.map(i => (
-                <InstrumentRow
-                  key={i.id}
-                  i={i}
-                  open={selected === i.id}
-                  tick={ticks[i.symbol]}
-                  pos={undefined}
-                  sparkData={history[i.symbol] ?? []}
-                  onClick={() => pick(i)}
-                />
-              ))}
-            </div>
+          <div className="terminal-right">
+            <PnlChart live={livePnl} />
 
             <div className="panel">
               <div className="section-head">
-                <h2>{t('pending.title')}</h2>
-                <span className="section-note">{t('pending.note')}</span>
+                <h2>{t('ledger.title')}</h2>
+                <span className="section-note">{t('ledger.note')}</span>
+                <Pager page={pastPaged.page} totalPages={pastPaged.totalPages} onChange={setPastPage} />
               </div>
 
-              {pendingOrders.length === 0 ? (
-                <div className="empty-state">{t('pending.empty')}</div>
+              {pastOrders.length === 0 ? (
+                <div className="empty-state">{t('ledger.empty')}</div>
               ) : (
                 <OrderTable
-                  orders={pendingOrders}
-                  pending
+                  orders={pastPaged.items}
+                  pending={false}
                   now={now}
                   onCancel={cancelOrder}
                   onReplace={replaceOrder}
                   replacing={replacing}
                 />
               )}
-            </div>
-          </div>
-
-          <div className="terminal-right">
-            <PnlChart live={livePnl} />
-
-            <div className="history-row">
-              <div className="panel">
-                <div className="section-head">
-                  <h2>{t('ledger.title')}</h2>
-                  <span className="section-note">{t('ledger.note')}</span>
-                </div>
-
-                {pastOrders.length === 0 ? (
-                  <div className="empty-state">{t('ledger.empty')}</div>
-                ) : (
-                  <OrderTable
-                    orders={pastOrders}
-                    pending={false}
-                    now={now}
-                    onCancel={cancelOrder}
-                    onReplace={replaceOrder}
-                    replacing={replacing}
-                  />
-                )}
-              </div>
-
-              <div className="panel">
-                <div className="section-head">
-                  <h2>{t('tx.title')}</h2>
-                  <span className="section-note">{t('tx.note')}</span>
-                </div>
-
-                {transactions.length === 0 ? (
-                  <div className="empty-state">
-                    {t('tx.empty')}
-                  </div>
-                ) : (
-                  <div className="panel-scroll">
-                    <table className="ledger">
-                      <thead>
-                        <tr>
-                          <th>{t('tx.symbol')}</th>
-                          <th>{t('tx.side')}</th>
-                          <th className="num">{t('tx.qty')}</th>
-                          <th className="num">{t('tx.price')}</th>
-                          <th className="num">{t('tx.total')}</th>
-                          <th>{t('tx.date')}</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {transactions.map(tx => (
-                          <tr key={tx.id}>
-                            <td className="sym">{tx.symbol}</td>
-                            <td className={tx.direction === 'Buy' ? 'up' : 'down'}>
-                              {tx.direction === 'Buy' ? t('order.buy') : t('order.sell')}
-                            </td>
-                            <td className="num">{tx.executedQuantity}</td>
-                            <td className="num">{fmt(tx.executedPrice)}</td>
-                            <td className="num">{fmt(tx.totalAmount)}</td>
-                            <td>{fmtDate(tx.transactionDate)}</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                )}
-              </div>
             </div>
           </div>
         </div>

@@ -61,6 +61,9 @@ const tr = {
   'ledger.expiresIn': '{n} sonra dolar',
   'ledger.replace': 'yeniden ver',
 
+  'pager.prev': 'Önceki sayfa',
+  'pager.next': 'Sonraki sayfa',
+
   'order.market': 'Piyasa',
   'order.limit': 'Limit',
   'order.buy': 'Alış',
@@ -303,6 +306,9 @@ const en: typeof tr = {
   'ledger.cancel': 'cancel',
   'ledger.expiresIn': 'expires in {n}',
   'ledger.replace': 're-place',
+
+  'pager.prev': 'Previous page',
+  'pager.next': 'Next page',
 
   'order.market': 'Market',
   'order.limit': 'Limit',
