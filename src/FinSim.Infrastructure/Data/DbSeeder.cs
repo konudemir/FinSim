@@ -224,5 +224,73 @@ public static async Task SeedInstrumentsAsync(
     await db.SaveChangesAsync(ct);
 }
 
+public static async Task SeedBotsAsync(
+    FinSimDbContext db,
+    UserManager<User> users,
+    IConfiguration config,
+    CancellationToken ct = default)
+{
+    var count    = config.GetValue("Bots:Count", 25);
+    var cash     = config.GetValue("Bots:StartingCash", 500_000m);
+    var password = config["Bots:Password"];
+    var share    = config.GetValue("Bots:PortfolioShare", 0.5);
+    var rngSeed  = config.GetValue("Bots:Seed", 20260827);
+
+    if (count <= 0 || string.IsNullOrWhiteSpace(password)) return;
+
+    // Idempotent: only top up to Count, never recreate. Restarts must not
+    // wipe a bot's accumulated position and P&L.
+    var existing = await db.Users.CountAsync(u => u.IsBot, ct);
+    if (existing >= count) return;
+
+    var instruments = await db.Instruments
+        .Where(i => i.IsActive && i.Type == InstrumentType.Stock)
+        .ToListAsync(ct);
+
+    var rng = new Random(rngSeed + existing);
+    var created = new List<User>();
+
+    for (var n = existing + 1; n <= count; n++)
+    {
+        var name = $"bot{n:D2}";
+
+        var bot = new User
+        {
+            Id                = Guid.NewGuid(),
+            UserName          = name,
+            Email             = $"{name}@bots.finsim.local",
+            FirstName         = "Bot",
+            LastName          = n.ToString("D2"),
+            FreeCashBalance   = cash,
+            NetDeposits       = cash,
+            LockedCashBalance = 0,
+            IsBot             = true,
+            CreatedAt         = DateTimeOffset.UtcNow
+        };
+
+        var result = await users.CreateAsync(bot, password);
+        if (!result.Succeeded) continue;
+
+        created.Add(bot);
+    }
+
+    // Some bots start holding stock so the ask side isn't empty on day one.
+    // NetDeposits is raised by the value of the gift, otherwise every seeded
+    // bot shows a fake profit equal to its portfolio on the first snapshot.
+    foreach (var bot in created.Where(_ => rng.NextDouble() < share))
+    {
+        var picks = instruments.OrderBy(_ => rng.Next()).Take(rng.Next(2, 6));
+
+        foreach (var inst in picks)
+        {
+            var qty = rng.Next(10, 101);
+            db.PortfolioItems.Add(
+                PortfolioItem.Open(bot.Id, inst.Id, qty, inst.CurrentPrice));
+            bot.NetDeposits += qty * inst.CurrentPrice;
+        }
+    }
+
+    await db.SaveChangesAsync(ct);
+}
 
 }

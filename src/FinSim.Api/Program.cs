@@ -32,6 +32,7 @@ builder.Services.AddIdentityCore<User>()
     .AddDefaultTokenProviders();
 
 builder.Services.AddHostedService<MarketTickWorker>();
+builder.Services.AddScoped<BotEngine>();
 builder.Services.AddScoped<IEmailSender, EmailSender>();
 builder.Services.AddScoped<ExternalPriceEngine>();
 builder.Services.AddScoped<PriceSimEngine>();
@@ -124,6 +125,7 @@ using (var scope = app.Services.CreateScope())
     var roleManager = scope.ServiceProvider.GetRequiredService<RoleManager<IdentityRole<Guid>>>();
     var userManager = scope.ServiceProvider.GetRequiredService<UserManager<User>>();
     await DbSeeder.SeedAdminAsync(roleManager, userManager, builder.Configuration);
+    await DbSeeder.SeedBotsAsync(db, userManager, builder.Configuration, CancellationToken.None);
 }
 if (app.Environment.IsDevelopment())
     app.UseCors("dev");

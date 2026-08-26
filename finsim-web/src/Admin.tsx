@@ -66,6 +66,7 @@ export default function Admin({ onClose }: { onClose: () => void }) {
   const [userQuery, setUserQuery] = useState('')
   const [userSort, setUserSort] = useState('name-asc')
   const [userPage, setUserPage] = useState(1)
+  const [botUserPage, setBotUserPage] = useState(1)
   const [askPage, setAskPage] = useState(1)
   const [bidPage, setBidPage] = useState(1)
 
@@ -103,7 +104,7 @@ export default function Admin({ onClose }: { onClose: () => void }) {
 
   useEffect(() => { setAskPage(1); setBidPage(1) }, [bookSymbol])
   useEffect(() => { setInstrumentPage(1) }, [instrumentQuery, instrumentSort])
-  useEffect(() => { setUserPage(1) }, [userQuery, userSort])
+  useEffect(() => { setUserPage(1); setBotUserPage(1) }, [userQuery, userSort])
 
   const fail = (e: any, fallback: LangKey) =>
     setNotice(e.response ? tServer(e.response.data) : t(fallback))
@@ -198,21 +199,28 @@ export default function Admin({ onClose }: { onClose: () => void }) {
 
   const instrumentPaged = paginate(visibleInstruments, instrumentPage)
 
-  const visibleUsers = (() => {
+  const isBotUser = (u: AdminUser) =>
+    u.email.toLocaleLowerCase('tr').endsWith('@bots.finsim.local')
+
+  const visibleUsers = (all: AdminUser[]) => {
     const q = userQuery.trim().toLocaleLowerCase('tr')
     const filtered = q
-      ? users.filter(u =>
+      ? all.filter(u =>
           u.username.toLocaleLowerCase('tr').includes(q) ||
           u.email.toLocaleLowerCase('tr').includes(q))
-      : users
+      : all
     const cmp: Record<string, (a: AdminUser, b: AdminUser) => number> = {
       'name-asc':  (a, b) => a.username.localeCompare(b.username, 'tr'),
       'name-desc': (a, b) => b.username.localeCompare(a.username, 'tr'),
     }
     return [...filtered].sort(cmp[userSort])
-  })()
+  }
 
-  const userPaged = paginate(visibleUsers, userPage)
+  const humanUsers = visibleUsers(users.filter(u => !isBotUser(u)))
+  const botUsers = visibleUsers(users.filter(isBotUser))
+
+  const userPaged = paginate(humanUsers, userPage)
+  const botUserPaged = paginate(botUsers, botUserPage)
   const askPaged = paginate(book ? [...book.asks].reverse() : [], askPage)
   const bidPaged = paginate(book ? book.bids : [], bidPage)
 
@@ -434,60 +442,73 @@ export default function Admin({ onClose }: { onClose: () => void }) {
           </select>
         </div>
 
-        {userPaged.items.map(u => (
-          <div key={u.id} className="admin-user">
-            <div className="admin-user-head">
-              <strong>{u.username}</strong>
-              <span className="section-note">{u.email}</span>
-              <span>{t('admin.free')}: {fmt(u.freeCashBalance)}</span>
-              <span>{t('admin.locked')}: {fmt(u.lockedCashBalance)}</span>
-              <span>{t('admin.realized')}: {fmt(u.realizedProfitLoss)}</span>
-            </div>
-
-            <div className="admin-user-holdings">
-              {u.holdings.length === 0 ? (
-                <span className="empty">{t('admin.noHoldings')}</span>
-              ) : (
-                u.holdings.map(h => (
-                  <span key={h.symbol}>
-                    {h.symbol}: {h.totalQuantity}
-                    {h.lockedQuantity > 0 ? ` (${t('board.locked', { n: h.lockedQuantity })})` : ''}
-                  </span>
-                ))
-              )}
-            </div>
-
-            <div className="admin-form">
-              <input className="field-input" placeholder={t('admin.cashDelta')}
-                value={cashDelta[u.id] ?? ''}
-                onChange={e => setCashDelta(prev => ({ ...prev, [u.id]: e.target.value }))} />
-              <input className="field-input" placeholder={t('admin.reason')}
-                value={cashReason[u.id] ?? ''}
-                onChange={e => setCashReason(prev => ({ ...prev, [u.id]: e.target.value }))} />
-              <button className="ghost-btn" onClick={() => applyCash(u.id)}>
-                {t('admin.applyCash')}
-              </button>
-            </div>
-
-            <div className="admin-form">
-              <select className="field-input" value={shareInstrument[u.id] ?? ''}
-                onChange={e => setShareInstrument(prev => ({ ...prev, [u.id]: e.target.value }))}>
-                <option value="">{t('admin.shareInstrument')}</option>
-                {instruments.filter(i => i.isActive).map(i => (
-                  <option key={i.id} value={i.id}>{i.symbol}</option>
-                ))}
-              </select>
-              <input className="field-input" placeholder={t('admin.shareQty')}
-                value={shareQty[u.id] ?? ''}
-                onChange={e => setShareQty(prev => ({ ...prev, [u.id]: e.target.value }))} />
-              <button className="ghost-btn" onClick={() => applyShares(u.id)}>
-                {t('admin.applyShares')}
-              </button>
-            </div>
-          </div>
-        ))}
+        {userPaged.items.map(u => renderUserCard(u))}
         <Pager page={userPaged.page} totalPages={userPaged.totalPages} onChange={setUserPage} />
+      </div>
+
+      <div className="panel">
+        <div className="section-head">
+          <h3>{t('admin.botUsersTitle')}</h3>
+        </div>
+
+        {botUserPaged.items.map(u => renderUserCard(u))}
+        <Pager page={botUserPaged.page} totalPages={botUserPaged.totalPages} onChange={setBotUserPage} />
       </div>
     </div>
   )
+
+  function renderUserCard(u: AdminUser) {
+    return (
+      <div key={u.id} className="admin-user">
+        <div className="admin-user-head">
+          <strong>{u.username}</strong>
+          <span className="section-note">{u.email}</span>
+          <span>{t('admin.free')}: {fmt(u.freeCashBalance)}</span>
+          <span>{t('admin.locked')}: {fmt(u.lockedCashBalance)}</span>
+          <span>{t('admin.realized')}: {fmt(u.realizedProfitLoss)}</span>
+        </div>
+
+        <div className="admin-user-holdings">
+          {u.holdings.length === 0 ? (
+            <span className="empty">{t('admin.noHoldings')}</span>
+          ) : (
+            u.holdings.map(h => (
+              <span key={h.symbol}>
+                {h.symbol}: {h.totalQuantity}
+                {h.lockedQuantity > 0 ? ` (${t('board.locked', { n: h.lockedQuantity })})` : ''}
+              </span>
+            ))
+          )}
+        </div>
+
+        <div className="admin-form">
+          <input className="field-input" placeholder={t('admin.cashDelta')}
+            value={cashDelta[u.id] ?? ''}
+            onChange={e => setCashDelta(prev => ({ ...prev, [u.id]: e.target.value }))} />
+          <input className="field-input" placeholder={t('admin.reason')}
+            value={cashReason[u.id] ?? ''}
+            onChange={e => setCashReason(prev => ({ ...prev, [u.id]: e.target.value }))} />
+          <button className="ghost-btn" onClick={() => applyCash(u.id)}>
+            {t('admin.applyCash')}
+          </button>
+        </div>
+
+        <div className="admin-form">
+          <select className="field-input" value={shareInstrument[u.id] ?? ''}
+            onChange={e => setShareInstrument(prev => ({ ...prev, [u.id]: e.target.value }))}>
+            <option value="">{t('admin.shareInstrument')}</option>
+            {instruments.filter(i => i.isActive).map(i => (
+              <option key={i.id} value={i.id}>{i.symbol}</option>
+            ))}
+          </select>
+          <input className="field-input" placeholder={t('admin.shareQty')}
+            value={shareQty[u.id] ?? ''}
+            onChange={e => setShareQty(prev => ({ ...prev, [u.id]: e.target.value }))} />
+          <button className="ghost-btn" onClick={() => applyShares(u.id)}>
+            {t('admin.applyShares')}
+          </button>
+        </div>
+      </div>
+    )
+  }
 }
