@@ -12,6 +12,7 @@ import Admin from './Admin'
 import { fmt } from './format'
 
 const PAGE_SIZE = 5
+const MARKET_PAGE_SIZE = 20
 
 type Instrument = {
   id: string
@@ -147,6 +148,22 @@ const countdown = (expiresAt: string, now: number): string | null => {
   const hours = Math.floor(totalMinutes / 60)
   const minutes = totalMinutes % 60
   return hours > 0 ? `${hours}h ${minutes}m` : `${minutes}m`
+}
+
+function filterSortInstruments(list: Instrument[], query: string, sort: string): Instrument[] {
+  const q = query.trim().toLocaleLowerCase('tr')
+  const filtered = q
+    ? list.filter(i =>
+        i.symbol.toLocaleLowerCase('tr').includes(q) ||
+        i.name.toLocaleLowerCase('tr').includes(q))
+    : list
+  const cmp: Record<string, (a: Instrument, b: Instrument) => number> = {
+    'symbol-asc':  (a, b) => a.symbol.localeCompare(b.symbol, 'tr'),
+    'symbol-desc': (a, b) => b.symbol.localeCompare(a.symbol, 'tr'),
+    'price-asc':   (a, b) => a.currentPrice - b.currentPrice,
+    'price-desc':  (a, b) => b.currentPrice - a.currentPrice,
+  }
+  return [...filtered].sort(cmp[sort])
 }
 
 function paginate<T>(items: T[], page: number, pageSize = PAGE_SIZE) {
@@ -423,8 +440,11 @@ const seeded = useRef<Set<string>>(new Set())
   const [menuOpen, setMenuOpen] = useState(false)
   const [query, setQuery] = useState('')
   const [sort, setSort] = useState('symbol-asc')
+  const [marketQuery, setMarketQuery] = useState('')
+  const [marketSort, setMarketSort] = useState('symbol-asc')
 
   const [portfolioPage, setPortfolioPage] = useState(1)
+  const [marketPage, setMarketPage] = useState(1)
   const [pendingPage, setPendingPage] = useState(1)
   const [pastPage, setPastPage] = useState(1)
   const [txPage, setTxPage] = useState(1)
@@ -739,26 +759,19 @@ const loadHistory = (i: Instrument) => {
     return { ...i, pct }
   })
 
-  const visible = useMemo(() => {
-    const q = query.trim().toLocaleLowerCase('tr')
-    const filtered = q
-      ? instruments.filter(i =>
-          i.symbol.toLocaleLowerCase('tr').includes(q) ||
-          i.name.toLocaleLowerCase('tr').includes(q))
-      : instruments
-    const cmp: Record<string, (a: Instrument, b: Instrument) => number> = {
-      'symbol-asc':  (a, b) => a.symbol.localeCompare(b.symbol, 'tr'),
-      'symbol-desc': (a, b) => b.symbol.localeCompare(a.symbol, 'tr'),
-      'price-asc':   (a, b) => a.currentPrice - b.currentPrice,
-      'price-desc':  (a, b) => b.currentPrice - a.currentPrice,
-    }
-    return [...filtered].sort(cmp[sort])
-  }, [instruments, query, sort])
-
-  const portfolioInstruments = instruments.filter(i => portfolio[i.symbol])
-  const otherStocks = visible.filter(i => !portfolio[i.symbol] && i.type === 'Stock')
+  const portfolioInstruments = useMemo(
+    () => filterSortInstruments(instruments.filter(i => portfolio[i.symbol]), query, sort),
+    [instruments, portfolio, query, sort]
+  )
+  const marketStocks = useMemo(
+    () => filterSortInstruments(instruments.filter(i => i.type === 'Stock'), marketQuery, marketSort),
+    [instruments, marketQuery, marketSort]
+  )
 
   const portfolioPaged = paginate(portfolioInstruments, portfolioPage)
+  const marketPaged = paginate(marketStocks, marketPage, MARKET_PAGE_SIZE)
+  const marketLeft = marketPaged.items.slice(0, MARKET_PAGE_SIZE / 2)
+  const marketRight = marketPaged.items.slice(MARKET_PAGE_SIZE / 2)
   const pendingPaged = paginate(pendingOrders, pendingPage)
   const pastPaged = paginate(pastOrders, pastPage)
   const txPaged = paginate(transactions, txPage)
@@ -896,7 +909,73 @@ const loadHistory = (i: Instrument) => {
 
       <main className="wrap">
         {view === 'admin' ? <Admin onClose={() => setView('portfolio')} /> : view === 'market' ? (
-          <div className="empty-state">{t('nav.comingSoon')}</div>
+          <div className="market-page">
+            <div className="section-head">
+              <h2>{t('nav.market')}</h2>
+              <span className="section-note">{t('board.otherNote', { n: marketStocks.length })}</span>
+              <Pager page={marketPaged.page} totalPages={marketPaged.totalPages} onChange={setMarketPage} />
+            </div>
+
+            <div className="board-controls">
+              <div className="search-input">
+                <input
+                  className="field-input"
+                  type="text"
+                  value={marketQuery}
+                  onChange={e => setMarketQuery(e.target.value)}
+                  placeholder={t('search.placeholder')}
+                />
+                {marketQuery && (
+                  <button
+                    className="ghost-btn"
+                    onClick={() => setMarketQuery('')}
+                    aria-label={t('app.close')}
+                  >
+                    ×
+                  </button>
+                )}
+              </div>
+              <select className="field-input" value={marketSort} onChange={e => setMarketSort(e.target.value)}>
+                <option value="symbol-asc">{t('sort.symbolAsc')}</option>
+                <option value="symbol-desc">{t('sort.symbolDesc')}</option>
+                <option value="price-desc">{t('sort.priceDesc')}</option>
+                <option value="price-asc">{t('sort.priceAsc')}</option>
+              </select>
+            </div>
+
+            {marketStocks.length === 0 ? (
+              <div className="empty-state">{marketQuery ? t('search.noResults') : t('board.otherEmpty')}</div>
+            ) : (
+              <div className="market-columns">
+                <div className="board">
+                  {marketLeft.map(i => (
+                    <InstrumentRow
+                      key={i.id}
+                      i={i}
+                      open={selected === i.id}
+                      tick={ticks[i.symbol]}
+                      pos={livePortfolio[i.symbol]}
+                      sparkData={history[i.symbol] ?? []}
+                      onClick={() => pick(i)}
+                    />
+                  ))}
+                </div>
+                <div className="board">
+                  {marketRight.map(i => (
+                    <InstrumentRow
+                      key={i.id}
+                      i={i}
+                      open={selected === i.id}
+                      tick={ticks[i.symbol]}
+                      pos={livePortfolio[i.symbol]}
+                      sparkData={history[i.symbol] ?? []}
+                      onClick={() => pick(i)}
+                    />
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
         ) : (
         <>
         {marginCallActive && (
@@ -941,35 +1020,35 @@ const loadHistory = (i: Instrument) => {
               </select>
             </div>
 
-            {portfolioInstruments.length > 0 && (
-              <>
-                <div className="section-head">
-                  <h2>{t('board.portfolioTitle')}</h2>
-                  <span className="section-note">{t('board.portfolioNote', { n: portfolioInstruments.length })}</span>
-                  <Pager page={portfolioPaged.page} totalPages={portfolioPaged.totalPages} onChange={setPortfolioPage} />
-                </div>
+            <div className="section-head">
+              <h2>{t('board.portfolioTitle')}</h2>
+              <span className="section-note">{t('board.portfolioNote', { n: portfolioInstruments.length })}</span>
+              <Pager page={portfolioPaged.page} totalPages={portfolioPaged.totalPages} onChange={setPortfolioPage} />
+            </div>
 
-                <div className="board">
-                  {portfolioPaged.items.map(i => (
-                    <InstrumentRow
-                      key={i.id}
-                      i={i}
-                      open={selected === i.id}
-                      tick={ticks[i.symbol]}
-                      pos={livePortfolio[i.symbol]}
-                      sparkData={history[i.symbol] ?? []}
-                      onClick={() => pick(i)}
-                    />
-                  ))}
-                  {Array.from({ length: Math.max(0, PAGE_SIZE - portfolioPaged.items.length) }).map((_, idx) => (
-                    <div className="row" key={`filler-${idx}`} aria-hidden="true">
-                      <div className="row-head" style={{ visibility: 'hidden' }}>
-                        <span className="row-sym">&nbsp;</span>
-                      </div>
+            {portfolioInstruments.length === 0 ? (
+              <div className="empty-state">{query ? t('search.noResults') : t('board.portfolioEmpty')}</div>
+            ) : (
+              <div className="board">
+                {portfolioPaged.items.map(i => (
+                  <InstrumentRow
+                    key={i.id}
+                    i={i}
+                    open={selected === i.id}
+                    tick={ticks[i.symbol]}
+                    pos={livePortfolio[i.symbol]}
+                    sparkData={history[i.symbol] ?? []}
+                    onClick={() => pick(i)}
+                  />
+                ))}
+                {Array.from({ length: Math.max(0, PAGE_SIZE - portfolioPaged.items.length) }).map((_, idx) => (
+                  <div className="row" key={`filler-${idx}`} aria-hidden="true">
+                    <div className="row-head" style={{ visibility: 'hidden' }}>
+                      <span className="row-sym">&nbsp;</span>
                     </div>
-                  ))}
-                </div>
-              </>
+                  </div>
+                ))}
+              </div>
             )}
 
             <div className="panel">
@@ -1040,29 +1119,6 @@ const loadHistory = (i: Instrument) => {
                 </div>
               )}
             </div>
-
-            <div className="section-head">
-              <h2>{t('board.otherTitle')}</h2>
-              <span className="section-note">{t('board.otherNote', { n: otherStocks.length })}</span>
-            </div>
-
-            {query && otherStocks.length === 0 ? (
-              <div className="empty-state">{t('search.noResults')}</div>
-            ) : (
-              <div className="board">
-                {otherStocks.map(i => (
-                  <InstrumentRow
-                    key={i.id}
-                    i={i}
-                    open={selected === i.id}
-                    tick={ticks[i.symbol]}
-                    pos={undefined}
-                    sparkData={history[i.symbol] ?? []}
-                    onClick={() => pick(i)}
-                  />
-                ))}
-              </div>
-            )}
           </div>
 
           <div className="terminal-right">
@@ -1094,7 +1150,7 @@ const loadHistory = (i: Instrument) => {
         )}
       </main>
 
-      {view === 'portfolio' && (
+      {(view === 'portfolio' || view === 'market') && (
       <div className="ticket">
         <div className="wrap ticket-in">
           <div className="ticket-slot" style={{ minWidth: 172 }}>
