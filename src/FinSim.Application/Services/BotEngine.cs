@@ -241,8 +241,8 @@ public class BotEngine
     /// </summary>
     private async Task<int> RequoteAsync(List<Instrument> tradable, HashSet<Guid> botIds, CancellationToken ct)
     {
-        var driftLimit = (decimal)_config.GetValue("Bots:DriftCancelPct", 0.03);
-        var maxCancels = _config.GetValue("Bots:MaxCancelsPerTick", 40);
+        var driftLimit = (decimal)_config.GetValue("Bots:DriftCancelPct", 0.008);
+        var maxCancels = _config.GetValue("Bots:MaxCancelsPerTick", 120);
 
         var prices = tradable.ToDictionary(i => i.Id, i => i.CurrentPrice);
         var open = await _orderRepo.GetPendingLimitOrdersAsync(ct);

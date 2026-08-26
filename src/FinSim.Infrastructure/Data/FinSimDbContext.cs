@@ -22,6 +22,7 @@ namespace FinSim.Infrastructure.Data
         public DbSet<AdminAdjustment> AdminAdjustments => Set<AdminAdjustment>();
         public DbSet<FundHolding> FundHoldings => Set<FundHolding>();
         public DbSet<PortfolioSnapshot> PortfolioSnapshots => Set<PortfolioSnapshot>();
+        public DbSet<FavoriteInstrument> FavoriteInstruments => Set<FavoriteInstrument>();
 
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
@@ -176,6 +177,21 @@ namespace FinSim.Infrastructure.Data
                  .WithMany()
                  .HasForeignKey(t => t.SellerUserId)
                  .OnDelete(DeleteBehavior.Restrict);
+            });
+
+            modelBuilder.Entity<FavoriteInstrument>(e =>
+            {
+                e.HasIndex(f => new { f.UserId, f.InstrumentId }).IsUnique();
+
+                e.HasOne(f => f.User)
+                 .WithMany()
+                 .HasForeignKey(f => f.UserId)
+                 .OnDelete(DeleteBehavior.Cascade);
+
+                e.HasOne(f => f.Instrument)
+                 .WithMany()
+                 .HasForeignKey(f => f.InstrumentId)
+                 .OnDelete(DeleteBehavior.Cascade);
             });
 
             modelBuilder.Entity<AdminAdjustment>(e =>
