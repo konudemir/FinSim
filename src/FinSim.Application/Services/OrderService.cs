@@ -51,13 +51,15 @@ public class OrderService
 
         return await PlaceLimitOrderAsync(
             userId, instrumentId, quantity, aggressivePrice,
-            stopPrice: null, direction, ct, immediateOrCancel: true);
+            stopPrice: null, direction, ct, immediateOrCancel: true,
+            orderType: OrderType.Market);
     }
     public async Task<(OrderResult Result, PlacedOrderDto? Order)> PlaceLimitOrderAsync(
         Guid userId, Guid instrumentId, int quantity, decimal limitPrice,
         decimal? stopPrice, OrderDirection direction, CancellationToken ct,
         int expiryDays = 0, int expiryHours = 0, int expiryMinutes = 0,
-        Guid? replacedFromOrderId = null, bool immediateOrCancel = false)
+        Guid? replacedFromOrderId = null, bool immediateOrCancel = false,
+        OrderType orderType = OrderType.Limit)
     {
         // Blank fields arrive as 0; all three at 0 means the order never expires.
         if (expiryDays < 0 || expiryHours < 0 || expiryMinutes < 0)
@@ -141,7 +143,7 @@ public class OrderService
             Id = Guid.NewGuid(),
             UserId = userId,
             InstrumentId = instrumentId,
-            OrderType = OrderType.Limit,
+            OrderType = orderType,
             Direction = direction,
             Quantity = quantity,
             Price = price,
