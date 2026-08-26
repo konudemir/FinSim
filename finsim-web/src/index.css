@@ -861,6 +861,18 @@ input  { font-family: var(--mono); }
   .terminal-layout { grid-template-columns: minmax(0, 1fr); }
 }
 
+/* ── stock market page: two 5-a-side columns ─────────────────── */
+
+.market-columns {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 32px;
+}
+
+@media (max-width: 780px) {
+  .market-columns { grid-template-columns: minmax(0, 1fr); }
+}
+
 /* ── order book / transaction history panels ────────────────── */
 
 .panels { grid-template-columns: repeat(3, 1fr); }
