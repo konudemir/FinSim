@@ -41,15 +41,58 @@ namespace FinSim.Infrastructure.Repositories
             _db.Instruments.Update(instrument);
             await _db.SaveChangesAsync(ct);
         }
-        public Task<List<PriceHistory>> GetHistoryAsync(
-        Guid instrumentId, DateTime from, DateTime to, CancellationToken ct) =>
-        _db.PriceHistory
-        .AsNoTracking()
-        .Where(p => p.InstrumentId == instrumentId
-                    && p.Timestamp >= from
-                    && p.Timestamp <= to)
-        .OrderBy(p => p.Timestamp)
-        .ToListAsync(ct);
+        /// <summary>
+        /// At one row per tick, a 30-day range is ~173k rows per instrument — too many
+        /// to pull into memory just to keep 500. The cheap COUNT (backed by the
+        /// (InstrumentId, Timestamp) index) decides whether reduction is even needed;
+        /// only then does Postgres do the bucketing, via width_bucket over the time
+        /// range, picking the latest row in each bucket (DISTINCT ON). That keeps the
+        /// result to at most maxPoints rows without materialising the full range.
+        /// </summary>
+        public async Task<List<PriceHistory>> GetHistoryAsync(
+            Guid instrumentId, DateTime from, DateTime to, int maxPoints, CancellationToken ct)
+        {
+            var query = _db.PriceHistory
+                .AsNoTracking()
+                .Where(p => p.InstrumentId == instrumentId
+                            && p.Timestamp >= from
+                            && p.Timestamp <= to);
+
+            var count = await query.CountAsync(ct);
+            if (count <= maxPoints)
+                return await query.OrderBy(p => p.Timestamp).ToListAsync(ct);
+
+            var rows = await _db.PriceHistory
+                .FromSqlInterpolated($"""
+                    WITH bounds AS (
+                        SELECT MIN(EXTRACT(EPOCH FROM "Timestamp")) AS min_epoch,
+                               MAX(EXTRACT(EPOCH FROM "Timestamp")) AS max_epoch
+                        FROM "PriceHistory"
+                        WHERE "InstrumentId" = {instrumentId}
+                          AND "Timestamp" >= {from}
+                          AND "Timestamp" <= {to}
+                    ),
+                    bucketed AS (
+                        SELECT p.*,
+                               width_bucket(
+                                   EXTRACT(EPOCH FROM p."Timestamp"),
+                                   b.min_epoch, b.max_epoch + 1,
+                                   {maxPoints}) AS bucket
+                        FROM "PriceHistory" p, bounds b
+                        WHERE p."InstrumentId" = {instrumentId}
+                          AND p."Timestamp" >= {from}
+                          AND p."Timestamp" <= {to}
+                    )
+                    SELECT DISTINCT ON (bucket) "Id", "InstrumentId", "Price", "Timestamp", "Volume"
+                    FROM bucketed
+                    ORDER BY bucket, "Timestamp" DESC
+                    """)
+                .AsNoTracking()
+                .OrderBy(p => p.Timestamp)
+                .ToListAsync(ct);
+
+            return rows;
+        }
 
         public async Task<List<decimal>> GetIndexHistoryAsync(int points, CancellationToken ct)
         {

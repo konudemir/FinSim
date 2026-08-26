@@ -330,8 +330,11 @@ function Terminal({ onLogout }: { onLogout: () => void }) {
   const [orders, setOrders] = useState<Order[]>([])
   const [transactions, setTransactions] = useState<Transaction[]>([])
   const [marketMove, setMarketMove] = useState(0)
-const TICK_SECONDS = 60
-const WINDOW_HOURS = 2
+// Must match MarketTickWorker.Every in src/FinSim.Api/BackgroundWorker.cs — the
+// worker writes one PriceHistory row per instrument at that cadence, and this
+// constant is how many seconds of real history each chart point represents.
+const TICK_SECONDS = 15
+const WINDOW_HOURS = 24
 const MAX_POINTS = (WINDOW_HOURS * 3600) / TICK_SECONDS
 const [history, setHistory] = useState<Record<string, PricePoint[]>>({})
 const seeded = useRef<Set<string>>(new Set())
@@ -646,7 +649,8 @@ const loadHistory = (i: Instrument) => {
   if (seeded.current.has(i.symbol)) return
   seeded.current.add(i.symbol)
 
-  api.get<PricePoint[]>(`/api/instruments/${i.id}/history`)
+  const from = new Date(Date.now() - WINDOW_HOURS * 3600 * 1000).toISOString()
+  api.get<PricePoint[]>(`/api/instruments/${i.id}/history`, { params: { from } })
     .then(r => {
       setHistory(prev => ({
         ...prev,

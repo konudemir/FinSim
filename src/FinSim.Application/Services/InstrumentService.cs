@@ -112,13 +112,10 @@ public class InstrumentService
         if (toUtc - fromUtc > TimeSpan.FromDays(30))
             fromUtc = toUtc.AddDays(-30);
 
-        var rows = await _instruments.GetHistoryAsync(id, fromUtc, toUtc, ct);
+        const int maxPoints = 800;
+        var rows = await _instruments.GetHistoryAsync(id, fromUtc, toUtc, maxPoints, ct);
 
-        const int maxPoints = 500;
-        var step = rows.Count <= maxPoints ? 1 : (rows.Count / maxPoints) + 1;
-
-        return rows.Where((_, idx) => idx % step == 0 || idx == rows.Count - 1)
-                .Select(p => new PricePointDto(p.Timestamp, p.Price, p.Volume))
+        return rows.Select(p => new PricePointDto(p.Timestamp, p.Price, p.Volume))
                 .ToList();
     }
 

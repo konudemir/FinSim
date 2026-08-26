@@ -12,7 +12,7 @@ namespace FinSim.Application.Interfaces
         Task AddAsync(Instrument instrument, CancellationToken ct);
         Task UpdateAsync(Instrument instrument, CancellationToken ct);
         Task<List<PriceHistory>> GetHistoryAsync(
-        Guid instrumentId, DateTime from, DateTime to, CancellationToken ct);
+        Guid instrumentId, DateTime from, DateTime to, int maxPoints, CancellationToken ct);
         Task<List<decimal>> GetIndexHistoryAsync(int points, CancellationToken ct);
     }
 }
