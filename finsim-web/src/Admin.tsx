@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import api from './api'
 import { useLang, type LangKey } from './lang'
 import { fmt } from './format'
-import { paginate, Pager } from './App'
+import { paginate, Pager, signed, dirOf } from './App'
 
 type Instrument = {
   id: string
@@ -37,6 +37,7 @@ type AdminUser = {
   freeCashBalance: number
   lockedCashBalance: number
   realizedProfitLoss: number
+  netDeposits: number
   holdings: Holding[]
 }
 
@@ -67,6 +68,9 @@ export default function Admin({ onClose }: { onClose: () => void }) {
   const [userSort, setUserSort] = useState('name-asc')
   const [userPage, setUserPage] = useState(1)
   const [botUserPage, setBotUserPage] = useState(1)
+  const [botView, setBotView] = useState(false)
+  const [exposurePage, setExposurePage] = useState(1)
+  const [netWorthPage, setNetWorthPage] = useState(1)
   const [askPage, setAskPage] = useState(1)
   const [bidPage, setBidPage] = useState(1)
 
@@ -221,6 +225,67 @@ export default function Admin({ onClose }: { onClose: () => void }) {
 
   const userPaged = paginate(humanUsers, userPage)
   const botUserPaged = paginate(botUsers, botUserPage)
+
+  const botsAll = users.filter(isBotUser)
+
+  const holdingsValue = (u: AdminUser) => u.holdings.reduce((s, h) => s + h.marketValue, 0)
+  const accountValue = (u: AdminUser) => u.freeCashBalance + u.lockedCashBalance + holdingsValue(u)
+  const netPnl = (u: AdminUser) => accountValue(u) - u.netDeposits
+
+  const botStats = (() => {
+    const n = botsAll.length
+    const totalFree = botsAll.reduce((s, u) => s + u.freeCashBalance, 0)
+    const totalLocked = botsAll.reduce((s, u) => s + u.lockedCashBalance, 0)
+    const totalRealized = botsAll.reduce((s, u) => s + u.realizedProfitLoss, 0)
+    const totalDeposits = botsAll.reduce((s, u) => s + u.netDeposits, 0)
+    const totalAccountValue = botsAll.reduce((s, u) => s + accountValue(u), 0)
+    const totalNetPnl = totalAccountValue - totalDeposits
+    const winners = botsAll.filter(u => netPnl(u) > 0).length
+    const losers = botsAll.filter(u => netPnl(u) < 0).length
+    return {
+      n, totalFree, totalLocked, totalRealized,
+      totalDeposits, totalAccountValue, totalNetPnl,
+      avgNetPnl: n ? totalNetPnl / n : 0,
+      winners, losers,
+    }
+  })()
+
+  const exposure = (() => {
+    const map = new Map<string, {
+      symbol: string; name: string; netQty: number; lockedQty: number
+      marketValue: number; botCount: number
+    }>()
+    for (const u of botsAll) {
+      for (const h of u.holdings) {
+        const cur = map.get(h.symbol) ?? {
+          symbol: h.symbol, name: h.name, netQty: 0, lockedQty: 0, marketValue: 0, botCount: 0,
+        }
+        cur.netQty += h.totalQuantity
+        cur.lockedQty += h.lockedQuantity
+        cur.marketValue += h.marketValue
+        cur.botCount += 1
+        map.set(h.symbol, cur)
+      }
+    }
+    return [...map.values()].sort((a, b) => Math.abs(b.marketValue) - Math.abs(a.marketValue))
+  })()
+
+  const exposurePaged = paginate(exposure, exposurePage)
+
+  const leaderboard = [...botsAll].sort((a, b) => netPnl(b) - netPnl(a))
+  const topGainers = leaderboard.slice(0, 5).filter(u => netPnl(u) > 0)
+  const topLosers = leaderboard.slice(-5).reverse().filter(u => netPnl(u) < 0)
+  const netWorthPaged = paginate(leaderboard, netWorthPage)
+
+  const cashUtil = [...botsAll]
+    .map(u => ({
+      ...u,
+      utilPct: u.freeCashBalance + u.lockedCashBalance > 0
+        ? (u.lockedCashBalance / (u.freeCashBalance + u.lockedCashBalance)) * 100
+        : 0,
+    }))
+    .sort((a, b) => b.utilPct - a.utilPct)
+    .slice(0, 8)
   const askPaged = paginate(book ? [...book.asks].reverse() : [], askPage)
   const bidPaged = paginate(book ? book.bids : [], bidPage)
 
@@ -449,10 +514,178 @@ export default function Admin({ onClose }: { onClose: () => void }) {
       <div className="panel">
         <div className="section-head">
           <h3>{t('admin.botUsersTitle')}</h3>
+          <span className="rail-spacer" />
+          <button className="ghost-btn" onClick={() => setBotView(v => !v)}>
+            {botView ? t('admin.closeBotView') : t('admin.botView')}
+          </button>
         </div>
 
-        {botUserPaged.items.map(u => renderUserCard(u))}
-        <Pager page={botUserPaged.page} totalPages={botUserPaged.totalPages} onChange={setBotUserPage} />
+        {botView ? (
+          <div className="bot-view">
+            <div className="stat-grid">
+              <div className="stat-tile">
+                <span className="stat-label">{t('admin.botCount')}</span>
+                <span className="stat-value">{botStats.n}</span>
+              </div>
+              <div className="stat-tile">
+                <span className="stat-label">{t('admin.totalFreeCash')}</span>
+                <span className="stat-value">{fmt(botStats.totalFree)}</span>
+              </div>
+              <div className="stat-tile">
+                <span className="stat-label">{t('admin.totalLockedCash')}</span>
+                <span className="stat-value">{fmt(botStats.totalLocked)}</span>
+              </div>
+              <div className="stat-tile">
+                <span className="stat-label">{t('admin.totalDeposits')}</span>
+                <span className="stat-value">{fmt(botStats.totalDeposits)}</span>
+              </div>
+              <div className="stat-tile">
+                <span className="stat-label">{t('admin.totalAccountValue')}</span>
+                <span className="stat-value">{fmt(botStats.totalAccountValue)}</span>
+              </div>
+              <div className="stat-tile">
+                <span className="stat-label">{t('admin.totalNetPnl')}</span>
+                <span className={`stat-value ${dirOf(botStats.totalNetPnl)}`}>{signed(botStats.totalNetPnl)}</span>
+              </div>
+              <div className="stat-tile">
+                <span className="stat-label">{t('admin.avgNetPnl')}</span>
+                <span className={`stat-value ${dirOf(botStats.avgNetPnl)}`}>{signed(botStats.avgNetPnl)}</span>
+              </div>
+              <div className="stat-tile">
+                <span className="stat-label">{t('admin.totalRealized')}</span>
+                <span className={`stat-value ${dirOf(botStats.totalRealized)}`}>{signed(botStats.totalRealized)}</span>
+              </div>
+              <div className="stat-tile">
+                <span className="stat-label">{t('admin.winLoss')}</span>
+                <span className="stat-value">
+                  <span className="up">{botStats.winners}</span> / <span className="down">{botStats.losers}</span>
+                </span>
+              </div>
+            </div>
+
+            <div className="section-head">
+              <h4>{t('admin.netWorthTitle')}</h4>
+            </div>
+            <table className="ledger">
+              <thead>
+                <tr>
+                  <th>{t('admin.name')}</th>
+                  <th className="num">{t('admin.initialBudget')}</th>
+                  <th className="num">{t('admin.holdingsValue')}</th>
+                  <th className="num">{t('admin.totalAccountValue')}</th>
+                  <th className="num">{t('admin.netPnl')}</th>
+                </tr>
+              </thead>
+              <tbody>
+                {netWorthPaged.items.map(u => (
+                  <tr key={u.id}>
+                    <td>{u.username}</td>
+                    <td className="num">{fmt(u.netDeposits)}</td>
+                    <td className="num">{fmt(holdingsValue(u))}</td>
+                    <td className="num">{fmt(accountValue(u))}</td>
+                    <td className={`num ${dirOf(netPnl(u))}`}>{signed(netPnl(u))}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            <Pager page={netWorthPaged.page} totalPages={netWorthPaged.totalPages} onChange={setNetWorthPage} />
+
+            <div className="section-head">
+              <h4>{t('admin.exposureTitle')}</h4>
+            </div>
+            {exposure.length === 0 ? (
+              <span className="empty">{t('admin.noExposure')}</span>
+            ) : (
+              <>
+                <table className="ledger">
+                  <thead>
+                    <tr>
+                      <th>{t('admin.symbol')}</th>
+                      <th className="num">{t('admin.netQty')}</th>
+                      <th className="num">{t('admin.lockedQty')}</th>
+                      <th className="num">{t('admin.marketValue')}</th>
+                      <th className="num">{t('admin.botsHolding')}</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {exposurePaged.items.map(e => (
+                      <tr key={e.symbol}>
+                        <td className="sym">{e.symbol}</td>
+                        <td className="num">{e.netQty}</td>
+                        <td className="num">{e.lockedQty}</td>
+                        <td className="num">{fmt(e.marketValue)}</td>
+                        <td className="num">{e.botCount}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+                <Pager page={exposurePaged.page} totalPages={exposurePaged.totalPages} onChange={setExposurePage} />
+              </>
+            )}
+
+            <div className="bot-view-cols">
+              <div>
+                <div className="section-head"><h4>{t('admin.topGainers')}</h4></div>
+                <table className="ledger">
+                  <tbody>
+                    {topGainers.length === 0 ? (
+                      <tr><td className="empty">—</td></tr>
+                    ) : topGainers.map(u => (
+                      <tr key={u.id}>
+                        <td>{u.username}</td>
+                        <td className="num up">{signed(netPnl(u))}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              <div>
+                <div className="section-head"><h4>{t('admin.topLosers')}</h4></div>
+                <table className="ledger">
+                  <tbody>
+                    {topLosers.length === 0 ? (
+                      <tr><td className="empty">—</td></tr>
+                    ) : topLosers.map(u => (
+                      <tr key={u.id}>
+                        <td>{u.username}</td>
+                        <td className="num down">{signed(netPnl(u))}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            <div className="section-head">
+              <h4>{t('admin.cashUtilTitle')}</h4>
+            </div>
+            <table className="ledger">
+              <thead>
+                <tr>
+                  <th>{t('admin.name')}</th>
+                  <th className="num">{t('admin.free')}</th>
+                  <th className="num">{t('admin.locked')}</th>
+                  <th className="num">{t('admin.utilPct')}</th>
+                </tr>
+              </thead>
+              <tbody>
+                {cashUtil.map(u => (
+                  <tr key={u.id}>
+                    <td>{u.username}</td>
+                    <td className="num">{fmt(u.freeCashBalance)}</td>
+                    <td className="num">{fmt(u.lockedCashBalance)}</td>
+                    <td className="num">{u.utilPct.toFixed(0)}%</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          <>
+            {botUserPaged.items.map(u => renderUserCard(u))}
+            <Pager page={botUserPaged.page} totalPages={botUserPaged.totalPages} onChange={setBotUserPage} />
+          </>
+        )}
       </div>
     </div>
   )

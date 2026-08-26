@@ -122,9 +122,9 @@ const expiryPartsFromDate = (dateStr: string): { days: number; hours: number; mi
   }
 }
 
-const signed = (n: number) => (n >= 0 ? '+' : '−') + fmt(Math.abs(n))
+export const signed = (n: number) => (n >= 0 ? '+' : '−') + fmt(Math.abs(n))
 
-const dirOf = (n: number) => (n > 0 ? 'up' : n < 0 ? 'down' : 'flat')
+export const dirOf = (n: number) => (n > 0 ? 'up' : n < 0 ? 'down' : 'flat')
 
 const fmtDate = (s: string) =>
   new Date(s).toLocaleString('tr-TR', { dateStyle: 'short', timeStyle: 'short' })
