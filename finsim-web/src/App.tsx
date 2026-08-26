@@ -188,11 +188,12 @@ function Pager({ page, totalPages, onChange }: { page: number; totalPages: numbe
   )
 }
 
-function OrderTable({ orders, pending, now, onCancel, onReplace, replacing }: {
+function OrderTable({ orders, pending, now, onCancel, onReplace, replacing, minRows = PAGE_SIZE }: {
   orders: Order[]; pending: boolean; now: number
   onCancel: (id: string) => void
   onReplace: (id: string) => void
   replacing: Set<string>
+  minRows?: number
 }) {
   const { t } = useLang()
   return (
@@ -269,6 +270,11 @@ function OrderTable({ orders, pending, now, onCancel, onReplace, replacing }: {
                   <td className="num">{o.filledQuantity > 0 ? fmt(o.avgPrice * o.filledQuantity) : '—'}</td>
                 </>
               )}
+            </tr>
+          ))}
+          {Array.from({ length: Math.max(0, minRows - orders.length) }).map((_, idx) => (
+            <tr key={`filler-${idx}`} className="filler-row" aria-hidden="true">
+              <td colSpan={8}>&nbsp;</td>
             </tr>
           ))}
         </tbody>
@@ -390,10 +396,31 @@ const seeded = useRef<Set<string>>(new Set())
   const [now, setNow] = useState(() => Date.now())
   const [replacing, setReplacing] = useState<Set<string>>(new Set())
 
+  // The menu button sits at the midpoint between the true left edge of the
+  // screen and the logo's left edge. That gap isn't a fixed CSS value — the
+  // .wrap column centers itself (max-width + auto margins) on wide viewports,
+  // so the logo can sit well past the 28px padding alone. Measure it instead.
+  const railRef = useRef<HTMLElement>(null)
+  const logoRef = useRef<HTMLSpanElement>(null)
+  const [navTogglePos, setNavTogglePos] = useState(14)
+
+  useEffect(() => {
+    const recalc = () => {
+      if (!railRef.current || !logoRef.current) return
+      const railLeft = railRef.current.getBoundingClientRect().left
+      const logoLeft = logoRef.current.getBoundingClientRect().left
+      setNavTogglePos((logoLeft - railLeft) / 2)
+    }
+    recalc()
+    window.addEventListener('resize', recalc)
+    return () => window.removeEventListener('resize', recalc)
+  }, [])
+
   const [ticks, setTicks] = useState<Record<string, Tick>>({})
   const prevPrices = useRef<Record<string, number>>({})
   const [online, setOnline] = useState(true)
-  const [showAdmin, setShowAdmin] = useState(false)
+  const [view, setView] = useState<'portfolio' | 'market' | 'admin'>('portfolio')
+  const [menuOpen, setMenuOpen] = useState(false)
   const [query, setQuery] = useState('')
   const [sort, setSort] = useState('symbol-asc')
 
@@ -739,9 +766,55 @@ const loadHistory = (i: Instrument) => {
 
   return (
     <div className="shell">
-      <header className="rail">
+      {menuOpen && (
+        <div className="nav-backdrop" onClick={() => setMenuOpen(false)}>
+          <nav className="nav-drawer" onClick={e => e.stopPropagation()}>
+            <div className="nav-drawer-head">
+              <span className="mark">Fin<em>Sim</em></span>
+              <button className="ghost-btn" onClick={() => setMenuOpen(false)} aria-label={t('app.close')}>×</button>
+            </div>
+            <button
+              className="nav-item"
+              aria-pressed={view === 'portfolio'}
+              onClick={() => { setView('portfolio'); setMenuOpen(false) }}
+            >
+              {t('nav.portfolio')}
+            </button>
+            <button
+              className="nav-item"
+              aria-pressed={view === 'market'}
+              onClick={() => { setView('market'); setMenuOpen(false) }}
+            >
+              {t('nav.market')}
+            </button>
+            {balance?.isAdmin && (
+              <button
+                className="nav-item"
+                aria-pressed={view === 'admin'}
+                onClick={() => { setView('admin'); setMenuOpen(false) }}
+              >
+                {t('admin.panelButton')}
+              </button>
+            )}
+          </nav>
+        </div>
+      )}
+
+      <header className="rail" ref={railRef}>
+        <button
+          className="nav-toggle"
+          style={{ left: navTogglePos }}
+          onClick={() => setMenuOpen(true)}
+          aria-label={t('nav.toggle')}
+        >
+          <span />
+          <span />
+          <span />
+        </button>
         <div className="wrap rail-in">
-          <Logomark size={26} />
+          <span ref={logoRef}>
+            <Logomark size={26} />
+          </span>
           <span className="mark">Fin<em>Sim</em></span>
           <span className="mark-sub">{t('app.tagline')}</span>
           <span className="rail-spacer" />
@@ -770,15 +843,6 @@ const loadHistory = (i: Instrument) => {
           <button className="ghost-btn" onClick={toggleLang} aria-label="Language">
             {lang === 'tr' ? 'EN' : 'TR'}
           </button>
-          {balance?.isAdmin && (
-            <button
-              className="ghost-btn"
-              aria-pressed={showAdmin}
-              onClick={() => setShowAdmin(v => !v)}
-            >
-              {t('admin.panelButton')}
-            </button>
-          )}
           <button className="ghost-btn" onClick={onLogout}>{t('app.logout')}</button>
         </div>
       </header>
@@ -831,7 +895,9 @@ const loadHistory = (i: Instrument) => {
       )}
 
       <main className="wrap">
-        {showAdmin ? <Admin onClose={() => setShowAdmin(false)} /> : (
+        {view === 'admin' ? <Admin onClose={() => setView('portfolio')} /> : view === 'market' ? (
+          <div className="empty-state">{t('nav.comingSoon')}</div>
+        ) : (
         <>
         {marginCallActive && (
           <div className="notice warn">
@@ -895,6 +961,13 @@ const loadHistory = (i: Instrument) => {
                       onClick={() => pick(i)}
                     />
                   ))}
+                  {Array.from({ length: Math.max(0, PAGE_SIZE - portfolioPaged.items.length) }).map((_, idx) => (
+                    <div className="row" key={`filler-${idx}`} aria-hidden="true">
+                      <div className="row-head" style={{ visibility: 'hidden' }}>
+                        <span className="row-sym">&nbsp;</span>
+                      </div>
+                    </div>
+                  ))}
                 </div>
               </>
             )}
@@ -957,6 +1030,11 @@ const loadHistory = (i: Instrument) => {
                           <td>{fmtDate(tx.transactionDate)}</td>
                         </tr>
                       ))}
+                      {Array.from({ length: Math.max(0, PAGE_SIZE - txPaged.items.length) }).map((_, idx) => (
+                        <tr key={`filler-${idx}`} className="filler-row" aria-hidden="true">
+                          <td colSpan={6}>&nbsp;</td>
+                        </tr>
+                      ))}
                     </tbody>
                   </table>
                 </div>
@@ -1016,7 +1094,7 @@ const loadHistory = (i: Instrument) => {
         )}
       </main>
 
-      {!showAdmin && (
+      {view === 'portfolio' && (
       <div className="ticket">
         <div className="wrap ticket-in">
           <div className="ticket-slot" style={{ minWidth: 172 }}>

@@ -14,6 +14,11 @@ const tr = {
   'app.close': 'Kapat',
   'app.offline': 'connection lost',
 
+  'nav.toggle': 'Menü',
+  'nav.portfolio': 'Portföyüm',
+  'nav.market': 'Borsa',
+  'nav.comingSoon': 'Yakında',
+
   'strip.equity': 'Hesap Değeri',
   'strip.openPL': 'Açık pozisyon',
   'strip.free': 'Hesap Bakiyesi',
@@ -259,6 +264,11 @@ const en: typeof tr = {
   'app.toNight': 'Switch to dark mode',
   'app.close': 'Close',
   'app.offline': 'connection lost',
+
+  'nav.toggle': 'Menu',
+  'nav.portfolio': 'My Portfolio',
+  'nav.market': 'Stock Market',
+  'nav.comingSoon': 'Coming soon',
 
   'strip.equity': 'Account Value',
   'strip.openPL': 'Open position',
