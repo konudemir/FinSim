@@ -39,6 +39,9 @@
   --alarm-fg:   #FFC0C0;
   --ok-bg:      rgba(69, 224, 154, 0.10);
   --ok-fg:      #B4EFD2;
+
+  /* Alternating-row tint for boards/ledgers — slightly transparent white on dark. */
+  --zebra-alt:  rgba(255, 255, 255, 0.05);
 }
 
 /* gündüz — aydınlık tahta */
@@ -67,6 +70,9 @@
   --alarm-fg:   #8E1F1A;
   --ok-bg:      rgba(0, 135, 90, 0.08);
   --ok-fg:      #056141;
+
+  /* Alternating-row tint for boards/ledgers — slightly transparent black on light. */
+  --zebra-alt:  rgba(0, 0, 0, 0.035);
 }
 
 * { box-sizing: border-box; }
@@ -595,6 +601,7 @@ input  { font-family: var(--mono); }
 }
 
 .row { border-bottom: 1px solid color-mix(in srgb, var(--edge) 40%, transparent); }
+.board .row:nth-child(even) .row-head { background: var(--zebra-alt); }
 
 .row-head {
   position: relative;
@@ -795,6 +802,8 @@ input  { font-family: var(--mono); }
   font-family: var(--mono);
   font-size: 12px;
 }
+
+.ledger tbody tr:nth-child(even) td { background: var(--zebra-alt); }
 
 .ledger th {
   text-align: left;
