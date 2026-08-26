@@ -61,7 +61,7 @@ public class AdminService
 
             return new AdminUserDto(
                 u.Id, u.UserName!, u.Email!, u.FreeCashBalance, u.LockedCashBalance,
-                u.RealizedProfitLoss, holdings);
+                u.RealizedProfitLoss, u.NetDeposits, holdings);
         }).ToList();
     }
 

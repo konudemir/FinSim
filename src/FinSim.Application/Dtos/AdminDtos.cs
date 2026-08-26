@@ -7,6 +7,7 @@ public record AdminUserDto(
     decimal FreeCashBalance,
     decimal LockedCashBalance,
     decimal RealizedProfitLoss,
+    decimal NetDeposits,
     List<PortfolioItemDto> Holdings);
     
 public record BookLevelDto(decimal Price, int Quantity, int OrderCount);
