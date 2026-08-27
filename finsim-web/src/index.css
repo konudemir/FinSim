@@ -1990,6 +1990,22 @@ input  { font-family: var(--mono); }
   overflow: auto;
 }
 
+.instrument-fullscreen-chart {
+  position: relative;
+  flex: 1 1 auto;
+  min-height: 220px;
+  margin: 20px 24px 0;
+}
+
+.fullscreen-spark {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+.fullscreen-spark .spark-svg { opacity: 0.6; }
+[data-theme="day"] .fullscreen-spark .spark-svg { opacity: 0.45; }
+
 .fullscreen-ticket {
   margin-top: auto;
   border-top: var(--rail);

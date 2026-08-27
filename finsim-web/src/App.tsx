@@ -539,6 +539,7 @@ const seeded = useRef<Set<string>>(new Set())
   const [selected, setSelected] = useState<string | null>(null)
   const [selectedPanel, setSelectedPanel] = useState<string | null>(null)
   const [fullscreenInstrumentId, setFullscreenInstrumentId] = useState<string | null>(null)
+  const [fullscreenHistory, setFullscreenHistory] = useState<PricePoint[]>([])
   const [mode, setMode] = useState<'market' | 'limit'>('market')
   const [qty, setQty] = useState('1')
   const [limitPrice, setLimitPrice] = useState('')
@@ -961,6 +962,15 @@ const seeded = useRef<Set<string>>(new Set())
     setSelectedPanel('fullscreen')
     setLimitPrice(prev => (prev === '' ? i.currentPrice.toFixed(2).replace('.', ',') : prev))
     loadHistory(i)
+
+    // The board sparkline only ever holds the last 24h (WINDOW_HOURS). The
+    // fullscreen chart is meant to show the whole run, so it gets its own
+    // fetch — the API clamps any range over 30 days, which in practice is
+    // "everything" for an instrument that's only ever run in this sim.
+    setFullscreenHistory([])
+    api.get<PricePoint[]>(`/api/instruments/${i.id}/history`, { params: { from: '2000-01-01T00:00:00Z' } })
+      .then(r => setFullscreenHistory(r.data))
+      .catch(console.error)
   }
 
 const loadHistory = (i: Instrument) => {
@@ -1687,6 +1697,9 @@ const loadHistory = (i: Instrument) => {
               </div>
             </div>
             <div className="instrument-fullscreen-body">
+              <div className="instrument-fullscreen-chart">
+                <AreaSpark data={fullscreenHistory} className="fullscreen-spark" />
+              </div>
               <div className="ticket-in fullscreen-ticket">
                 {renderTicketFields('fullscreen-ticket')}
               </div>
