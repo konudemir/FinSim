@@ -57,6 +57,16 @@ public class InstrumentTestContext
                 Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<decimal?>(), Arg.Any<string?>(), Arg.Any<Guid?>(),
                 Arg.Any<int>(), Arg.Any<CancellationToken>())
             .Returns(new List<Instrument>());
+
+        Instruments.GetPortfolioBoardPagedAsync(
+                Arg.Any<Guid>(), Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<decimal?>(), Arg.Any<string?>(), Arg.Any<Guid?>(),
+                Arg.Any<int>(), Arg.Any<CancellationToken>())
+            .Returns(new List<Instrument>());
+
+        Instruments.GetFavoritesBoardPagedAsync(
+                Arg.Any<Guid>(), Arg.Any<string>(), Arg.Any<decimal?>(), Arg.Any<string?>(), Arg.Any<Guid?>(),
+                Arg.Any<int>(), Arg.Any<CancellationToken>())
+            .Returns(new List<Instrument>());
     }
 
     public InstrumentService Service => new(

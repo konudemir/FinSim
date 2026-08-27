@@ -133,6 +133,11 @@ namespace FinSim.Infrastructure.Data
             modelBuilder.Entity<PortfolioItem>(e =>
             {
                 e.Property(p => p.AverageCost).HasPrecision(18, 4); // division
+
+                // Backs the portfolio board's "WHERE InstrumentId IN (subquery on
+                // UserId)" keyset query the same way the FavoriteInstrument index
+                // backs the favorites board.
+                e.HasIndex(p => new { p.UserId, p.InstrumentId });
             });
 
             modelBuilder.Entity<Order>(e =>

@@ -91,6 +91,114 @@ public class InstrumentService
         return new PagedResult<Instrument>(rows, next);
     }
 
+    private const string PortfolioSortPrefix = "portfolio_";
+    private const string FavoritesSortPrefix = "favorites_";
+
+    private static string Normalise(string prefix, string? sort) => prefix + sort switch
+    {
+        "price_asc"   => "price_asc",
+        "price_desc"  => "price_desc",
+        "symbol_desc" => "symbol_desc",
+        _             => "symbol_asc"
+    };
+
+    /// <summary>
+    /// GetBoardAsync's cursor decode/re-encode, generalised behind a sort tag prefix
+    /// (e.g. "portfolio_", "favorites_") so a cursor minted for one of these lists
+    /// is rejected outright if replayed against another, or against the market board.
+    /// </summary>
+    public async Task<PagedResult<Instrument>> GetPortfolioBoardAsync(
+        Guid userId, string? sort, string? q, string? cursor, int? limit, CancellationToken ct)
+    {
+        var normalised = Normalise(PortfolioSortPrefix, sort);
+        var take = Cursor.ClampLimit(limit);
+        var byPrice = normalised.EndsWith("price_asc") || normalised.EndsWith("price_desc");
+
+        decimal? afterPrice = null;
+        string? afterSymbol = null;
+        Guid? afterId = null;
+
+        if (byPrice)
+        {
+            if (Cursor.TryDecodeDecimal(cursor, normalised, out var p, out var pid))
+            {
+                afterPrice = p;
+                afterId = pid;
+            }
+        }
+        else
+        {
+            if (Cursor.TryDecodeString(cursor, normalised, out var s, out var sid))
+            {
+                afterSymbol = s;
+                afterId = sid;
+            }
+        }
+
+        var repoSort = normalised[PortfolioSortPrefix.Length..];
+        var rows = await _instruments.GetPortfolioBoardPagedAsync(
+            userId, repoSort, q, afterPrice, afterSymbol, afterId, take, ct);
+
+        var hasMore = rows.Count > take;
+        if (hasMore) rows.RemoveAt(rows.Count - 1);
+        if (rows.Count == 0) return new PagedResult<Instrument>([], null);
+
+        var last = rows[^1];
+        var next = hasMore
+            ? byPrice
+                ? Cursor.EncodeDecimal(normalised, last.CurrentPrice, last.Id)
+                : Cursor.EncodeString(normalised, last.Symbol, last.Id)
+            : null;
+
+        return new PagedResult<Instrument>(rows, next);
+    }
+
+    public async Task<PagedResult<Instrument>> GetFavoritesBoardAsync(
+        Guid userId, string? sort, string? cursor, int? limit, CancellationToken ct)
+    {
+        var normalised = Normalise(FavoritesSortPrefix, sort);
+        var take = Cursor.ClampLimit(limit);
+        var byPrice = normalised.EndsWith("price_asc") || normalised.EndsWith("price_desc");
+
+        decimal? afterPrice = null;
+        string? afterSymbol = null;
+        Guid? afterId = null;
+
+        if (byPrice)
+        {
+            if (Cursor.TryDecodeDecimal(cursor, normalised, out var p, out var pid))
+            {
+                afterPrice = p;
+                afterId = pid;
+            }
+        }
+        else
+        {
+            if (Cursor.TryDecodeString(cursor, normalised, out var s, out var sid))
+            {
+                afterSymbol = s;
+                afterId = sid;
+            }
+        }
+
+        var repoSort = normalised[FavoritesSortPrefix.Length..];
+        var rows = await _instruments.GetFavoritesBoardPagedAsync(
+            userId, repoSort, afterPrice, afterSymbol, afterId, take, ct);
+
+        var hasMore = rows.Count > take;
+        if (hasMore) rows.RemoveAt(rows.Count - 1);
+        if (rows.Count == 0) return new PagedResult<Instrument>([], null);
+
+        var last = rows[^1];
+        var next = hasMore
+            ? byPrice
+                ? Cursor.EncodeDecimal(normalised, last.CurrentPrice, last.Id)
+                : Cursor.EncodeString(normalised, last.Symbol, last.Id)
+            : null;
+
+        return new PagedResult<Instrument>(rows, next);
+    }
+
     private static decimal Money(decimal value) =>
         Math.Round(value, 2, MidpointRounding.AwayFromZero);
 
