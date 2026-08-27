@@ -161,6 +161,9 @@ namespace FinSim.Infrastructure.Data
                 e.HasIndex(t => t.BuyerUserId);
                 e.HasIndex(t => t.SellerUserId);
 
+                e.HasIndex(t => new { t.BuyerUserId, t.TransactionDate, t.Id });
+                e.HasIndex(t => new { t.SellerUserId, t.TransactionDate, t.Id });
+
                 e.HasOne(t => t.BuyerOrder)
                  .WithMany()
                  .HasForeignKey(t => t.BuyerOrderId)

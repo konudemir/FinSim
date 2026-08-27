@@ -16,9 +16,11 @@ namespace FinSim.Controllers
             Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
 
         public TransactionController(TransactionService transactions) => _transactions = transactions;
-
         [HttpGet]
-        public async Task<IActionResult> GetTransactions(CancellationToken ct) =>
-            Ok(await _transactions.GetRecentTransactionsAsync(CurrentUserId, ct));
+        public async Task<IActionResult> GetTransactions(
+            [FromQuery] string? cursor,
+            [FromQuery] int? limit,
+            CancellationToken ct) =>
+            Ok(await _transactions.GetRecentTransactionsAsync(CurrentUserId, cursor, limit, ct));
     }
 }

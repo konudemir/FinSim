@@ -33,14 +33,26 @@ namespace FinSim.Infrastructure.Repositories
 
             return totals;
         }
+        public Task<List<Transaction>> GetByUserPagedAsync(
+            Guid userId, DateTimeOffset? afterTs, Guid? afterId,
+            int limit, CancellationToken ct)
+        {
+            var q = _db.Transactions
+                .AsNoTracking()
+                .Include(t => t.BuyerOrder)
+                .Include(t => t.SellerOrder)
+                .Where(t => t.BuyerUserId == userId || t.SellerUserId == userId);
 
-        public Task<List<Transaction>> GetRecentByUserAsync(Guid userId, int take, CancellationToken ct) =>
-            _db.Transactions
-               .Include(t => t.BuyerOrder)
-               .Include(t => t.SellerOrder)
-               .Where(t => t.BuyerUserId == userId || t.SellerUserId == userId)
-               .OrderByDescending(t => t.TransactionDate)
-               .Take(take)
-               .ToListAsync(ct);
+            if (afterTs is not null && afterId is not null)
+                q = q.Where(t => t.TransactionDate < afterTs
+                            || (t.TransactionDate == afterTs && t.Id.CompareTo(afterId.Value) < 0));
+
+            return q.OrderByDescending(t => t.TransactionDate)
+                    .ThenByDescending(t => t.Id)
+                    .Take(limit + 1)
+                    .ToListAsync(ct);
+        }
+
+        
     }
 }

@@ -106,6 +106,8 @@ type OrderUpdate = {
   portfolio: PortfolioItem[]
 }
 
+type Paged<T> = { items: T[]; nextCursor: string | null }
+
 // "42,5" -> 42.5 ; "" / "42." / "abc" -> NaN
 const parseDecimal = (s: string) => parseFloat(s.replace(',', '.'))
 
@@ -406,7 +408,13 @@ function Terminal({ onLogout }: { onLogout: () => void }) {
   const [balance, setBalance] = useState<Balance | null>(null)
   const [portfolio, setPortfolio] = useState<Record<string, PortfolioItem>>({})
   const [orders, setOrders] = useState<Order[]>([])
+  const [ordersCursor, setOrdersCursor] = useState<string | null>(null)
+  const [ordersPageCursor, setOrdersPageCursor] = useState<string | null>(null)
+  const [ordersCursorStack, setOrdersCursorStack] = useState<(string | null)[]>([])
   const [transactions, setTransactions] = useState<Transaction[]>([])
+  const [txCursor, setTxCursor] = useState<string | null>(null)
+  const [txPageCursor, setTxPageCursor] = useState<string | null>(null)
+  const [txCursorStack, setTxCursorStack] = useState<(string | null)[]>([])
   const [marketMove, setMarketMove] = useState(0)
   const [favorites, setFavorites] = useState<Set<string>>(new Set())
   const [showFavorites, setShowFavorites] = useState(false)
@@ -482,14 +490,78 @@ const seeded = useRef<Set<string>>(new Set())
   const [portfolioPage, setPortfolioPage] = useState(1)
   const [marketPage, setMarketPage] = useState(1)
   const [pendingPage, setPendingPage] = useState(1)
-  const [pastPage, setPastPage] = useState(1)
-  const [txPage, setTxPage] = useState(1)
 
   const loadOrders = () =>
-    api.get<Order[]>('/api/order').then(r => setOrders(r.data)).catch(console.error)
+    api.get<Paged<Order>>('/api/order', { params: { limit: PAGE_SIZE } })
+      .then(r => {
+        setOrders(r.data.items)
+        setOrdersCursor(r.data.nextCursor)
+        setOrdersPageCursor(null)
+        setOrdersCursorStack([])
+      })
+      .catch(console.error)
+
+  const nextOrdersPage = () => {
+    if (!ordersCursor) return
+    const cursor = ordersCursor
+    api.get<Paged<Order>>('/api/order', { params: { limit: PAGE_SIZE, cursor } })
+      .then(r => {
+        setOrdersCursorStack(prev => [...prev, ordersPageCursor])
+        setOrders(r.data.items)
+        setOrdersCursor(r.data.nextCursor)
+        setOrdersPageCursor(cursor)
+      })
+      .catch(console.error)
+  }
+
+  const prevOrdersPage = () => {
+    if (ordersCursorStack.length === 0) return
+    const prevCursor = ordersCursorStack[ordersCursorStack.length - 1]
+    api.get<Paged<Order>>('/api/order', { params: { limit: PAGE_SIZE, cursor: prevCursor ?? undefined } })
+      .then(r => {
+        setOrdersCursorStack(prev => prev.slice(0, -1))
+        setOrders(r.data.items)
+        setOrdersCursor(r.data.nextCursor)
+        setOrdersPageCursor(prevCursor)
+      })
+      .catch(console.error)
+  }
 
   const loadTransactions = () =>
-    api.get<Transaction[]>('/api/transactions').then(r => setTransactions(r.data)).catch(console.error)
+    api.get<Paged<Transaction>>('/api/transactions', { params: { limit: PAGE_SIZE } })
+      .then(r => {
+        setTransactions(r.data.items)
+        setTxCursor(r.data.nextCursor)
+        setTxPageCursor(null)
+        setTxCursorStack([])
+      })
+      .catch(console.error)
+
+  const nextTxPage = () => {
+    if (!txCursor) return
+    const cursor = txCursor
+    api.get<Paged<Transaction>>('/api/transactions', { params: { limit: PAGE_SIZE, cursor } })
+      .then(r => {
+        setTxCursorStack(prev => [...prev, txPageCursor])
+        setTransactions(r.data.items)
+        setTxCursor(r.data.nextCursor)
+        setTxPageCursor(cursor)
+      })
+      .catch(console.error)
+  }
+
+  const prevTxPage = () => {
+    if (txCursorStack.length === 0) return
+    const prevCursor = txCursorStack[txCursorStack.length - 1]
+    api.get<Paged<Transaction>>('/api/transactions', { params: { limit: PAGE_SIZE, cursor: prevCursor ?? undefined } })
+      .then(r => {
+        setTxCursorStack(prev => prev.slice(0, -1))
+        setTransactions(r.data.items)
+        setTxCursor(r.data.nextCursor)
+        setTxPageCursor(prevCursor)
+      })
+      .catch(console.error)
+  }
 
   const loadBalance = () =>
     api.get<Balance>('/api/users/balance').then(r => setBalance(r.data)).catch(console.error)
@@ -838,8 +910,6 @@ const loadHistory = (i: Instrument) => {
   const marketLeft = marketPaged.items.slice(0, MARKET_PAGE_SIZE / 2)
   const marketRight = marketPaged.items.slice(MARKET_PAGE_SIZE / 2)
   const pendingPaged = paginate(pendingOrders, pendingPage)
-  const pastPaged = paginate(pastOrders, pastPage)
-  const txPaged = paginate(transactions, txPage)
 
 
   return (
@@ -1161,7 +1231,6 @@ const loadHistory = (i: Instrument) => {
               <div className="section-head">
                 <h2>{t('tx.title')}</h2>
                 <span className="section-note">{t('tx.note')}</span>
-                <Pager page={txPaged.page} totalPages={txPaged.totalPages} onChange={setTxPage} />
               </div>
 
               {transactions.length === 0 ? (
@@ -1182,7 +1251,7 @@ const loadHistory = (i: Instrument) => {
                       </tr>
                     </thead>
                     <tbody>
-                      {txPaged.items.map(tx => (
+                      {transactions.map(tx => (
                         <tr key={tx.id}>
                           <td className="sym">{tx.symbol}</td>
                           <td className={tx.direction === 'Buy' ? 'up' : 'down'}>
@@ -1194,7 +1263,7 @@ const loadHistory = (i: Instrument) => {
                           <td>{fmtDate(tx.transactionDate)}</td>
                         </tr>
                       ))}
-                      {Array.from({ length: Math.max(0, PAGE_SIZE - txPaged.items.length) }).map((_, idx) => (
+                      {Array.from({ length: Math.max(0, PAGE_SIZE - transactions.length) }).map((_, idx) => (
                         <tr key={`filler-${idx}`} className="filler-row" aria-hidden="true">
                           <td colSpan={6}>&nbsp;</td>
                         </tr>
@@ -1203,6 +1272,26 @@ const loadHistory = (i: Instrument) => {
                   </table>
                 </div>
               )}
+              <div className="pager">
+                <button
+                  type="button"
+                  className="ghost-btn"
+                  disabled={txCursorStack.length === 0}
+                  onClick={prevTxPage}
+                  aria-label={t('pager.prev')}
+                >
+                  ‹
+                </button>
+                <button
+                  type="button"
+                  className="ghost-btn"
+                  disabled={txCursor == null}
+                  onClick={nextTxPage}
+                  aria-label={t('pager.next')}
+                >
+                  ›
+                </button>
+              </div>
             </div>
           </div>
 
@@ -1213,14 +1302,13 @@ const loadHistory = (i: Instrument) => {
               <div className="section-head">
                 <h2>{t('ledger.title')}</h2>
                 <span className="section-note">{t('ledger.note')}</span>
-                <Pager page={pastPaged.page} totalPages={pastPaged.totalPages} onChange={setPastPage} />
               </div>
 
               {pastOrders.length === 0 ? (
                 <div className="empty-state">{t('ledger.empty')}</div>
               ) : (
                 <OrderTable
-                  orders={pastPaged.items}
+                  orders={pastOrders}
                   pending={false}
                   now={now}
                   onCancel={cancelOrder}
@@ -1228,6 +1316,26 @@ const loadHistory = (i: Instrument) => {
                   replacing={replacing}
                 />
               )}
+              <div className="pager">
+                <button
+                  type="button"
+                  className="ghost-btn"
+                  disabled={ordersCursorStack.length === 0}
+                  onClick={prevOrdersPage}
+                  aria-label={t('pager.prev')}
+                >
+                  ‹
+                </button>
+                <button
+                  type="button"
+                  className="ghost-btn"
+                  disabled={ordersCursor == null}
+                  onClick={nextOrdersPage}
+                  aria-label={t('pager.next')}
+                >
+                  ›
+                </button>
+              </div>
             </div>
           </div>
 
