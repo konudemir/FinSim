@@ -11,11 +11,16 @@ namespace FinSim.Controllers
     public class UserController : ControllerBase
     {
         private readonly UserService _users;
+        private readonly InstrumentService _instruments;
 
         private Guid CurrentUserId =>
             Guid.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
 
-        public UserController(UserService users) => _users = users;
+        public UserController(UserService users, InstrumentService instruments)
+        {
+            _users = users;
+            _instruments = instruments;
+        }
 
         [HttpGet("balance")]
         public async Task<IActionResult> GetBalance(CancellationToken ct)
@@ -27,7 +32,16 @@ namespace FinSim.Controllers
         [HttpGet("portfolio")]
         public async Task<IActionResult> GetPortfolio(CancellationToken ct) =>
             Ok(await _users.GetPortfolioAsync(CurrentUserId, ct));
-            
+
+        [HttpGet("portfolio/board")]
+        public async Task<IActionResult> GetPortfolioBoard(
+            [FromQuery] string? sort,
+            [FromQuery] string? q,
+            [FromQuery] string? cursor,
+            [FromQuery] int? limit,
+            CancellationToken ct) =>
+            Ok(await _instruments.GetPortfolioBoardAsync(CurrentUserId, sort, q, cursor, limit, ct));
+
         [HttpGet("pnl-history")]
         public async Task<IActionResult> GetPnlHistory(
             [FromQuery] int days = 90, CancellationToken ct = default) =>

@@ -152,22 +152,6 @@ const countdown = (expiresAt: string, now: number): string | null => {
   return hours > 0 ? `${hours}h ${minutes}m` : `${minutes}m`
 }
 
-function filterSortInstruments(list: Instrument[], query: string, sort: string): Instrument[] {
-  const q = query.trim().toLocaleLowerCase('tr')
-  const filtered = q
-    ? list.filter(i =>
-        i.symbol.toLocaleLowerCase('tr').includes(q) ||
-        i.name.toLocaleLowerCase('tr').includes(q))
-    : list
-  const cmp: Record<string, (a: Instrument, b: Instrument) => number> = {
-    'symbol-asc':  (a, b) => a.symbol.localeCompare(b.symbol, 'tr'),
-    'symbol-desc': (a, b) => b.symbol.localeCompare(a.symbol, 'tr'),
-    'price-asc':   (a, b) => a.currentPrice - b.currentPrice,
-    'price-desc':  (a, b) => b.currentPrice - a.currentPrice,
-  }
-  return [...filtered].sort(cmp[sort])
-}
-
 export function paginate<T>(items: T[], page: number, pageSize = PAGE_SIZE) {
   const totalPages = Math.max(1, Math.ceil(items.length / pageSize))
   const clampedPage = Math.min(Math.max(page, 1), totalPages)
@@ -207,14 +191,22 @@ export function Pager({ page, totalPages, onChange }: { page: number; totalPages
   )
 }
 
-function useOrderPage(open: boolean) {
-  const [items, setItems] = useState<Order[]>([])
+/**
+ * Generic cursor-paged list: load/next/prev plus a cursor stack so "prev" can
+ * step back without a round trip that re-derives the previous page's cursor.
+ * `params` is read fresh on every call (not captured once) so callers can pass
+ * an object literal that changes across renders (sort, q, ...) — load() always
+ * fetches page 1 under the latest params, and reload() re-fetches whichever
+ * page is currently shown, without touching the cursor stack.
+ */
+function useCursorPage<T>(url: string, params: Record<string, unknown>) {
+  const [items, setItems] = useState<T[]>([])
   const [nextCursor, setNextCursor] = useState<string | null>(null)
   const [pageCursor, setPageCursor] = useState<string | null>(null)
   const [stack, setStack] = useState<(string | null)[]>([])
 
   const load = () =>
-    api.get<Paged<Order>>('/api/order', { params: { limit: PAGE_SIZE, open } })
+    api.get<Paged<T>>(url, { params: { ...params, cursor: undefined } })
       .then(r => {
         setItems(r.data.items)
         setNextCursor(r.data.nextCursor)
@@ -226,7 +218,7 @@ function useOrderPage(open: boolean) {
   const next = () => {
     if (!nextCursor) return
     const cursor = nextCursor
-    api.get<Paged<Order>>('/api/order', { params: { limit: PAGE_SIZE, open, cursor } })
+    api.get<Paged<T>>(url, { params: { ...params, cursor } })
       .then(r => {
         setStack(prev => [...prev, pageCursor])
         setItems(r.data.items)
@@ -239,7 +231,7 @@ function useOrderPage(open: boolean) {
   const prev = () => {
     if (stack.length === 0) return
     const prevCursor = stack[stack.length - 1]
-    api.get<Paged<Order>>('/api/order', { params: { limit: PAGE_SIZE, open, cursor: prevCursor ?? undefined } })
+    api.get<Paged<T>>(url, { params: { ...params, cursor: prevCursor ?? undefined } })
       .then(r => {
         setStack(p => p.slice(0, -1))
         setItems(r.data.items)
@@ -250,7 +242,7 @@ function useOrderPage(open: boolean) {
   }
 
   const reload = () =>
-    api.get<Paged<Order>>('/api/order', { params: { limit: PAGE_SIZE, open, cursor: pageCursor ?? undefined } })
+    api.get<Paged<T>>(url, { params: { ...params, cursor: pageCursor ?? undefined } })
       .then(r => {
         setItems(r.data.items)
         setNextCursor(r.data.nextCursor)
@@ -260,49 +252,20 @@ function useOrderPage(open: boolean) {
   return { items, nextCursor, stack, load, next, prev, reload }
 }
 
+function useOrderPage(open: boolean) {
+  return useCursorPage<Order>('/api/order', { limit: PAGE_SIZE, open })
+}
+
 function useBoardPage(sort: string, q: string) {
-  const [items, setItems] = useState<Instrument[]>([])
-  const [nextCursor, setNextCursor] = useState<string | null>(null)
-  const [pageCursor, setPageCursor] = useState<string | null>(null)
-  const [stack, setStack] = useState<(string | null)[]>([])
+  return useCursorPage<Instrument>('/api/instruments/board', { limit: MARKET_PAGE_SIZE, sort, q })
+}
 
-  const load = () =>
-    api.get<Paged<Instrument>>('/api/instruments/board', { params: { limit: MARKET_PAGE_SIZE, sort, q } })
-      .then(r => {
-        setItems(r.data.items)
-        setNextCursor(r.data.nextCursor)
-        setPageCursor(null)
-        setStack([])
-      })
-      .catch(console.error)
+function usePortfolioBoardPage(sort: string, q: string) {
+  return useCursorPage<Instrument>('/api/users/portfolio/board', { limit: PAGE_SIZE, sort, q })
+}
 
-  const next = () => {
-    if (!nextCursor) return
-    const cursor = nextCursor
-    api.get<Paged<Instrument>>('/api/instruments/board', { params: { limit: MARKET_PAGE_SIZE, sort, q, cursor } })
-      .then(r => {
-        setStack(prev => [...prev, pageCursor])
-        setItems(r.data.items)
-        setNextCursor(r.data.nextCursor)
-        setPageCursor(cursor)
-      })
-      .catch(console.error)
-  }
-
-  const prev = () => {
-    if (stack.length === 0) return
-    const prevCursor = stack[stack.length - 1]
-    api.get<Paged<Instrument>>('/api/instruments/board', { params: { limit: MARKET_PAGE_SIZE, sort, q, cursor: prevCursor ?? undefined } })
-      .then(r => {
-        setStack(p => p.slice(0, -1))
-        setItems(r.data.items)
-        setNextCursor(r.data.nextCursor)
-        setPageCursor(prevCursor)
-      })
-      .catch(console.error)
-  }
-
-  return { items, nextCursor, stack, load, next, prev }
+function useFavoritesBoardPage(sort: string) {
+  return useCursorPage<Instrument>('/api/favorites/board', { limit: PAGE_SIZE, sort })
 }
 
 function OrderTable({ orders, pending, now, onCancel, onReplace, replacing, minRows = PAGE_SIZE }: {
@@ -527,7 +490,6 @@ function Terminal({ onLogout }: { onLogout: () => void }) {
   const [marketMove, setMarketMove] = useState(0)
   const [favorites, setFavorites] = useState<Set<string>>(new Set())
   const [showFavorites, setShowFavorites] = useState(false)
-  const [favPage, setFavPage] = useState(1)
 // Must match MarketTickWorker.Every in src/FinSim.Api/BackgroundWorker.cs — the
 // worker writes one PriceHistory row per instrument at that cadence, and this
 // constant is how many seconds of real history each chart point represents.
@@ -594,23 +556,44 @@ const seeded = useRef<Set<string>>(new Set())
     if (menuCloseTimer.current !== null) window.clearTimeout(menuCloseTimer.current)
   }, [])
   const [query, setQuery] = useState('')
-  const [sort, setSort] = useState('symbol-asc')
+  const [sort, setSort] = useState('symbol_asc')
   const [marketQuery, setMarketQuery] = useState('')
   const [marketSort, setMarketSort] = useState('symbol_asc')
   const [debouncedMarketQuery, setDebouncedMarketQuery] = useState('')
+  const [debouncedQuery, setDebouncedQuery] = useState('')
+  // No sort control in the favorites panel (matches the pre-pagination UI) —
+  // symbol-asc via the board endpoint replaces the old client-side default sort.
+  const favSort = 'symbol_asc'
 
   useEffect(() => {
     const timer = window.setTimeout(() => setDebouncedMarketQuery(marketQuery), 300)
     return () => window.clearTimeout(timer)
   }, [marketQuery])
 
+  useEffect(() => {
+    const timer = window.setTimeout(() => setDebouncedQuery(query), 300)
+    return () => window.clearTimeout(timer)
+  }, [query])
+
   const board = useBoardPage(marketSort, debouncedMarketQuery)
+  const portfolioBoard = usePortfolioBoardPage(sort, debouncedQuery)
+  const favoritesBoard = useFavoritesBoardPage(favSort)
 
   useEffect(() => {
     board.load()
   }, [marketSort, debouncedMarketQuery])
 
-  const [portfolioPage, setPortfolioPage] = useState(1)
+  // Sort/query changes reset paging to page 1 — a cursor minted under the old
+  // sort or query wouldn't decode (or would decode against the wrong rows)
+  // under the new one anyway.
+  useEffect(() => {
+    portfolioBoard.load()
+  }, [sort, debouncedQuery])
+
+  useEffect(() => {
+    favoritesBoard.load()
+  }, [favSort])
+
   const loadTransactions = () =>
     api.get<Paged<Transaction>>('/api/transactions', { params: { limit: PAGE_SIZE } })
       .then(r => {
@@ -656,6 +639,10 @@ const seeded = useRef<Set<string>>(new Set())
         const map: Record<string, PortfolioItem> = {}
         for (const p of r.data) map[p.symbol] = p
         setPortfolio(map)
+        // A fill/cancel/replace can add or remove a row from the paged
+        // portfolio board; the current page's cursor no longer matches
+        // what the server would return, so it needs an explicit refetch.
+        portfolioBoard.reload()
       })
       .catch(console.error)
 
@@ -686,13 +673,18 @@ const seeded = useRef<Set<string>>(new Set())
     const req = isFav
       ? api.delete(`/api/favorites/${i.id}`)
       : api.post(`/api/favorites/${i.id}`)
-    req.catch(() => {
-      setFavorites(prev => {
-        const next = new Set(prev)
-        if (isFav) next.add(i.id); else next.delete(i.id)
-        return next
+    req
+      // The favorites board is paged server-side, so the toggle's membership
+      // change won't show up until the current page is re-fetched — a stale
+      // cursor would otherwise keep paging against the pre-toggle set.
+      .then(() => favoritesBoard.reload())
+      .catch(() => {
+        setFavorites(prev => {
+          const next = new Set(prev)
+          if (isFav) next.add(i.id); else next.delete(i.id)
+          return next
+        })
       })
-    })
   }
 
   useEffect(() => {
@@ -756,6 +748,9 @@ const seeded = useRef<Set<string>>(new Set())
       const map: Record<string, PortfolioItem> = {}
       for (const item of p.portfolio) map[item.symbol] = item
       setPortfolio(map)
+      // Same reasoning as loadPortfolio(): a fill pushed over SignalR can
+      // change portfolio membership, so the current board page is stale.
+      portfolioBoard.reload()
 
       // Marj çağrısıyla zorla kapatılan pozisyonlar aynı push'ta gelir —
       // bu, özelliğin var olma sebebi, kaçırılmamalı.
@@ -995,17 +990,8 @@ const loadHistory = (i: Instrument) => {
     return { ...i, pct }
   })
 
-  const portfolioInstruments = useMemo(
-    () => filterSortInstruments(instruments.filter(i => portfolio[i.symbol]), query, sort),
-    [instruments, portfolio, query, sort]
-  )
-  const favoriteInstruments = useMemo(
-    () => filterSortInstruments(instruments.filter(i => favorites.has(i.id)), '', 'symbol-asc'),
-    [instruments, favorites]
-  )
-
-  const portfolioPaged = paginate(portfolioInstruments, portfolioPage)
-  const favPaged = paginate(favoriteInstruments, favPage)
+  const portfolioInstruments = portfolioBoard.items
+  const favoriteInstruments = favoritesBoard.items
   const marketLeft = board.items.slice(0, MARKET_PAGE_SIZE / 2)
   const marketRight = board.items.slice(MARKET_PAGE_SIZE / 2)
 
@@ -1399,24 +1385,43 @@ const loadHistory = (i: Instrument) => {
                 )}
               </div>
               <select className="field-input" value={sort} onChange={e => setSort(e.target.value)}>
-                <option value="symbol-asc">{t('sort.symbolAsc')}</option>
-                <option value="symbol-desc">{t('sort.symbolDesc')}</option>
-                <option value="price-desc">{t('sort.priceDesc')}</option>
-                <option value="price-asc">{t('sort.priceAsc')}</option>
+                <option value="symbol_asc">{t('sort.symbolAsc')}</option>
+                <option value="symbol_desc">{t('sort.symbolDesc')}</option>
+                <option value="price_desc">{t('sort.priceDesc')}</option>
+                <option value="price_asc">{t('sort.priceAsc')}</option>
               </select>
             </div>
 
             <div className="section-head">
               <h2>{t('board.portfolioTitle')}</h2>
               <span className="section-note">{t('board.portfolioNote', { n: portfolioInstruments.length })}</span>
-              <Pager page={portfolioPaged.page} totalPages={portfolioPaged.totalPages} onChange={setPortfolioPage} />
+              <div className="pager">
+                <button
+                  type="button"
+                  className="ghost-btn"
+                  disabled={portfolioBoard.stack.length === 0}
+                  onClick={portfolioBoard.prev}
+                  aria-label={t('pager.prev')}
+                >
+                  ‹
+                </button>
+                <button
+                  type="button"
+                  className="ghost-btn"
+                  disabled={portfolioBoard.nextCursor == null}
+                  onClick={portfolioBoard.next}
+                  aria-label={t('pager.next')}
+                >
+                  ›
+                </button>
+              </div>
             </div>
 
             {portfolioInstruments.length === 0 ? (
               <div className="empty-state">{query ? t('search.noResults') : t('board.portfolioEmpty')}</div>
             ) : (
               <div className="board">
-                {portfolioPaged.items.map(i => (
+                {portfolioInstruments.map(i => (
                   <InstrumentRow
                     key={i.id}
                     i={i}
@@ -1430,7 +1435,7 @@ const loadHistory = (i: Instrument) => {
                     onExpand={() => openFullscreen(i)}
                   />
                 ))}
-                {Array.from({ length: Math.max(0, PAGE_SIZE - portfolioPaged.items.length) }).map((_, idx) => (
+                {Array.from({ length: Math.max(0, PAGE_SIZE - portfolioInstruments.length) }).map((_, idx) => (
                   <div className="row" key={`filler-${idx}`} aria-hidden="true">
                     <div className="row-head" style={{ visibility: 'hidden' }}>
                       <span className="row-sym">&nbsp;</span>
@@ -1606,7 +1611,7 @@ const loadHistory = (i: Instrument) => {
               ) : (
                 <>
                   <div className="board">
-                    {favPaged.items.map(i => (
+                    {favoriteInstruments.map(i => (
                       <InstrumentRow
                         key={i.id}
                         i={i}
@@ -1621,7 +1626,26 @@ const loadHistory = (i: Instrument) => {
                       />
                     ))}
                   </div>
-                  <Pager page={favPaged.page} totalPages={favPaged.totalPages} onChange={setFavPage} />
+                  <div className="pager">
+                    <button
+                      type="button"
+                      className="ghost-btn"
+                      disabled={favoritesBoard.stack.length === 0}
+                      onClick={favoritesBoard.prev}
+                      aria-label={t('pager.prev')}
+                    >
+                      ‹
+                    </button>
+                    <button
+                      type="button"
+                      className="ghost-btn"
+                      disabled={favoritesBoard.nextCursor == null}
+                      onClick={favoritesBoard.next}
+                      aria-label={t('pager.next')}
+                    >
+                      ›
+                    </button>
+                  </div>
                 </>
               )}
             </div>

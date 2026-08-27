@@ -18,5 +18,13 @@ namespace FinSim.Application.Interfaces
             string sort, string? q,
             decimal? afterPrice, string? afterSymbol, Guid? afterId,
             int limit, CancellationToken ct);
+        Task<List<Instrument>> GetPortfolioBoardPagedAsync(
+            Guid userId, string sort, string? q,
+            decimal? afterPrice, string? afterSymbol, Guid? afterId,
+            int limit, CancellationToken ct);
+        Task<List<Instrument>> GetFavoritesBoardPagedAsync(
+            Guid userId, string sort,
+            decimal? afterPrice, string? afterSymbol, Guid? afterId,
+            int limit, CancellationToken ct);
     }
 }
