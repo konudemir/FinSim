@@ -1957,33 +1957,172 @@ input  { font-family: var(--mono); }
   /* Lighter than --veil (used by confirmation modals) — this should read as
      "the board dimmed behind an expanded chart", not a hard interruption. */
   background: rgba(0, 0, 0, 0.28);
+  backdrop-filter: blur(3px);
+  animation: fs-fade-in 0.18s ease;
 }
 
 .instrument-fullscreen-panel {
+  position: relative;
   display: flex;
   flex-direction: column;
-  width: 85vw;
-  height: 85vh;
+  width: 90vw;
+  height: 90vh;
   border: 1px solid var(--edge);
-  background: var(--panel);
-  border-radius: 6px;
-  box-shadow: 0 24px 60px -24px rgba(0, 0, 0, 0.55), var(--lift);
+  background:
+    radial-gradient(120% 60% at 100% 0%, var(--fs-tint) 0%, transparent 55%),
+    var(--panel);
+  border-radius: 14px;
+  box-shadow: 0 40px 100px -30px rgba(0, 0, 0, 0.65), var(--lift);
   overflow: hidden;
+  animation: fs-rise-in 0.22s cubic-bezier(0.19, 1, 0.22, 1);
 }
 
-.instrument-fullscreen-head {
+.instrument-fullscreen-panel[data-trend="up"]   { --fs-tint: var(--ok-bg); }
+.instrument-fullscreen-panel[data-trend="down"] { --fs-tint: var(--alarm-bg); }
+
+/* Soft ambient glow, tinted by the day's trend — purely decorative, sits
+   behind everything else in the panel. */
+.fs-glow {
+  position: absolute;
+  top: -30%;
+  right: -10%;
+  width: 60%;
+  height: 70%;
+  z-index: 0;
+  pointer-events: none;
+  background: radial-gradient(closest-side, var(--fs-tint), transparent 70%);
+  filter: blur(40px);
+  opacity: 0.8;
+}
+
+.fs-head {
+  position: relative;
+  z-index: 1;
   display: flex;
   align-items: center;
+  gap: 16px;
   flex: 0 0 auto;
+  padding: 22px 26px;
   border-bottom: var(--rail);
 }
 
-.instrument-fullscreen-head .row-line { flex: 1; align-items: center; }
-.instrument-fullscreen-head .row-head { padding: 14px 16px; }
-.instrument-fullscreen-head .row-name { flex: 1; }
-.instrument-fullscreen-head > .row-line > .ghost-btn { margin-right: 14px; flex: 0 0 auto; }
+.fs-fav {
+  flex: 0 0 auto;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--panel) 60%, transparent);
+  font-size: 17px;
+}
+
+.fs-title {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.fs-sym-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.fs-sym {
+  font-family: var(--serif);
+  font-size: 30px;
+  font-weight: 800;
+  letter-spacing: 0.01em;
+  line-height: 1;
+}
+
+.fs-name {
+  font-size: 12.5px;
+  color: var(--faint);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.fs-price-block {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
+  margin-left: auto;
+  padding: 4px 10px;
+  border-radius: 6px;
+}
+
+.fs-price {
+  font-family: var(--mono);
+  font-size: 32px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  line-height: 1;
+}
+
+.fs-change {
+  font-family: var(--mono);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.fs-price-block[data-tick="up"]   { animation: flash-up 0.9s ease-out; }
+.fs-price-block[data-tick="down"] { animation: flash-down 0.9s ease-out; }
+
+.fs-close {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  padding: 0;
+  border-radius: 50%;
+  font-size: 18px;
+  line-height: 1;
+}
+
+.fs-stats {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0;
+  padding: 0 26px;
+  border-bottom: var(--rail);
+}
+
+.fs-stat {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  padding: 14px 22px 14px 0;
+  margin-right: 22px;
+  border-right: 1px solid var(--edge);
+}
+.fs-stat:last-child { border-right: none; margin-right: 0; }
+
+.fs-stat-label {
+  font-family: var(--mono);
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--faint);
+}
+
+.fs-stat-value {
+  font-family: var(--mono);
+  font-size: 15px;
+  font-weight: 600;
+}
+.fs-stat-value.rise { color: var(--rise); }
+.fs-stat-value.fall { color: var(--fall); }
 
 .instrument-fullscreen-body {
+  position: relative;
+  z-index: 1;
   flex: 1 1 auto;
   display: flex;
   flex-direction: column;
@@ -1994,22 +2133,68 @@ input  { font-family: var(--mono); }
   position: relative;
   flex: 1 1 auto;
   min-height: 220px;
-  margin: 20px 24px 0;
+  margin: 8px 10px 0;
+  border-radius: 10px;
+  background:
+    linear-gradient(180deg, transparent, color-mix(in srgb, var(--panel) 40%, transparent) 100%),
+    repeating-linear-gradient(180deg, transparent, transparent 24px, color-mix(in srgb, var(--edge) 35%, transparent) 25px);
 }
 
 .fullscreen-spark {
   position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
+  inset: 14px 20px;
+  width: calc(100% - 40px);
+  height: calc(100% - 28px);
 }
-.fullscreen-spark .spark-svg { opacity: 0.6; }
-[data-theme="day"] .fullscreen-spark .spark-svg { opacity: 0.45; }
+.fullscreen-spark .spark-svg { opacity: 0.85; }
+[data-theme="day"] .fullscreen-spark .spark-svg { opacity: 0.7; }
+.fullscreen-spark .spark-tip {
+  font-size: 12px;
+  padding: 5px 9px;
+}
+
+.fs-chart-empty {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--faint);
+  font-family: var(--mono);
+  font-size: 12px;
+  letter-spacing: 0.04em;
+}
 
 .fullscreen-ticket {
+  position: relative;
+  z-index: 1;
   margin-top: auto;
   border-top: var(--rail);
-  padding: 16px 20px;
+  padding: 18px 26px;
+  background: color-mix(in srgb, var(--panel) 55%, transparent);
+  backdrop-filter: blur(10px);
+}
+
+@keyframes fs-fade-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+@keyframes fs-rise-in {
+  from { opacity: 0; transform: translateY(10px) scale(0.985); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .instrument-fullscreen-backdrop,
+  .instrument-fullscreen-panel { animation: none; }
+}
+
+@media (max-width: 860px) {
+  .fs-head { flex-wrap: wrap; padding: 18px 18px; }
+  .fs-price-block { align-items: flex-start; margin-left: 0; }
+  .fs-stats { padding: 0 18px; }
+  .fs-stat { padding: 12px 16px 12px 0; margin-right: 16px; }
 }
 
 @media (prefers-reduced-motion: reduce) {
