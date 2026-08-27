@@ -1,4 +1,5 @@
 using FinSim.Domain.Models;
+using FinSim.Domain.Models.Enums;
 
 namespace FinSim.Application.Interfaces
 {
@@ -9,11 +10,15 @@ namespace FinSim.Application.Interfaces
         Task<List<Order>> GetPendingByInstrumentAsync(Guid instrumentId, CancellationToken ct);
         Task<List<Order>> GetOpenBookAsync(Guid instrumentId, CancellationToken ct);
         Task<Order?> GetByIdAsync(Guid id, CancellationToken ct);
-        Task<List<Order>> GetRecentByUserAsync(Guid userId, int take, CancellationToken ct);
         Task<List<Order>> GetExpiredPendingAsync(DateTimeOffset now, CancellationToken ct);
         void Add(Order order);
         Task SaveChangesAsync(CancellationToken ct);
 
         Task<bool> TrySaveChangesAsync(CancellationToken ct);
+
+        Task<List<Order>> GetByUserPagedAsync(
+        Guid userId, bool? openOnly,
+        DateTimeOffset? afterTs, Guid? afterId,
+        int limit, CancellationToken ct);
     }
 }

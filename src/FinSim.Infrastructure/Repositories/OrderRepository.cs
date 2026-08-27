@@ -48,14 +48,6 @@ namespace FinSim.Infrastructure.Repositories
         public Task<Order?> GetByIdAsync(Guid id, CancellationToken ct) =>
             _db.Orders.FirstOrDefaultAsync(o => o.Id == id, ct);
 
-        public Task<List<Order>> GetRecentByUserAsync(Guid userId, int take, CancellationToken ct) =>
-            _db.Orders
-                .Where(o => o.UserId == userId
-                         && o.Status != OrderStatus.Pending)
-                .OrderByDescending(o => o.CreatedAt)
-                .Take(take)
-                .ToListAsync(ct);
-
         public void Add(Order order) => _db.Orders.Add(order);
 
         public Task SaveChangesAsync(CancellationToken ct) => _db.SaveChangesAsync(ct);
@@ -73,5 +65,29 @@ namespace FinSim.Infrastructure.Repositories
                 return false;   // someone else modified the order first
             }
         }
+
+        public Task<List<Order>> GetByUserPagedAsync(
+        Guid userId, bool? openOnly,
+        DateTimeOffset? afterTs, Guid? afterId,
+        int limit, CancellationToken ct)
+    {
+        var q = _db.Orders.Where(o => o.UserId == userId);
+
+        if (openOnly == true)
+            q = q.Where(o => o.Status == OrderStatus.Pending
+                        || o.Status == OrderStatus.PartiallyFilled);
+        else if (openOnly == false)
+            q = q.Where(o => o.Status != OrderStatus.Pending
+                        && o.Status != OrderStatus.PartiallyFilled);
+
+        if (afterTs is not null && afterId is not null)
+            q = q.Where(o => o.CreatedAt < afterTs
+                        || (o.CreatedAt == afterTs && o.Id.CompareTo(afterId.Value) < 0));
+
+        return q.OrderByDescending(o => o.CreatedAt)
+                .ThenByDescending(o => o.Id)
+                .Take(limit + 1)
+                .ToListAsync(ct);
+    }
     }
 }

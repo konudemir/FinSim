@@ -1,5 +1,6 @@
 using FinSim.Application.Dtos;
 using FinSim.Application.Interfaces;
+using FinSim.Application.Pagination;
 using FinSim.Domain.Models;
 using FinSim.Domain.Models.Enums;
 
@@ -209,24 +210,46 @@ public class OrderService
             expiryDays, expiryHours, expiryMinutes, replacedFromOrderId: order.Id);
     }
 
-    public async Task<List<OrderDto>> GetRecentAsync(Guid userId, CancellationToken ct)
+    public async Task<PagedResult<OrderDto>> GetRecentAsync(
+        Guid userId, bool? openOnly, string? cursor, int? limit, CancellationToken ct)
     {
-        var pending = await _orders.GetPendingByUserAsync(userId, ct);
-        var orders = pending
-            .Concat(await _orders.GetRecentByUserAsync(userId, 50, ct))
-            .DistinctBy(o => o.Id)
-            .ToList();
-        if (orders.Count == 0) return [];
+        var Sort = openOnly switch
+        {
+            true  => "orders_open_desc",
+            false => "orders_closed_desc",
+            null  => "orders_all_desc"
+        };
+        var take = Cursor.ClampLimit(limit);
 
-var instruments = (await _instruments.GetActiveAsync(ct)).ToDictionary(i => i.Id);
-        var totals = await _transactions.GetTotalsByOrderIdsAsync(orders.Select(o => o.Id), ct);
+        DateTimeOffset? ts = null;
+        Guid? id = null;
+        if (Cursor.TryDecode(cursor, Sort, out var dts, out var did))
+        {
+            ts = dts;
+            id = did;
+        }
 
-        return orders.Select(o => OrderDtoMapper.ToDto(
+        var rows = await _orders.GetByUserPagedAsync(userId, openOnly, ts, id, take, ct);
+
+        var hasMore = rows.Count > take;
+        if (hasMore) rows.RemoveAt(rows.Count - 1);
+        if (rows.Count == 0) return new PagedResult<OrderDto>([], null);
+
+        var instruments = (await _instruments.GetActiveAsync(ct)).ToDictionary(i => i.Id);
+        var totals = await _transactions.GetTotalsByOrderIdsAsync(rows.Select(o => o.Id), ct);
+
+        var items = rows.Select(o => OrderDtoMapper.ToDto(
             o,
             instruments.TryGetValue(o.InstrumentId, out var i) ? i.Symbol! : "?",
-            lockedAmount: (o.Status == OrderStatus.Pending || o.Status == OrderStatus.PartiallyFilled) && o.Direction == OrderDirection.Buy
+            lockedAmount: (o.Status == OrderStatus.Pending || o.Status == OrderStatus.PartiallyFilled)
+                        && o.Direction == OrderDirection.Buy
                 ? o.LockedAmount
                 : null,
             executedAmount: totals.TryGetValue(o.Id, out var spent) ? spent : null)).ToList();
+
+        var last = rows[^1];
+        return new PagedResult<OrderDto>(
+            items,
+            hasMore ? Cursor.Encode(Sort, last.CreatedAt, last.Id) : null);
     }
 }

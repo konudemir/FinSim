@@ -116,5 +116,52 @@ namespace FinSim.Infrastructure.Repositories
                 .Select(g => Math.Round(g.Avg * 10_000m, 2))
                 .ToList();
         }
+
+        public Task<List<Instrument>> GetBoardPagedAsync(
+            string sort, string? q,
+            decimal? afterPrice, string? afterSymbol, Guid? afterId,
+            int limit, CancellationToken ct)
+        {
+            var qry = _db.Instruments
+                .Where(i => i.IsActive && i.Type == InstrumentType.Stock);
+
+            if (!string.IsNullOrWhiteSpace(q))
+            {
+                var pattern = $"%{q.Trim()}%";
+                qry = qry.Where(i => EF.Functions.ILike(i.Symbol, pattern)
+                                || EF.Functions.ILike(i.Name, pattern));
+            }
+
+            switch (sort)
+            {
+                case "price_asc":
+                    if (afterPrice is not null && afterId is not null)
+                        qry = qry.Where(i => i.CurrentPrice > afterPrice
+                                        || (i.CurrentPrice == afterPrice && i.Id.CompareTo(afterId.Value) > 0));
+                    qry = qry.OrderBy(i => i.CurrentPrice).ThenBy(i => i.Id);
+                    break;
+
+                case "price_desc":
+                    if (afterPrice is not null && afterId is not null)
+                        qry = qry.Where(i => i.CurrentPrice < afterPrice
+                                        || (i.CurrentPrice == afterPrice && i.Id.CompareTo(afterId.Value) < 0));
+                    qry = qry.OrderByDescending(i => i.CurrentPrice).ThenByDescending(i => i.Id);
+                    break;
+
+                case "symbol_desc":
+                    if (afterSymbol is not null)
+                        qry = qry.Where(i => string.Compare(i.Symbol, afterSymbol) < 0);
+                    qry = qry.OrderByDescending(i => i.Symbol);
+                    break;
+
+                default: // symbol_asc
+                    if (afterSymbol is not null)
+                        qry = qry.Where(i => string.Compare(i.Symbol, afterSymbol) > 0);
+                    qry = qry.OrderBy(i => i.Symbol);
+                    break;
+            }
+
+            return qry.Take(limit + 1).ToListAsync(ct);
+        }
     }
 }

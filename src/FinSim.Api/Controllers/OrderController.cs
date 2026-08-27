@@ -2,6 +2,7 @@ using System.Security.Claims;
 using FinSim.Application.Dtos;
 using FinSim.Application.Services;
 using FinSim.Domain.Dtos;
+using FinSim.Domain.Models.Enums;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -57,8 +58,12 @@ namespace FinSim.Controllers
         }
 
         [HttpGet]
-        public async Task<IActionResult> GetOrders(CancellationToken ct) =>
-            Ok(await _orders.GetRecentAsync(CurrentUserId, ct));
+        public async Task<IActionResult> GetOrders(
+            [FromQuery] bool? open,
+            [FromQuery] string? cursor,
+            [FromQuery] int? limit,
+            CancellationToken ct) =>
+            Ok(await _orders.GetRecentAsync(CurrentUserId, open, cursor, limit, ct));
 
         private IActionResult ToError(OrderResult result) => result switch
         {

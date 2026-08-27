@@ -113,6 +113,8 @@ namespace FinSim.Infrastructure.Data
                  .WithOne(h => h.Fund)
                  .HasForeignKey(h => h.FundId)
                  .OnDelete(DeleteBehavior.Cascade);
+                e.HasIndex(i => i.Symbol).IsUnique();
+                e.HasIndex(i => new { i.CurrentPrice, i.Id });
                 e.Property(i => i.BasePrice).HasPrecision(18, 2);
                 e.Property(i => i.CurrentPrice).HasPrecision(18, 2);
                 e.Property(i => i.LastRealPrice).HasPrecision(18, 4);
@@ -145,6 +147,7 @@ namespace FinSim.Infrastructure.Data
                 e.Property(o => o.LockedAmount).HasPrecision(18, 2);
 
                 e.HasIndex(o => o.Status);
+                e.HasIndex(o => new { o.UserId, o.CreatedAt, o.Id });
             });
 
             modelBuilder.Entity<Transaction>(e =>
@@ -157,6 +160,9 @@ namespace FinSim.Infrastructure.Data
                 e.HasIndex(t => new { t.InstrumentId, t.TransactionDate });
                 e.HasIndex(t => t.BuyerUserId);
                 e.HasIndex(t => t.SellerUserId);
+
+                e.HasIndex(t => new { t.BuyerUserId, t.TransactionDate, t.Id });
+                e.HasIndex(t => new { t.SellerUserId, t.TransactionDate, t.Id });
 
                 e.HasOne(t => t.BuyerOrder)
                  .WithMany()

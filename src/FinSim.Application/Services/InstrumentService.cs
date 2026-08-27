@@ -3,6 +3,7 @@ using FinSim.Domain.Models;
 using FinSim.Domain.Models.Enums;
 namespace FinSim.Application.Services;
 using FinSim.Domain.Dtos;
+using FinSim.Application.Pagination;
 
 public class InstrumentService
 {
@@ -33,6 +34,61 @@ public class InstrumentService
         _unitOfWork = unitOfWork;
         _notifier = notifier;
         _matcher = matcher;
+    }
+
+    public async Task<PagedResult<Instrument>> GetBoardAsync(
+        string? sort, string? q, string? cursor, int? limit, CancellationToken ct)
+    {
+        // Normalise first: an unrecognised sort must resolve to the same value
+        // the repo will fall back to, or the cursor we mint here won't decode
+        // against the sort the next request computes.
+        var normalised = sort switch
+        {
+            "price_asc"   => "price_asc",
+            "price_desc"  => "price_desc",
+            "symbol_desc" => "symbol_desc",
+            _             => "symbol_asc"
+        };
+
+        var take = Cursor.ClampLimit(limit);
+        var byPrice = normalised is "price_asc" or "price_desc";
+
+        decimal? afterPrice = null;
+        string? afterSymbol = null;
+        Guid? afterId = null;
+
+        if (byPrice)
+        {
+            if (Cursor.TryDecodeDecimal(cursor, normalised, out var p, out var pid))
+            {
+                afterPrice = p;
+                afterId = pid;
+            }
+        }
+        else
+        {
+            if (Cursor.TryDecodeString(cursor, normalised, out var s, out var sid))
+            {
+                afterSymbol = s;
+                afterId = sid;
+            }
+        }
+
+        var rows = await _instruments.GetBoardPagedAsync(
+            normalised, q, afterPrice, afterSymbol, afterId, take, ct);
+
+        var hasMore = rows.Count > take;
+        if (hasMore) rows.RemoveAt(rows.Count - 1);
+        if (rows.Count == 0) return new PagedResult<Instrument>([], null);
+
+        var last = rows[^1];
+        var next = hasMore
+            ? byPrice
+                ? Cursor.EncodeDecimal(normalised, last.CurrentPrice, last.Id)
+                : Cursor.EncodeString(normalised, last.Symbol, last.Id)
+            : null;
+
+        return new PagedResult<Instrument>(rows, next);
     }
 
     private static decimal Money(decimal value) =>

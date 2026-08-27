@@ -3,6 +3,7 @@ using System;
 using FinSim.Infrastructure.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 
@@ -11,9 +12,11 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace FinSim.Infrastructure.Migrations
 {
     [DbContext(typeof(FinSimDbContext))]
-    partial class FinSimDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260827074548_InstrumentSearchIndexes")]
+    partial class InstrumentSearchIndexes
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -324,9 +327,9 @@ namespace FinSim.Infrastructure.Migrations
 
                     b.HasIndex("Status");
 
-                    b.HasIndex("Status", "ExpiresAt");
+                    b.HasIndex("UserId");
 
-                    b.HasIndex("UserId", "CreatedAt", "Id");
+                    b.HasIndex("Status", "ExpiresAt");
 
                     b.ToTable("Orders");
                 });
@@ -491,10 +494,6 @@ namespace FinSim.Infrastructure.Migrations
                     b.HasIndex("SellerUserId");
 
                     b.HasIndex("InstrumentId", "TransactionDate");
-
-                    b.HasIndex("BuyerUserId", "TransactionDate", "Id");
-
-                    b.HasIndex("SellerUserId", "TransactionDate", "Id");
 
                     b.ToTable("Transactions");
                 });
