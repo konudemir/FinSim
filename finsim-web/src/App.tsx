@@ -1640,72 +1640,16 @@ const loadHistory = (i: Instrument) => {
       )}
 
       {fullscreenInstrument && (
-        <div className="instrument-fullscreen-backdrop" onClick={() => setFullscreenInstrumentId(null)}>
-          <div className="instrument-fullscreen-panel" onClick={e => e.stopPropagation()}>
-            <div className="instrument-fullscreen-head">
-              <div className="row-line">
-                <button
-                  type="button"
-                  className="row-fav"
-                  aria-pressed={favorites.has(fullscreenInstrument.id)}
-                  aria-label={t(favorites.has(fullscreenInstrument.id) ? 'board.unfavorite' : 'board.favorite')}
-                  onClick={() => toggleFavorite(fullscreenInstrument)}
-                >
-                  {favorites.has(fullscreenInstrument.id) ? '♥' : '♡'}
-                </button>
-                <div className="row-head" data-inactive={!fullscreenInstrument.isActive} style={{ cursor: 'default' }}>
-                  <span className="row-sym">{fullscreenInstrument.symbol}</span>
-                  {fullscreenInstrument.type === 'Fund' && (
-                    <span className="fund-badge">{t('board.fundBadge')}</span>
-                  )}
-                  {fullscreenPos?.isShort && <span className="short-badge">{t('board.shortBadge')}</span>}
-                  <span className="row-name">{fullscreenInstrument.name}</span>
-                  <div className="row-pos">
-                    {fullscreenPos ? (
-                      <>
-                        <span>
-                          {fullscreenPos.isShort
-                            ? t('board.shortLots', { n: Math.abs(fullscreenPos.totalQuantity) })
-                            : t('board.lots', { n: fullscreenPos.totalQuantity })}
-                        </span>
-                        {fullscreenPos.lockedQuantity > 0 && (
-                          <span className="locked">{t('board.locked', { n: fullscreenPos.lockedQuantity })}</span>
-                        )}
-                        <span className="avg-cost">{t('board.avgCost', { n: fmt(fullscreenPos.averageCost) })}</span>
-                        <span className={dirOf(fullscreenPos.profitLoss)}>{signed(fullscreenPos.profitLoss)}</span>
-                      </>
-                    ) : (
-                      !fullscreenInstrument.isActive && <span className="empty">{t('board.closed')}</span>
-                    )}
-                  </div>
-                  <span
-                    className="row-px"
-                    data-tick={ticks[fullscreenInstrument.symbol]}
-                    key={fullscreenInstrument.currentPrice}
-                  >
-                    {fmt(fullscreenInstrument.currentPrice)}
-                  </span>
-                </div>
-                <button
-                  type="button"
-                  className="ghost-btn"
-                  onClick={() => setFullscreenInstrumentId(null)}
-                  aria-label={t('app.close')}
-                >
-                  ×
-                </button>
-              </div>
-            </div>
-            <div className="instrument-fullscreen-body">
-              <div className="instrument-fullscreen-chart">
-                <AreaSpark data={fullscreenHistory} className="fullscreen-spark" />
-              </div>
-              <div className="ticket-in fullscreen-ticket">
-                {renderTicketFields('fullscreen-ticket')}
-              </div>
-            </div>
-          </div>
-        </div>
+        <InstrumentFullscreen
+          i={fullscreenInstrument}
+          pos={fullscreenPos}
+          tick={ticks[fullscreenInstrument.symbol]}
+          history={fullscreenHistory}
+          isFavorite={favorites.has(fullscreenInstrument.id)}
+          onToggleFavorite={() => toggleFavorite(fullscreenInstrument)}
+          onClose={() => setFullscreenInstrumentId(null)}
+          renderTicketFields={renderTicketFields}
+        />
       )}
     </div>
   )
@@ -1933,6 +1877,110 @@ function AreaSpark({ data, className }: { data: PricePoint[]; className: string 
   )
 }
 
+
+function InstrumentFullscreen({
+  i, pos, tick, history, isFavorite, onToggleFavorite, onClose, renderTicketFields,
+}: {
+  i: Instrument
+  pos: PortfolioItem | undefined
+  tick: Tick | undefined
+  history: PricePoint[]
+  isFavorite: boolean
+  onToggleFavorite: () => void
+  onClose: () => void
+  renderTicketFields: (idPrefix: string) => React.ReactNode
+}) {
+  const { t } = useLang()
+
+  const open = history[0]?.price ?? i.currentPrice
+  const prices = history.length ? history.map(p => p.price) : [i.currentPrice]
+  const high = Math.max(...prices, i.currentPrice)
+  const low = Math.min(...prices, i.currentPrice)
+  const volume = history.reduce((sum, p) => sum + p.volume, 0)
+  const change = i.currentPrice - open
+  const changePct = open ? (change / open) * 100 : 0
+  const rising = change >= 0
+
+  return (
+    <div className="instrument-fullscreen-backdrop" onClick={onClose}>
+      <div className="instrument-fullscreen-panel" data-trend={rising ? 'up' : 'down'} onClick={e => e.stopPropagation()}>
+        <div className="fs-glow" aria-hidden="true" />
+
+        <div className="fs-head">
+          <button
+            type="button"
+            className="row-fav fs-fav"
+            aria-pressed={isFavorite}
+            aria-label={t(isFavorite ? 'board.unfavorite' : 'board.favorite')}
+            onClick={onToggleFavorite}
+          >
+            {isFavorite ? '♥' : '♡'}
+          </button>
+
+          <div className="fs-title">
+            <div className="fs-sym-row">
+              <span className="fs-sym">{i.symbol}</span>
+              {i.type === 'Fund' && <span className="fund-badge">{t('board.fundBadge')}</span>}
+              {pos?.isShort && <span className="short-badge">{t('board.shortBadge')}</span>}
+              {!i.isActive && <span className="empty">{t('board.closed')}</span>}
+            </div>
+            <span className="fs-name">{i.name}</span>
+          </div>
+
+          <div className="fs-price-block" data-tick={tick} key={i.currentPrice}>
+            <span className="fs-price">{fmt(i.currentPrice)}</span>
+            <span className={`fs-change ${dirOf(change)}`}>
+              {rising ? '▲' : '▼'} {signed(change)} ({changePct >= 0 ? '+' : ''}{changePct.toFixed(2)}%)
+            </span>
+          </div>
+
+          <button type="button" className="ghost-btn fs-close" onClick={onClose} aria-label={t('app.close')}>
+            ×
+          </button>
+        </div>
+
+        <div className="fs-stats">
+          <div className="fs-stat">
+            <span className="fs-stat-label">{t('fs.open')}</span>
+            <span className="fs-stat-value">{fmt(open)}</span>
+          </div>
+          <div className="fs-stat">
+            <span className="fs-stat-label">{t('fs.high')}</span>
+            <span className="fs-stat-value rise">{fmt(high)}</span>
+          </div>
+          <div className="fs-stat">
+            <span className="fs-stat-label">{t('fs.low')}</span>
+            <span className="fs-stat-value fall">{fmt(low)}</span>
+          </div>
+          <div className="fs-stat">
+            <span className="fs-stat-label">{t('fs.volume')}</span>
+            <span className="fs-stat-value">{volume.toLocaleString('tr-TR')}</span>
+          </div>
+          {pos && (
+            <div className="fs-stat">
+              <span className="fs-stat-label">
+                {pos.isShort
+                  ? t('board.shortLots', { n: Math.abs(pos.totalQuantity) })
+                  : t('board.lots', { n: pos.totalQuantity })}
+              </span>
+              <span className={`fs-stat-value ${dirOf(pos.profitLoss)}`}>{signed(pos.profitLoss)}</span>
+            </div>
+          )}
+        </div>
+
+        <div className="instrument-fullscreen-body">
+          <div className="instrument-fullscreen-chart">
+            <AreaSpark data={history} className="fullscreen-spark" />
+            {history.length < 2 && <div className="fs-chart-empty">{t('fs.loading')}</div>}
+          </div>
+          <div className="ticket-in fullscreen-ticket">
+            {renderTicketFields('fullscreen-ticket')}
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
 
 const Tape = memo(function Tape({ items }: { items: { id: string; symbol: string; currentPrice: number; pct: number }[] }) {
   const tintOf = (pct: number) => {
