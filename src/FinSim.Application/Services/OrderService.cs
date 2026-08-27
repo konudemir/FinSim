@@ -211,9 +211,14 @@ public class OrderService
     }
 
     public async Task<PagedResult<OrderDto>> GetRecentAsync(
-        Guid userId, OrderStatus? status, string? cursor, int? limit, CancellationToken ct)
+        Guid userId, bool? openOnly, string? cursor, int? limit, CancellationToken ct)
     {
-        const string Sort = "orders_created_desc";
+        var Sort = openOnly switch
+        {
+            true  => "orders_open_desc",
+            false => "orders_closed_desc",
+            null  => "orders_all_desc"
+        };
         var take = Cursor.ClampLimit(limit);
 
         DateTimeOffset? ts = null;
@@ -224,7 +229,7 @@ public class OrderService
             id = did;
         }
 
-        var rows = await _orders.GetByUserPagedAsync(userId, status, ts, id, take, ct);
+        var rows = await _orders.GetByUserPagedAsync(userId, openOnly, ts, id, take, ct);
 
         var hasMore = rows.Count > take;
         if (hasMore) rows.RemoveAt(rows.Count - 1);

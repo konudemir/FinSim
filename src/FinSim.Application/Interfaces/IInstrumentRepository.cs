@@ -14,5 +14,9 @@ namespace FinSim.Application.Interfaces
         Task<List<PriceHistory>> GetHistoryAsync(
         Guid instrumentId, DateTime from, DateTime to, int maxPoints, CancellationToken ct);
         Task<List<decimal>> GetIndexHistoryAsync(int points, CancellationToken ct);
+        Task<List<Instrument>> GetBoardPagedAsync(
+            string sort, string? q,
+            decimal? afterPrice, string? afterSymbol, Guid? afterId,
+            int limit, CancellationToken ct);
     }
 }

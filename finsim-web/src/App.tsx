@@ -207,6 +207,104 @@ export function Pager({ page, totalPages, onChange }: { page: number; totalPages
   )
 }
 
+function useOrderPage(open: boolean) {
+  const [items, setItems] = useState<Order[]>([])
+  const [nextCursor, setNextCursor] = useState<string | null>(null)
+  const [pageCursor, setPageCursor] = useState<string | null>(null)
+  const [stack, setStack] = useState<(string | null)[]>([])
+
+  const load = () =>
+    api.get<Paged<Order>>('/api/order', { params: { limit: PAGE_SIZE, open } })
+      .then(r => {
+        setItems(r.data.items)
+        setNextCursor(r.data.nextCursor)
+        setPageCursor(null)
+        setStack([])
+      })
+      .catch(console.error)
+
+  const next = () => {
+    if (!nextCursor) return
+    const cursor = nextCursor
+    api.get<Paged<Order>>('/api/order', { params: { limit: PAGE_SIZE, open, cursor } })
+      .then(r => {
+        setStack(prev => [...prev, pageCursor])
+        setItems(r.data.items)
+        setNextCursor(r.data.nextCursor)
+        setPageCursor(cursor)
+      })
+      .catch(console.error)
+  }
+
+  const prev = () => {
+    if (stack.length === 0) return
+    const prevCursor = stack[stack.length - 1]
+    api.get<Paged<Order>>('/api/order', { params: { limit: PAGE_SIZE, open, cursor: prevCursor ?? undefined } })
+      .then(r => {
+        setStack(p => p.slice(0, -1))
+        setItems(r.data.items)
+        setNextCursor(r.data.nextCursor)
+        setPageCursor(prevCursor)
+      })
+      .catch(console.error)
+  }
+
+  const reload = () =>
+    api.get<Paged<Order>>('/api/order', { params: { limit: PAGE_SIZE, open, cursor: pageCursor ?? undefined } })
+      .then(r => {
+        setItems(r.data.items)
+        setNextCursor(r.data.nextCursor)
+      })
+      .catch(console.error)
+
+  return { items, nextCursor, stack, load, next, prev, reload }
+}
+
+function useBoardPage(sort: string, q: string) {
+  const [items, setItems] = useState<Instrument[]>([])
+  const [nextCursor, setNextCursor] = useState<string | null>(null)
+  const [pageCursor, setPageCursor] = useState<string | null>(null)
+  const [stack, setStack] = useState<(string | null)[]>([])
+
+  const load = () =>
+    api.get<Paged<Instrument>>('/api/instruments/board', { params: { limit: MARKET_PAGE_SIZE, sort, q } })
+      .then(r => {
+        setItems(r.data.items)
+        setNextCursor(r.data.nextCursor)
+        setPageCursor(null)
+        setStack([])
+      })
+      .catch(console.error)
+
+  const next = () => {
+    if (!nextCursor) return
+    const cursor = nextCursor
+    api.get<Paged<Instrument>>('/api/instruments/board', { params: { limit: MARKET_PAGE_SIZE, sort, q, cursor } })
+      .then(r => {
+        setStack(prev => [...prev, pageCursor])
+        setItems(r.data.items)
+        setNextCursor(r.data.nextCursor)
+        setPageCursor(cursor)
+      })
+      .catch(console.error)
+  }
+
+  const prev = () => {
+    if (stack.length === 0) return
+    const prevCursor = stack[stack.length - 1]
+    api.get<Paged<Instrument>>('/api/instruments/board', { params: { limit: MARKET_PAGE_SIZE, sort, q, cursor: prevCursor ?? undefined } })
+      .then(r => {
+        setStack(p => p.slice(0, -1))
+        setItems(r.data.items)
+        setNextCursor(r.data.nextCursor)
+        setPageCursor(prevCursor)
+      })
+      .catch(console.error)
+  }
+
+  return { items, nextCursor, stack, load, next, prev }
+}
+
 function OrderTable({ orders, pending, now, onCancel, onReplace, replacing, minRows = PAGE_SIZE }: {
   orders: Order[]; pending: boolean; now: number
   onCancel: (id: string) => void
@@ -407,10 +505,8 @@ function Terminal({ onLogout }: { onLogout: () => void }) {
   const [instruments, setInstruments] = useState<Instrument[]>([])
   const [balance, setBalance] = useState<Balance | null>(null)
   const [portfolio, setPortfolio] = useState<Record<string, PortfolioItem>>({})
-  const [orders, setOrders] = useState<Order[]>([])
-  const [ordersCursor, setOrdersCursor] = useState<string | null>(null)
-  const [ordersPageCursor, setOrdersPageCursor] = useState<string | null>(null)
-  const [ordersCursorStack, setOrdersCursorStack] = useState<(string | null)[]>([])
+  const openOrders = useOrderPage(true)
+  const closedOrders = useOrderPage(false)
   const [transactions, setTransactions] = useState<Transaction[]>([])
   const [txCursor, setTxCursor] = useState<string | null>(null)
   const [txPageCursor, setTxPageCursor] = useState<string | null>(null)
@@ -485,48 +581,21 @@ const seeded = useRef<Set<string>>(new Set())
   const [query, setQuery] = useState('')
   const [sort, setSort] = useState('symbol-asc')
   const [marketQuery, setMarketQuery] = useState('')
-  const [marketSort, setMarketSort] = useState('symbol-asc')
+  const [marketSort, setMarketSort] = useState('symbol_asc')
+  const [debouncedMarketQuery, setDebouncedMarketQuery] = useState('')
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => setDebouncedMarketQuery(marketQuery), 300)
+    return () => window.clearTimeout(timer)
+  }, [marketQuery])
+
+  const board = useBoardPage(marketSort, debouncedMarketQuery)
+
+  useEffect(() => {
+    board.load()
+  }, [marketSort, debouncedMarketQuery])
 
   const [portfolioPage, setPortfolioPage] = useState(1)
-  const [marketPage, setMarketPage] = useState(1)
-  const [pendingPage, setPendingPage] = useState(1)
-
-  const loadOrders = () =>
-    api.get<Paged<Order>>('/api/order', { params: { limit: PAGE_SIZE } })
-      .then(r => {
-        setOrders(r.data.items)
-        setOrdersCursor(r.data.nextCursor)
-        setOrdersPageCursor(null)
-        setOrdersCursorStack([])
-      })
-      .catch(console.error)
-
-  const nextOrdersPage = () => {
-    if (!ordersCursor) return
-    const cursor = ordersCursor
-    api.get<Paged<Order>>('/api/order', { params: { limit: PAGE_SIZE, cursor } })
-      .then(r => {
-        setOrdersCursorStack(prev => [...prev, ordersPageCursor])
-        setOrders(r.data.items)
-        setOrdersCursor(r.data.nextCursor)
-        setOrdersPageCursor(cursor)
-      })
-      .catch(console.error)
-  }
-
-  const prevOrdersPage = () => {
-    if (ordersCursorStack.length === 0) return
-    const prevCursor = ordersCursorStack[ordersCursorStack.length - 1]
-    api.get<Paged<Order>>('/api/order', { params: { limit: PAGE_SIZE, cursor: prevCursor ?? undefined } })
-      .then(r => {
-        setOrdersCursorStack(prev => prev.slice(0, -1))
-        setOrders(r.data.items)
-        setOrdersCursor(r.data.nextCursor)
-        setOrdersPageCursor(prevCursor)
-      })
-      .catch(console.error)
-  }
-
   const loadTransactions = () =>
     api.get<Paged<Transaction>>('/api/transactions', { params: { limit: PAGE_SIZE } })
       .then(r => {
@@ -585,7 +654,8 @@ const seeded = useRef<Set<string>>(new Set())
     api.get<string[]>('/api/favorites')
       .then(res => setFavorites(new Set(res.data)))
       .catch(console.error)
-    loadOrders()
+    openOrders.load()
+    closedOrders.load()
     loadTransactions()
     loadBalance()
     loadPortfolio()
@@ -656,23 +726,21 @@ const seeded = useRef<Set<string>>(new Set())
     })
 
     conn.on('OrderUpdate', (p: OrderUpdate) => {
-      // Bir emrin durumu yalnızca eşleşme motoru dokunduğunda değişir; gelen
-      // satırları id'ye göre birleştir, defterin geri kalanını yerinde bırak.
-      setOrders(prev => {
-        const byId = new Map(prev.map(o => [o.id, o]))
-        for (const o of p.orders) byId.set(o.id, o)
-        return [...byId.values()]
-          .sort((a, b) => +new Date(b.createdAt) - +new Date(a.createdAt))
-      })
+      openOrders.reload()
+
+      // Dolan ya da iptal edilen bir emir iki panel arasında taşınır; ikisi de
+      // yeniden çekilmeli. Sabit boyutlu bir sayfaya satır eklemek onu
+      // PAGE_SIZE'ın ötesine büyütür, o yüzden merge değil refetch.
+      if (p.orders.some(o => o.status === 'Filled' || o.status === 'Cancelled')) {
+        closedOrders.reload()
+        loadTransactions()
+      }
 
       setBalance(prev => ({ ...p.balance, isAdmin: prev?.isAdmin ?? false }))
 
       const map: Record<string, PortfolioItem> = {}
       for (const item of p.portfolio) map[item.symbol] = item
       setPortfolio(map)
-
-      // İşlem defteri yalnızca gerçekleşen bir emirle büyür; ret satır üretmez.
-      if (p.orders.some(o => o.status === 'Filled')) loadTransactions()
 
       // Marj çağrısıyla zorla kapatılan pozisyonlar aynı push'ta gelir —
       // bu, özelliğin var olma sebebi, kaçırılmamalı.
@@ -694,7 +762,7 @@ const seeded = useRef<Set<string>>(new Set())
     conn.onreconnected(() => {
       // Kopukken kaçırılan OrderUpdate'ler geri gelmez; bir kez telafi et.
       setOnline(true)
-      loadOrders(); loadBalance(); loadPortfolio(); loadTransactions()
+      openOrders.load(); closedOrders.load(); loadBalance(); loadPortfolio(); loadTransactions()
     })
     conn.onclose(() => setOnline(false))
     conn.start().then(() => setOnline(true)).catch(() => setOnline(false))
@@ -702,8 +770,6 @@ const seeded = useRef<Set<string>>(new Set())
   }, [])
 
   const chosen = instruments.find(i => i.id === selected) ?? null
-  const pendingOrders = useMemo(() => orders.filter(o => o.status === 'Pending' || o.status === 'PartiallyFilled'), [orders])
-  const pastOrders = useMemo(() => orders.filter(o => o.status !== 'Pending'), [orders])
   const livePortfolio = useMemo(() => {
     const priceBySymbol: Record<string, number> = {}
     for (const i of instruments) priceBySymbol[i.symbol] = i.currentPrice
@@ -826,7 +892,7 @@ const seeded = useRef<Set<string>>(new Set())
     }
     loadPortfolio()
     loadBalance()
-    loadOrders()
+    openOrders.load(); closedOrders.load()
     loadTransactions()
   }
 
@@ -837,7 +903,7 @@ const seeded = useRef<Set<string>>(new Set())
     } catch (e: any) {
       setNotice(e.response ? tServer(e.response.data) : t('err.cancelFailed'))
     }
-    loadBalance(); loadPortfolio(); loadOrders(); loadTransactions()
+    loadBalance(); loadPortfolio(); openOrders.load(); closedOrders.load(); loadTransactions()
   }
 
   const replaceOrder = async (id: string) => {
@@ -845,7 +911,7 @@ const seeded = useRef<Set<string>>(new Set())
     setReplacing(prev => new Set(prev).add(id))
     try {
       await api.post(`/api/order/${id}/replace`)
-      loadBalance(); loadPortfolio(); loadOrders(); loadTransactions()
+      loadBalance(); loadPortfolio(); openOrders.load(); closedOrders.load(); loadTransactions()
     } catch (e: any) {
       setNotice(e.response ? tServer(e.response.data) : t('err.orderFailed'))
     } finally {
@@ -895,10 +961,6 @@ const loadHistory = (i: Instrument) => {
     () => filterSortInstruments(instruments.filter(i => portfolio[i.symbol]), query, sort),
     [instruments, portfolio, query, sort]
   )
-  const marketStocks = useMemo(
-    () => filterSortInstruments(instruments.filter(i => i.type === 'Stock'), marketQuery, marketSort),
-    [instruments, marketQuery, marketSort]
-  )
   const favoriteInstruments = useMemo(
     () => filterSortInstruments(instruments.filter(i => favorites.has(i.id)), '', 'symbol-asc'),
     [instruments, favorites]
@@ -906,10 +968,8 @@ const loadHistory = (i: Instrument) => {
 
   const portfolioPaged = paginate(portfolioInstruments, portfolioPage)
   const favPaged = paginate(favoriteInstruments, favPage)
-  const marketPaged = paginate(marketStocks, marketPage, MARKET_PAGE_SIZE)
-  const marketLeft = marketPaged.items.slice(0, MARKET_PAGE_SIZE / 2)
-  const marketRight = marketPaged.items.slice(MARKET_PAGE_SIZE / 2)
-  const pendingPaged = paginate(pendingOrders, pendingPage)
+  const marketLeft = board.items.slice(0, MARKET_PAGE_SIZE / 2)
+  const marketRight = board.items.slice(MARKET_PAGE_SIZE / 2)
 
 
   return (
@@ -1061,8 +1121,27 @@ const loadHistory = (i: Instrument) => {
           <div className="market-page">
             <div className="section-head">
               <h2>{t('nav.market')}</h2>
-              <span className="section-note">{t('board.otherNote', { n: marketStocks.length })}</span>
-              <Pager page={marketPaged.page} totalPages={marketPaged.totalPages} onChange={setMarketPage} />
+              <span className="section-note">{t('board.otherNote', { n: board.items.length })}</span>
+              <div className="pager">
+                <button
+                  type="button"
+                  className="ghost-btn"
+                  disabled={board.stack.length === 0}
+                  onClick={board.prev}
+                  aria-label={t('pager.prev')}
+                >
+                  ‹
+                </button>
+                <button
+                  type="button"
+                  className="ghost-btn"
+                  disabled={board.nextCursor == null}
+                  onClick={board.next}
+                  aria-label={t('pager.next')}
+                >
+                  ›
+                </button>
+              </div>
             </div>
 
             <div className="board-controls">
@@ -1085,14 +1164,14 @@ const loadHistory = (i: Instrument) => {
                 )}
               </div>
               <select className="field-input" value={marketSort} onChange={e => setMarketSort(e.target.value)}>
-                <option value="symbol-asc">{t('sort.symbolAsc')}</option>
-                <option value="symbol-desc">{t('sort.symbolDesc')}</option>
-                <option value="price-desc">{t('sort.priceDesc')}</option>
-                <option value="price-asc">{t('sort.priceAsc')}</option>
+                <option value="symbol_asc">{t('sort.symbolAsc')}</option>
+                <option value="symbol_desc">{t('sort.symbolDesc')}</option>
+                <option value="price_desc">{t('sort.priceDesc')}</option>
+                <option value="price_asc">{t('sort.priceAsc')}</option>
               </select>
             </div>
 
-            {marketStocks.length === 0 ? (
+            {board.items.length === 0 ? (
               <div className="empty-state">{marketQuery ? t('search.noResults') : t('board.otherEmpty')}</div>
             ) : (
               <div className="market-columns">
@@ -1210,14 +1289,13 @@ const loadHistory = (i: Instrument) => {
               <div className="section-head">
                 <h2>{t('pending.title')}</h2>
                 <span className="section-note">{t('pending.note')}</span>
-                <Pager page={pendingPaged.page} totalPages={pendingPaged.totalPages} onChange={setPendingPage} />
               </div>
 
-              {pendingOrders.length === 0 ? (
+              {openOrders.items.length === 0 ? (
                 <div className="empty-state">{t('pending.empty')}</div>
               ) : (
                 <OrderTable
-                  orders={pendingPaged.items}
+                  orders={openOrders.items}
                   pending
                   now={now}
                   onCancel={cancelOrder}
@@ -1225,6 +1303,26 @@ const loadHistory = (i: Instrument) => {
                   replacing={replacing}
                 />
               )}
+              <div className="pager">
+                <button
+                  type="button"
+                  className="ghost-btn"
+                  disabled={openOrders.stack.length === 0}
+                  onClick={openOrders.prev}
+                  aria-label={t('pager.prev')}
+                >
+                  ‹
+                </button>
+                <button
+                  type="button"
+                  className="ghost-btn"
+                  disabled={openOrders.nextCursor == null}
+                  onClick={openOrders.next}
+                  aria-label={t('pager.next')}
+                >
+                  ›
+                </button>
+              </div>
             </div>
 
             <div className="panel">
@@ -1304,11 +1402,11 @@ const loadHistory = (i: Instrument) => {
                 <span className="section-note">{t('ledger.note')}</span>
               </div>
 
-              {pastOrders.length === 0 ? (
+              {closedOrders.items.length === 0 ? (
                 <div className="empty-state">{t('ledger.empty')}</div>
               ) : (
                 <OrderTable
-                  orders={pastOrders}
+                  orders={closedOrders.items}
                   pending={false}
                   now={now}
                   onCancel={cancelOrder}
@@ -1320,8 +1418,8 @@ const loadHistory = (i: Instrument) => {
                 <button
                   type="button"
                   className="ghost-btn"
-                  disabled={ordersCursorStack.length === 0}
-                  onClick={prevOrdersPage}
+                  disabled={closedOrders.stack.length === 0}
+                  onClick={closedOrders.prev}
                   aria-label={t('pager.prev')}
                 >
                   ‹
@@ -1329,8 +1427,8 @@ const loadHistory = (i: Instrument) => {
                 <button
                   type="button"
                   className="ghost-btn"
-                  disabled={ordersCursor == null}
-                  onClick={nextOrdersPage}
+                  disabled={closedOrders.nextCursor == null}
+                  onClick={closedOrders.next}
                   aria-label={t('pager.next')}
                 >
                   ›

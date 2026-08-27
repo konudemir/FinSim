@@ -67,23 +67,27 @@ namespace FinSim.Infrastructure.Repositories
         }
 
         public Task<List<Order>> GetByUserPagedAsync(
-        Guid userId, OrderStatus? status,
+        Guid userId, bool? openOnly,
         DateTimeOffset? afterTs, Guid? afterId,
         int limit, CancellationToken ct)
-        {
-            var q = _db.Orders.Where(o => o.UserId == userId);
+    {
+        var q = _db.Orders.Where(o => o.UserId == userId);
 
-            if (status is not null)
-                q = q.Where(o => o.Status == status);
+        if (openOnly == true)
+            q = q.Where(o => o.Status == OrderStatus.Pending
+                        || o.Status == OrderStatus.PartiallyFilled);
+        else if (openOnly == false)
+            q = q.Where(o => o.Status != OrderStatus.Pending
+                        && o.Status != OrderStatus.PartiallyFilled);
 
-            if (afterTs is not null && afterId is not null)
-                q = q.Where(o => o.CreatedAt < afterTs
-                            || (o.CreatedAt == afterTs && o.Id.CompareTo(afterId.Value) < 0));
+        if (afterTs is not null && afterId is not null)
+            q = q.Where(o => o.CreatedAt < afterTs
+                        || (o.CreatedAt == afterTs && o.Id.CompareTo(afterId.Value) < 0));
 
-            return q.OrderByDescending(o => o.CreatedAt)
-                    .ThenByDescending(o => o.Id)
-                    .Take(limit + 1)
-                    .ToListAsync(ct);
-        }
+        return q.OrderByDescending(o => o.CreatedAt)
+                .ThenByDescending(o => o.Id)
+                .Take(limit + 1)
+                .ToListAsync(ct);
+    }
     }
 }

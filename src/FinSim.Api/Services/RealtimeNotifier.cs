@@ -25,7 +25,7 @@ namespace FinSim.Api.Services
 
         public async Task NotifyOrderUpdateAsync(Guid userId, CancellationToken ct)
         {
-            var orders = await _orders.GetRecentAsync(userId, null, null, null, ct);
+            var orders = (await _orders.GetRecentAsync(userId, null, null, null, ct)).Items;
             var balance = await _users.GetBalanceAsync(userId, ct);
             var portfolio = await _users.GetPortfolioAsync(userId, ct);
 

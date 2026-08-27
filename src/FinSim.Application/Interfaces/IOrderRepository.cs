@@ -17,11 +17,8 @@ namespace FinSim.Application.Interfaces
         Task<bool> TrySaveChangesAsync(CancellationToken ct);
 
         Task<List<Order>> GetByUserPagedAsync(
-        Guid userId,
-        OrderStatus? status,
-        DateTimeOffset? afterTs,
-        Guid? afterId,
-        int limit,
-        CancellationToken ct);
+        Guid userId, bool? openOnly,
+        DateTimeOffset? afterTs, Guid? afterId,
+        int limit, CancellationToken ct);
     }
 }

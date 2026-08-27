@@ -14,6 +14,15 @@ namespace FinSim.Controllers
         {
             _inst = inst;
         }
+        [HttpGet("board")]
+        [AllowAnonymous]
+        public async Task<IActionResult> GetBoard(
+            [FromQuery] string? sort,
+            [FromQuery] string? q,
+            [FromQuery] string? cursor,
+            [FromQuery] int? limit,
+            CancellationToken ct) =>
+            Ok(await _inst.GetBoardAsync(sort, q, cursor, limit, ct));
 
         [HttpGet("{id:guid}/history")]
         [AllowAnonymous]
