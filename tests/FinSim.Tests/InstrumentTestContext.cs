@@ -52,6 +52,11 @@ public class InstrumentTestContext
               .Returns(ci => _bookOrders.Where(o => o.InstrumentId == ci.Arg<Guid>()
                           && (o.Status == OrderStatus.Pending || o.Status == OrderStatus.PartiallyFilled))
                           .ToList());
+
+        Instruments.GetBoardPagedAsync(
+                Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<decimal?>(), Arg.Any<string?>(), Arg.Any<Guid?>(),
+                Arg.Any<int>(), Arg.Any<CancellationToken>())
+            .Returns(new List<Instrument>());
     }
 
     public InstrumentService Service => new(

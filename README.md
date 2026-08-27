@@ -155,6 +155,7 @@ valid for an hour. **Admin** means the same token, but the account also needs th
 | Method | Path | Description | Auth |
 |---|---|---|---|
 | GET | `/api/instruments` | List every instrument (stocks and funds) | No |
+| GET | `/api/instruments/board` | The stock board, one page at a time. Takes `sort` (`symbol_asc`, `symbol_desc`, `price_asc`, `price_desc`), an optional `q` that matches symbol or name, and `cursor` / `limit` | No |
 | GET | `/api/instruments/by-id/{id}` | The instrument of the specified id| No |
 | GET | `/api/instruments/{symbol}` | Gives the stock who has that symbol, for example `THYAO`. Returns 404 if no stock has it | No |
 | GET | `/api/instruments/{id}/history` | Price history of one instrument, `from` and `to` are optional | No |
@@ -168,6 +169,7 @@ valid for an hour. **Admin** means the same token, but the account also needs th
 | Method | Path | Description | Auth |
 |---|---|---|---|
 | GET | `/api/users/balance` | Returns free cash balance, locked cash balance and the total of the two | Yes |
+| GET | `/api/transactions` | The trades the user was on either side of, newest first, one page at a time. Takes `cursor` and `limit` | Yes |
 | GET | `/api/users/portfolio` | The stocks that the user holds, includes an average cost for each different stock. A negative quantity is a short position. | Yes |
 | GET | `/api/users/pnl-history` | One account value point per day for the last `days` days, 90 if you don't say | Yes |
 | GET | `/api/transactions` | The 50 most recent trades the user was on either side of | Yes |
@@ -181,6 +183,7 @@ valid for an hour. **Admin** means the same token, but the account also needs th
 | POST | `/api/order/{id}/cancel` | Cancels a pending order and release the reserved cash (buy) or shares (sell) | Yes |
 | POST | `/api/order/{id}/replace` | Places an expired order again as a brand new one, validated from scratch | Yes |
 | GET | `/api/order` | The 50 most recent orders | Yes |
+| GET | `/api/order` | The user's orders, newest first, one page at a time. `open=true` gives the resting ones, `open=false` the settled ones, omitted gives both. Takes `cursor` and `limit` | Yes |
 
 ### Favorites
 
@@ -304,6 +307,22 @@ reads. It's kept away from the price tick on purpose: it's a full scan over ever
 be able to roll a price tick back. Writing is idempotent, it asks who is missing today's row rather
 than remembering when it last ran, so restarts are harmless. Admin cash and share grants are added to
 a separate net deposits figure so that free money doesn't show up on the chart as profit.
+
+### Paging
+
+The list endpoints don't take a page number. They take a cursor: a short base64 string holding the
+sort it came from, the sort key of the last row on the page, and that row's id. The next page is
+"everything after this row" rather than "skip the first N", so inserting an order while you're on
+page 3 doesn't push a row you already saw down onto page 4.
+
+The id is in there because the sort key alone isn't unique — two orders can share a timestamp, and
+plenty of stocks share a price. Without it the boundary between two pages would be ambiguous and a
+row could be repeated or skipped. The sort discriminator is in there so a cursor from one query
+can't be used against another; a cursor that doesn't match is ignored and you get page one back.
+
+Each query asks the database for one row more than the page size. If that extra row comes back
+there's another page, and it's dropped before the response goes out — which is how `nextCursor`
+gets decided without a `COUNT` over the whole table. A null `nextCursor` means the end.
 
 ### Colliding
 
