@@ -402,7 +402,7 @@ function OrderTable({ orders, pending, now, onCancel, onReplace, replacing, minR
 
 
 const InstrumentRow = memo(function InstrumentRow({
-  i, open, tick, pos, sparkData, onClick, isFavorite, onToggleFavorite,
+  i, open, tick, pos, sparkData, onClick, isFavorite, onToggleFavorite, onExpand,
 }: {
   i: Instrument
   open: boolean
@@ -412,6 +412,7 @@ const InstrumentRow = memo(function InstrumentRow({
   onClick: () => void
   isFavorite: boolean
   onToggleFavorite: () => void
+  onExpand: () => void
 }) {
   const { t } = useLang()
   return (
@@ -464,7 +465,19 @@ const InstrumentRow = memo(function InstrumentRow({
       </div>
       <div className="row-body">
         <div className="row-body-in">
-          {open && <AreaSpark data={sparkData} className="row-spark" />}
+          {open && (
+            <>
+              <button
+                type="button"
+                className="row-spark-expand"
+                onClick={e => { e.stopPropagation(); onExpand() }}
+                aria-label={t('board.fullscreen')}
+              >
+                ⛶
+              </button>
+              <AreaSpark data={sparkData} className="row-spark" />
+            </>
+          )}
         </div>
       </div>
     </div>
@@ -525,6 +538,7 @@ const [history, setHistory] = useState<Record<string, PricePoint[]>>({})
 const seeded = useRef<Set<string>>(new Set())
   const [selected, setSelected] = useState<string | null>(null)
   const [selectedPanel, setSelectedPanel] = useState<string | null>(null)
+  const [fullscreenInstrumentId, setFullscreenInstrumentId] = useState<string | null>(null)
   const [mode, setMode] = useState<'market' | 'limit'>('market')
   const [qty, setQty] = useState('1')
   const [limitPrice, setLimitPrice] = useState('')
@@ -770,6 +784,7 @@ const seeded = useRef<Set<string>>(new Set())
   }, [])
 
   const chosen = instruments.find(i => i.id === selected) ?? null
+  const fullscreenInstrument = instruments.find(i => i.id === fullscreenInstrumentId) ?? null
   const livePortfolio = useMemo(() => {
     const priceBySymbol: Record<string, number> = {}
     for (const i of instruments) priceBySymbol[i.symbol] = i.currentPrice
@@ -786,6 +801,8 @@ const seeded = useRef<Set<string>>(new Set())
     }
     return out
   }, [portfolio, instruments])
+
+  const fullscreenPos = fullscreenInstrument ? livePortfolio[fullscreenInstrument.symbol] : undefined
 
   const livePnl = useMemo(() => {
     if (!balance) return null
@@ -935,6 +952,17 @@ const seeded = useRef<Set<string>>(new Set())
   loadHistory(i)
 }
 
+  // Opening the fullscreen panel always selects that instrument for the
+  // trade ticket (rather than toggling like pick() does), so the ticket
+  // duplicated inside the panel comes up with it already chosen.
+  const openFullscreen = (i: Instrument) => {
+    setFullscreenInstrumentId(i.id)
+    setSelected(i.id)
+    setSelectedPanel('fullscreen')
+    setLimitPrice(prev => (prev === '' ? i.currentPrice.toFixed(2).replace('.', ',') : prev))
+    loadHistory(i)
+  }
+
 const loadHistory = (i: Instrument) => {
   if (seeded.current.has(i.symbol)) return
   seeded.current.add(i.symbol)
@@ -971,6 +999,120 @@ const loadHistory = (i: Instrument) => {
   const marketLeft = board.items.slice(0, MARKET_PAGE_SIZE / 2)
   const marketRight = board.items.slice(MARKET_PAGE_SIZE / 2)
 
+  // Shared by the page-bottom ticket and the copy duplicated inside the
+  // instrument fullscreen panel — both trade whatever "chosen" currently is.
+  // idPrefix keeps the two copies' input ids from colliding when both are
+  // mounted at once.
+  const renderTicketFields = (idPrefix: string) => (
+    <>
+      <div className="ticket-slot" style={{ minWidth: 172 }}>
+        <span className="field-label">{t('ticket.expiry')}</span>
+        <div className="expiry-fields">
+          <input
+            className="field-input"
+            type="date"
+            min={new Date().toISOString().slice(0, 10)}
+            aria-label={t('ticket.expiryDate')}
+            disabled={mode !== 'limit'}
+            value={mode === 'limit' ? expiryDate : ''}
+            onChange={e => setExpiryDate(e.target.value)}
+          />
+        </div>
+      </div>
+
+      <div className="ticket-slot grow">
+        <span className="field-label">{t('ticket.instrument')}</span>
+        {chosen ? (
+          <div className="field-static">
+            {chosen.symbol}{' '}
+            <span style={{ fontFamily: 'var(--mono)', fontSize: 13, color: 'var(--mute)' }}>
+              {fmt(chosen.currentPrice)}
+            </span>
+          </div>
+        ) : (
+          <div className="field-static none">{t('ticket.pick')}</div>
+        )}
+      </div>
+
+      <div className="ticket-slot" style={{ minWidth: 'auto' }}>
+        <span className="field-label">{t('ticket.orderType')}</span>
+        <div className="seg">
+          <button aria-pressed={mode === 'market'} onClick={() => setMode('market')}>
+            {t('order.market')}
+          </button>
+          <button aria-pressed={mode === 'limit'} onClick={() => setMode('limit')}>
+            {t('order.limit')}
+          </button>
+        </div>
+      </div>
+
+      <div className="ticket-slot" style={{ minWidth: 96 }}>
+        <label className="field-label" htmlFor={`${idPrefix}-qty`}>{t('ticket.qty')}</label>
+        <input
+          id={`${idPrefix}-qty`}
+          className="field-input"
+          type="text"
+          inputMode="numeric"
+          value={qty}
+          onChange={e => {
+            const v = e.target.value
+            if (v === '' || /^\d+$/.test(v)) setQty(v)
+          }}
+        />
+      </div>
+
+      <div className="ticket-slot" style={{ minWidth: 120 }}>
+        <label className="field-label" htmlFor={`${idPrefix}-lmt`}>{t('ticket.limitPrice')}</label>
+        <input
+          id={`${idPrefix}-lmt`}
+          className="field-input"
+          type="text"
+          inputMode="decimal"
+          placeholder={mode === 'limit' ? '0,00' : '—'}
+          disabled={mode !== 'limit'}
+          value={mode === 'limit' ? limitPrice : ''}
+          onChange={e => {
+            const v = e.target.value
+            if (v === '' || /^\d*[.,]?\d*$/.test(v)) setLimitPrice(v)
+          }}
+          onKeyDown={e => {
+            if (e.key === 'Enter') { e.preventDefault(); submit('Buy') }
+          }}
+        />
+      </div>
+
+      <div className="ticket-slot" style={{ minWidth: 120 }}>
+        <label className="field-label" htmlFor={`${idPrefix}-stp`}>{t('ticket.stopPrice')}</label>
+        <input
+          id={`${idPrefix}-stp`}
+          className="field-input"
+          type="text"
+          inputMode="decimal"
+          placeholder={mode === 'limit' ? t('ticket.stopHint') : '—'}
+          disabled={mode !== 'limit'}
+          value={mode === 'limit' ? stopPrice : ''}
+          onChange={e => {
+            const v = e.target.value
+            if (v === '' || /^\d*[.,]?\d*$/.test(v)) setStopPrice(v)
+          }}
+          onKeyDown={e => {
+            if (e.key === 'Enter') { e.preventDefault(); submit('Sell') }
+          }}
+        />
+      </div>
+
+      {marginPreview !== null && (
+        <span className="margin-preview">{t('ticket.marginPreview', { n: fmt(marginPreview) })}</span>
+      )}
+
+      <button className="trade buy" disabled={!chosen || busy} onClick={() => submit('Buy')}>
+        {t('ticket.buy')}
+      </button>
+      <button className="trade sell" disabled={!chosen || busy} onClick={() => submit('Sell')}>
+        {t('ticket.sell')}
+      </button>
+    </>
+  )
 
   return (
     <div className="shell">
@@ -1187,6 +1329,7 @@ const loadHistory = (i: Instrument) => {
                       onClick={() => pick(i, 'market')}
                       isFavorite={favorites.has(i.id)}
                       onToggleFavorite={() => toggleFavorite(i)}
+                      onExpand={() => openFullscreen(i)}
                     />
                   ))}
                 </div>
@@ -1202,6 +1345,7 @@ const loadHistory = (i: Instrument) => {
                       onClick={() => pick(i, 'market')}
                       isFavorite={favorites.has(i.id)}
                       onToggleFavorite={() => toggleFavorite(i)}
+                      onExpand={() => openFullscreen(i)}
                     />
                   ))}
                 </div>
@@ -1273,6 +1417,7 @@ const loadHistory = (i: Instrument) => {
                     onClick={() => pick(i, 'portfolio')}
                     isFavorite={favorites.has(i.id)}
                     onToggleFavorite={() => toggleFavorite(i)}
+                    onExpand={() => openFullscreen(i)}
                   />
                 ))}
                 {Array.from({ length: Math.max(0, PAGE_SIZE - portfolioPaged.items.length) }).map((_, idx) => (
@@ -1462,6 +1607,7 @@ const loadHistory = (i: Instrument) => {
                         onClick={() => pick(i, 'favorites')}
                         isFavorite
                         onToggleFavorite={() => toggleFavorite(i)}
+                        onExpand={() => openFullscreen(i)}
                       />
                     ))}
                   </div>
@@ -1478,114 +1624,75 @@ const loadHistory = (i: Instrument) => {
       {(view === 'portfolio' || view === 'market') && (
       <div className="ticket">
         <div className="wrap ticket-in">
-          <div className="ticket-slot" style={{ minWidth: 172 }}>
-            <span className="field-label">{t('ticket.expiry')}</span>
-            <div className="expiry-fields">
-              <input
-                className="field-input"
-                type="date"
-                min={new Date().toISOString().slice(0, 10)}
-                aria-label={t('ticket.expiryDate')}
-                disabled={mode !== 'limit'}
-                value={mode === 'limit' ? expiryDate : ''}
-                onChange={e => setExpiryDate(e.target.value)}
-              />
-            </div>
-          </div>
-
-          <div className="ticket-slot grow">
-            <span className="field-label">{t('ticket.instrument')}</span>
-            {chosen ? (
-              <div className="field-static">
-                {chosen.symbol}{' '}
-                <span style={{ fontFamily: 'var(--mono)', fontSize: 13, color: 'var(--mute)' }}>
-                  {fmt(chosen.currentPrice)}
-                </span>
-              </div>
-            ) : (
-              <div className="field-static none">{t('ticket.pick')}</div>
-            )}
-          </div>
-
-          <div className="ticket-slot" style={{ minWidth: 'auto' }}>
-            <span className="field-label">{t('ticket.orderType')}</span>
-            <div className="seg">
-              <button aria-pressed={mode === 'market'} onClick={() => setMode('market')}>
-                {t('order.market')}
-              </button>
-              <button aria-pressed={mode === 'limit'} onClick={() => setMode('limit')}>
-                {t('order.limit')}
-              </button>
-            </div>
-          </div>
-
-          <div className="ticket-slot" style={{ minWidth: 96 }}>
-            <label className="field-label" htmlFor="qty">{t('ticket.qty')}</label>
-            <input
-              id="qty"
-              className="field-input"
-              type="text"
-              inputMode="numeric"
-              value={qty}
-              onChange={e => {
-                const v = e.target.value
-                if (v === '' || /^\d+$/.test(v)) setQty(v)
-              }}
-            />
-          </div>
-
-          <div className="ticket-slot" style={{ minWidth: 120 }}>
-            <label className="field-label" htmlFor="lmt">{t('ticket.limitPrice')}</label>
-            <input
-              id="lmt"
-              className="field-input"
-              type="text"
-              inputMode="decimal"
-              placeholder={mode === 'limit' ? '0,00' : '—'}
-              disabled={mode !== 'limit'}
-              value={mode === 'limit' ? limitPrice : ''}
-              onChange={e => {
-                const v = e.target.value
-                if (v === '' || /^\d*[.,]?\d*$/.test(v)) setLimitPrice(v)
-              }}
-              onKeyDown={e => {
-                if (e.key === 'Enter') { e.preventDefault(); submit('Buy') }
-              }}
-            />
-          </div>
-
-          <div className="ticket-slot" style={{ minWidth: 120 }}>
-            <label className="field-label" htmlFor="stp">{t('ticket.stopPrice')}</label>
-            <input
-              id="stp"
-              className="field-input"
-              type="text"
-              inputMode="decimal"
-              placeholder={mode === 'limit' ? t('ticket.stopHint') : '—'}
-              disabled={mode !== 'limit'}
-              value={mode === 'limit' ? stopPrice : ''}
-              onChange={e => {
-                const v = e.target.value
-                if (v === '' || /^\d*[.,]?\d*$/.test(v)) setStopPrice(v)
-              }}
-              onKeyDown={e => {
-                if (e.key === 'Enter') { e.preventDefault(); submit('Sell') }
-              }}
-            />
-          </div>
-
-          {marginPreview !== null && (
-            <span className="margin-preview">{t('ticket.marginPreview', { n: fmt(marginPreview) })}</span>
-          )}
-
-          <button className="trade buy" disabled={!chosen || busy} onClick={() => submit('Buy')}>
-            {t('ticket.buy')}
-          </button>
-          <button className="trade sell" disabled={!chosen || busy} onClick={() => submit('Sell')}>
-            {t('ticket.sell')}
-          </button>
+          {renderTicketFields('ticket')}
         </div>
       </div>
+      )}
+
+      {fullscreenInstrument && (
+        <div className="instrument-fullscreen-backdrop" onClick={() => setFullscreenInstrumentId(null)}>
+          <div className="instrument-fullscreen-panel" onClick={e => e.stopPropagation()}>
+            <div className="instrument-fullscreen-head">
+              <div className="row-line">
+                <button
+                  type="button"
+                  className="row-fav"
+                  aria-pressed={favorites.has(fullscreenInstrument.id)}
+                  aria-label={t(favorites.has(fullscreenInstrument.id) ? 'board.unfavorite' : 'board.favorite')}
+                  onClick={() => toggleFavorite(fullscreenInstrument)}
+                >
+                  {favorites.has(fullscreenInstrument.id) ? '♥' : '♡'}
+                </button>
+                <div className="row-head" data-inactive={!fullscreenInstrument.isActive} style={{ cursor: 'default' }}>
+                  <span className="row-sym">{fullscreenInstrument.symbol}</span>
+                  {fullscreenInstrument.type === 'Fund' && (
+                    <span className="fund-badge">{t('board.fundBadge')}</span>
+                  )}
+                  {fullscreenPos?.isShort && <span className="short-badge">{t('board.shortBadge')}</span>}
+                  <span className="row-name">{fullscreenInstrument.name}</span>
+                  <div className="row-pos">
+                    {fullscreenPos ? (
+                      <>
+                        <span>
+                          {fullscreenPos.isShort
+                            ? t('board.shortLots', { n: Math.abs(fullscreenPos.totalQuantity) })
+                            : t('board.lots', { n: fullscreenPos.totalQuantity })}
+                        </span>
+                        {fullscreenPos.lockedQuantity > 0 && (
+                          <span className="locked">{t('board.locked', { n: fullscreenPos.lockedQuantity })}</span>
+                        )}
+                        <span className="avg-cost">{t('board.avgCost', { n: fmt(fullscreenPos.averageCost) })}</span>
+                        <span className={dirOf(fullscreenPos.profitLoss)}>{signed(fullscreenPos.profitLoss)}</span>
+                      </>
+                    ) : (
+                      !fullscreenInstrument.isActive && <span className="empty">{t('board.closed')}</span>
+                    )}
+                  </div>
+                  <span
+                    className="row-px"
+                    data-tick={ticks[fullscreenInstrument.symbol]}
+                    key={fullscreenInstrument.currentPrice}
+                  >
+                    {fmt(fullscreenInstrument.currentPrice)}
+                  </span>
+                </div>
+                <button
+                  type="button"
+                  className="ghost-btn"
+                  onClick={() => setFullscreenInstrumentId(null)}
+                  aria-label={t('app.close')}
+                >
+                  ×
+                </button>
+              </div>
+            </div>
+            <div className="instrument-fullscreen-body">
+              <div className="ticket-in fullscreen-ticket">
+                {renderTicketFields('fullscreen-ticket')}
+              </div>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   )

@@ -835,6 +835,27 @@ input  { font-family: var(--mono); }
 .row-spark .spark-svg { opacity: 0.5; }
 [data-theme="day"] .row-spark .spark-svg { opacity: 0.38; }
 
+.row-spark-expand {
+  position: absolute;
+  top: 8px;
+  right: 0;
+  z-index: 6;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border: none;
+  background: transparent;
+  color: var(--mute);
+  font-size: 13px;
+  line-height: 1;
+  cursor: pointer;
+  transition: color 0.15s;
+}
+.row-spark-expand:hover { color: var(--bone); }
+
 
 @keyframes flash-up {
   from { background: var(--flash-up); }
@@ -1922,6 +1943,57 @@ input  { font-family: var(--mono); }
   display: flex;
   justify-content: flex-end;
   gap: 10px;
+}
+
+/* ── instrument fullscreen panel ─────────────────────────── */
+
+.instrument-fullscreen-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 70;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  /* Lighter than --veil (used by confirmation modals) — this should read as
+     "the board dimmed behind an expanded chart", not a hard interruption. */
+  background: rgba(0, 0, 0, 0.28);
+}
+
+.instrument-fullscreen-panel {
+  display: flex;
+  flex-direction: column;
+  width: 85vw;
+  height: 85vh;
+  border: 1px solid var(--edge);
+  background: var(--panel);
+  border-radius: 6px;
+  box-shadow: 0 24px 60px -24px rgba(0, 0, 0, 0.55), var(--lift);
+  overflow: hidden;
+}
+
+.instrument-fullscreen-head {
+  display: flex;
+  align-items: center;
+  flex: 0 0 auto;
+  border-bottom: var(--rail);
+}
+
+.instrument-fullscreen-head .row-line { flex: 1; align-items: center; }
+.instrument-fullscreen-head .row-head { padding: 14px 16px; }
+.instrument-fullscreen-head .row-name { flex: 1; }
+.instrument-fullscreen-head > .row-line > .ghost-btn { margin-right: 14px; flex: 0 0 auto; }
+
+.instrument-fullscreen-body {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  overflow: auto;
+}
+
+.fullscreen-ticket {
+  margin-top: auto;
+  border-top: var(--rail);
+  padding: 16px 20px;
 }
 
 @media (prefers-reduced-motion: reduce) {
