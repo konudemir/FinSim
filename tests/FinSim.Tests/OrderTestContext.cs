@@ -54,6 +54,8 @@ public class OrderTestContext
                           .ToList());
         Instruments.GetActiveAsync(Arg.Any<CancellationToken>())
                    .Returns(new List<Instrument>());
+        Transactions.GetTotalsByOrderIdsAsync(Arg.Any<IEnumerable<Guid>>(), Arg.Any<CancellationToken>())
+                    .Returns(new Dictionary<Guid, decimal>());
 
         Portfolio.When(x => x.Add(Arg.Any<PortfolioItem>())).Do(ci => _positions.Add(ci.Arg<PortfolioItem>()));
         Portfolio.When(x => x.Remove(Arg.Any<PortfolioItem>())).Do(ci => _positions.Remove(ci.Arg<PortfolioItem>()));
