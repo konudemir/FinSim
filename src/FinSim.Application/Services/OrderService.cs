@@ -162,7 +162,11 @@ public class OrderService
         };
         _orders.Add(order);
 
-        await _orders.SaveChangesAsync(ct);
+        // This path mutates portItem.LockedQuantity for limit sells and cover buys, and
+        // the tick worker writes the same row. A conflict means the tick got there first
+        // and our read is stale — the caller retries rather than silently overwriting.
+        if (!await _orders.TrySaveChangesAsync(ct))
+            return (OrderResult.ConcurrencyConflict, null);
 
         return (OrderResult.Success,
                 new PlacedOrderDto(order.Id, order.Status.ToString(), null, null));

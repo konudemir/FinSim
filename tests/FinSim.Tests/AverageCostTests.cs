@@ -1,4 +1,5 @@
 using FinSim.Domain.Models.Enums;
+using FinSim.Application.Dtos;
 using NSubstitute;
 
 namespace FinSim.Tests;
@@ -68,6 +69,22 @@ public class AverageCostTests
         // (100x10 + 120x10) / 20 = 110
         Assert.Equal(110m, position.AverageCost);
         Assert.Equal(20, position.TotalQuantity);
+    }
+    [Fact]
+    public async Task PlaceLimitOrder_ReturnsConcurrencyConflict_WhenSaveFails()
+    {
+        _ctx.GivenUser(free: 100_000m);
+        _ctx.GivenPosition(quantity: 100, averageCost: 90m, locked: 0);
+        _ctx.GivenInstrument(100m);
+
+        _ctx.Orders.TrySaveChangesAsync(Arg.Any<CancellationToken>()).Returns(false);
+
+        var (result, dto) = await _ctx.Service.PlaceLimitOrderAsync(
+            _ctx.UserId, _ctx.InstrumentId, 30, 105m,
+            stopPrice: null, OrderDirection.Sell, _ct);
+
+        Assert.Equal(OrderResult.ConcurrencyConflict, result);
+        Assert.Null(dto);
     }
 
     [Fact]
