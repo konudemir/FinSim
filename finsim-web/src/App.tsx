@@ -1,5 +1,6 @@
 import { memo, useEffect, useMemo, useRef, useState } from 'react'
 import { usePath, navigate, replacePath } from './router'
+import PageNav from './PageNav'
 import * as signalR from '@microsoft/signalr'
 import api, { API } from './api'
 import { useAuth } from './auth'
@@ -107,7 +108,7 @@ type OrderUpdate = {
   portfolio: PortfolioItem[]
 }
 
-export type Paged<T> = { items: T[]; nextCursor: string | null }
+export type Paged<T> = { items: T[]; page: number; pageSize: number; totalCount: number }
 
 // "42,5" -> 42.5 ; "" / "42." / "abc" -> NaN
 const parseDecimal = (s: string) => parseFloat(s.replace(',', '.'))
@@ -193,80 +194,50 @@ export function Pager({ page, totalPages, onChange }: { page: number; totalPages
 }
 
 /**
- * Generic cursor-paged list: load/next/prev plus a cursor stack so "prev" can
- * step back without a round trip that re-derives the previous page's cursor.
- * `params` is read fresh on every call (not captured once) so callers can pass
- * an object literal that changes across renders (sort, q, ...) — load() always
- * fetches page 1 under the latest params, and reload() re-fetches whichever
- * page is currently shown, without touching the cursor stack.
+ * Generic offset-paged list: goTo(n) fetches an arbitrary page, next/prev step
+ * by one, reload() re-fetches whichever page is currently shown. `params` is
+ * read fresh on every call (not captured once) so callers can pass an object
+ * literal that changes across renders (sort, q, ...).
  */
-export function useCursorPage<T>(url: string, params: Record<string, unknown>) {
+export function usePagedList<T>(url: string, params: Record<string, unknown>, pageSize: number) {
   const [items, setItems] = useState<T[]>([])
-  const [nextCursor, setNextCursor] = useState<string | null>(null)
-  const [pageCursor, setPageCursor] = useState<string | null>(null)
-  const [stack, setStack] = useState<(string | null)[]>([])
+  const [page, setPage] = useState(1)
+  const [totalCount, setTotalCount] = useState(0)
 
-  const load = () =>
-    api.get<Paged<T>>(url, { params: { ...params, cursor: undefined } })
+  const fetchPage = (n: number) =>
+    api.get<Paged<T>>(url, { params: { ...params, page: n, limit: pageSize } })
       .then(r => {
         setItems(r.data.items)
-        setNextCursor(r.data.nextCursor)
-        setPageCursor(null)
-        setStack([])
+        setPage(r.data.page)
+        setTotalCount(r.data.totalCount)
       })
       .catch(console.error)
 
-  const next = () => {
-    if (!nextCursor) return
-    const cursor = nextCursor
-    api.get<Paged<T>>(url, { params: { ...params, cursor } })
-      .then(r => {
-        setStack(prev => [...prev, pageCursor])
-        setItems(r.data.items)
-        setNextCursor(r.data.nextCursor)
-        setPageCursor(cursor)
-      })
-      .catch(console.error)
-  }
+  const totalPages = Math.max(1, Math.ceil(totalCount / pageSize))
+  const goTo = (n: number) => fetchPage(n)
+  const next = () => goTo(page + 1)
+  const prev = () => goTo(page - 1)
+  const reload = () => fetchPage(page)
+  const hasNext = page < totalPages
+  const hasPrevious = page > 1
 
-  const prev = () => {
-    if (stack.length === 0) return
-    const prevCursor = stack[stack.length - 1]
-    api.get<Paged<T>>(url, { params: { ...params, cursor: prevCursor ?? undefined } })
-      .then(r => {
-        setStack(p => p.slice(0, -1))
-        setItems(r.data.items)
-        setNextCursor(r.data.nextCursor)
-        setPageCursor(prevCursor)
-      })
-      .catch(console.error)
-  }
-
-  const reload = () =>
-    api.get<Paged<T>>(url, { params: { ...params, cursor: pageCursor ?? undefined } })
-      .then(r => {
-        setItems(r.data.items)
-        setNextCursor(r.data.nextCursor)
-      })
-      .catch(console.error)
-
-  return { items, nextCursor, stack, load, next, prev, reload }
+  return { items, page, totalPages, hasNext, hasPrevious, goTo, next, prev, reload }
 }
 
 function useOrderPage(open: boolean) {
-  return useCursorPage<Order>('/api/order', { limit: PAGE_SIZE, open })
+  return usePagedList<Order>('/api/order', { open }, PAGE_SIZE)
 }
 
 function useBoardPage(sort: string, q: string) {
-  return useCursorPage<Instrument>('/api/instruments/board', { limit: MARKET_PAGE_SIZE, sort, q })
+  return usePagedList<Instrument>('/api/instruments/board', { sort, q }, MARKET_PAGE_SIZE)
 }
 
 function usePortfolioBoardPage(sort: string, q: string) {
-  return useCursorPage<Instrument>('/api/users/portfolio/board', { limit: PAGE_SIZE, sort, q })
+  return usePagedList<Instrument>('/api/users/portfolio/board', { sort, q }, PAGE_SIZE)
 }
 
 function useFavoritesBoardPage(sort: string) {
-  return useCursorPage<Instrument>('/api/favorites/board', { limit: PAGE_SIZE, sort })
+  return usePagedList<Instrument>('/api/favorites/board', { sort }, PAGE_SIZE)
 }
 
 function OrderTable({ orders, pending, now, onCancel, onReplace, replacing, minRows = PAGE_SIZE }: {
@@ -426,6 +397,27 @@ const InstrumentRow = memo(function InstrumentRow({
   )
 })
 
+// URL <-> primary-board page/sort sync, so a page is linkable and survives a
+// refresh. Only one board (market or portfolio) is visible at a time, so the
+// two views share the same `page`/`sort` keys — whichever view is active reads
+// and writes them.
+function urlSort(): string | null {
+  return new URLSearchParams(window.location.search).get('sort')
+}
+
+function urlPage(): number {
+  const n = Number(new URLSearchParams(window.location.search).get('page'))
+  return Number.isFinite(n) && n >= 1 ? n : 1
+}
+
+function setUrlParams(page: number, sort: string) {
+  const params = new URLSearchParams(window.location.search)
+  params.set('page', String(page))
+  params.set('sort', sort)
+  const qs = params.toString()
+  window.history.replaceState(null, '', window.location.pathname + (qs ? `?${qs}` : ''))
+}
+
 export default function App() {
   const { loggedIn, checking, logout } = useAuth()
 
@@ -467,10 +459,7 @@ function Terminal({ onLogout }: { onLogout: () => void }) {
   const [portfolio, setPortfolio] = useState<Record<string, PortfolioItem>>({})
   const openOrders = useOrderPage(true)
   const closedOrders = useOrderPage(false)
-  const [transactions, setTransactions] = useState<Transaction[]>([])
-  const [txCursor, setTxCursor] = useState<string | null>(null)
-  const [txPageCursor, setTxPageCursor] = useState<string | null>(null)
-  const [txCursorStack, setTxCursorStack] = useState<(string | null)[]>([])
+  const transactionsList = usePagedList<Transaction>('/api/transactions', {}, PAGE_SIZE)
   const [marketMove, setMarketMove] = useState(0)
   const [favorites, setFavorites] = useState<Set<string>>(new Set())
   const [showFavorites, setShowFavorites] = useState(false)
@@ -545,9 +534,9 @@ const seeded = useRef<Set<string>>(new Set())
     if (menuCloseTimer.current !== null) window.clearTimeout(menuCloseTimer.current)
   }, [])
   const [query, setQuery] = useState('')
-  const [sort, setSort] = useState('symbol_asc')
+  const [sort, setSort] = useState(() => urlSort() ?? 'symbol_asc')
   const [marketQuery, setMarketQuery] = useState('')
-  const [marketSort, setMarketSort] = useState('symbol_asc')
+  const [marketSort, setMarketSort] = useState(() => urlSort() ?? 'symbol_asc')
   const [debouncedMarketQuery, setDebouncedMarketQuery] = useState('')
   const [debouncedQuery, setDebouncedQuery] = useState('')
   // No sort control in the favorites panel (matches the pre-pagination UI) —
@@ -568,56 +557,34 @@ const seeded = useRef<Set<string>>(new Set())
   const portfolioBoard = usePortfolioBoardPage(sort, debouncedQuery)
   const favoritesBoard = useFavoritesBoardPage(favSort)
 
+  // The market view seeds its initial page from the URL (a linked/refreshed
+  // page); every later sort/query change resets to page 1.
+  const marketInitial = useRef(true)
   useEffect(() => {
-    board.load()
+    board.goTo(marketInitial.current && bgPathRef.current === '/market' ? urlPage() : 1)
+    marketInitial.current = false
   }, [marketSort, debouncedMarketQuery])
 
-  // Sort/query changes reset paging to page 1 — a cursor minted under the old
-  // sort or query wouldn't decode (or would decode against the wrong rows)
-  // under the new one anyway.
+  const portfolioInitial = useRef(true)
   useEffect(() => {
-    portfolioBoard.load()
+    portfolioBoard.goTo(portfolioInitial.current && bgPathRef.current !== '/market' ? urlPage() : 1)
+    portfolioInitial.current = false
   }, [sort, debouncedQuery])
 
   useEffect(() => {
-    favoritesBoard.load()
+    favoritesBoard.goTo(1)
   }, [favSort])
 
-  const loadTransactions = () =>
-    api.get<Paged<Transaction>>('/api/transactions', { params: { limit: PAGE_SIZE } })
-      .then(r => {
-        setTransactions(r.data.items)
-        setTxCursor(r.data.nextCursor)
-        setTxPageCursor(null)
-        setTxCursorStack([])
-      })
-      .catch(console.error)
+  // Keep the URL's page/sort in sync with whichever board is currently active.
+  useEffect(() => {
+    if (bgPathRef.current !== '/market') return
+    setUrlParams(board.page, marketSort)
+  }, [board.page, marketSort])
 
-  const nextTxPage = () => {
-    if (!txCursor) return
-    const cursor = txCursor
-    api.get<Paged<Transaction>>('/api/transactions', { params: { limit: PAGE_SIZE, cursor } })
-      .then(r => {
-        setTxCursorStack(prev => [...prev, txPageCursor])
-        setTransactions(r.data.items)
-        setTxCursor(r.data.nextCursor)
-        setTxPageCursor(cursor)
-      })
-      .catch(console.error)
-  }
-
-  const prevTxPage = () => {
-    if (txCursorStack.length === 0) return
-    const prevCursor = txCursorStack[txCursorStack.length - 1]
-    api.get<Paged<Transaction>>('/api/transactions', { params: { limit: PAGE_SIZE, cursor: prevCursor ?? undefined } })
-      .then(r => {
-        setTxCursorStack(prev => prev.slice(0, -1))
-        setTransactions(r.data.items)
-        setTxCursor(r.data.nextCursor)
-        setTxPageCursor(prevCursor)
-      })
-      .catch(console.error)
-  }
+  useEffect(() => {
+    if (bgPathRef.current === '/market') return
+    setUrlParams(portfolioBoard.page, sort)
+  }, [portfolioBoard.page, sort])
 
   const loadBalance = () =>
     api.get<Balance>('/api/users/balance').then(r => setBalance(r.data)).catch(console.error)
@@ -629,8 +596,7 @@ const seeded = useRef<Set<string>>(new Set())
         for (const p of r.data) map[p.symbol] = p
         setPortfolio(map)
         // A fill/cancel/replace can add or remove a row from the paged
-        // portfolio board; the current page's cursor no longer matches
-        // what the server would return, so it needs an explicit refetch.
+        // portfolio board, so the current page needs an explicit refetch.
         portfolioBoard.reload()
       })
       .catch(console.error)
@@ -646,9 +612,9 @@ const seeded = useRef<Set<string>>(new Set())
     api.get<string[]>('/api/favorites')
       .then(res => setFavorites(new Set(res.data)))
       .catch(console.error)
-    openOrders.load()
-    closedOrders.load()
-    loadTransactions()
+    openOrders.goTo(1)
+    closedOrders.goTo(1)
+    transactionsList.goTo(1)
     loadBalance()
     loadPortfolio()
   }, [])
@@ -665,8 +631,7 @@ const seeded = useRef<Set<string>>(new Set())
       : api.post(`/api/favorites/${i.id}`)
     req
       // The favorites board is paged server-side, so the toggle's membership
-      // change won't show up until the current page is re-fetched — a stale
-      // cursor would otherwise keep paging against the pre-toggle set.
+      // change won't show up until the current page is re-fetched.
       .then(() => favoritesBoard.reload())
       .catch(() => {
         setFavorites(prev => {
@@ -730,7 +695,7 @@ const seeded = useRef<Set<string>>(new Set())
       // PAGE_SIZE'ın ötesine büyütür, o yüzden merge değil refetch.
       if (p.orders.some(o => o.status === 'Filled' || o.status === 'Cancelled')) {
         closedOrders.reload()
-        loadTransactions()
+        transactionsList.reload()
       }
 
       setBalance(prev => ({ ...p.balance, isAdmin: prev?.isAdmin ?? false }))
@@ -762,7 +727,7 @@ const seeded = useRef<Set<string>>(new Set())
     conn.onreconnected(() => {
       // Kopukken kaçırılan OrderUpdate'ler geri gelmez; bir kez telafi et.
       setOnline(true)
-      openOrders.load(); closedOrders.load(); loadBalance(); loadPortfolio(); loadTransactions()
+      openOrders.goTo(1); closedOrders.goTo(1); loadBalance(); loadPortfolio(); transactionsList.goTo(1)
     })
     conn.onclose(() => setOnline(false))
     conn.start().then(() => setOnline(true)).catch(() => setOnline(false))
@@ -909,8 +874,8 @@ const seeded = useRef<Set<string>>(new Set())
     }
     loadPortfolio()
     loadBalance()
-    openOrders.load(); closedOrders.load()
-    loadTransactions()
+    openOrders.goTo(1); closedOrders.goTo(1)
+    transactionsList.goTo(1)
   }
 
   const cancelOrder = async (id: string) => {
@@ -920,7 +885,7 @@ const seeded = useRef<Set<string>>(new Set())
     } catch (e: any) {
       setNotice(e.response ? tServer(e.response.data) : t('err.cancelFailed'))
     }
-    loadBalance(); loadPortfolio(); openOrders.load(); closedOrders.load(); loadTransactions()
+    loadBalance(); loadPortfolio(); openOrders.goTo(1); closedOrders.goTo(1); transactionsList.goTo(1)
   }
 
   const replaceOrder = async (id: string) => {
@@ -928,7 +893,7 @@ const seeded = useRef<Set<string>>(new Set())
     setReplacing(prev => new Set(prev).add(id))
     try {
       await api.post(`/api/order/${id}/replace`)
-      loadBalance(); loadPortfolio(); openOrders.load(); closedOrders.load(); loadTransactions()
+      loadBalance(); loadPortfolio(); openOrders.goTo(1); closedOrders.goTo(1); transactionsList.goTo(1)
     } catch (e: any) {
       setNotice(e.response ? tServer(e.response.data) : t('err.orderFailed'))
     } finally {
@@ -1267,26 +1232,7 @@ const loadHistory = (i: Instrument) => {
             <div className="section-head">
               <h2>{t('nav.market')}</h2>
               <span className="section-note">{t('board.otherNote', { n: board.items.length })}</span>
-              <div className="pager">
-                <button
-                  type="button"
-                  className="ghost-btn"
-                  disabled={board.stack.length === 0}
-                  onClick={board.prev}
-                  aria-label={t('pager.prev')}
-                >
-                  ‹
-                </button>
-                <button
-                  type="button"
-                  className="ghost-btn"
-                  disabled={board.nextCursor == null}
-                  onClick={board.next}
-                  aria-label={t('pager.next')}
-                >
-                  ›
-                </button>
-              </div>
+              <PageNav page={board.page} totalPages={board.totalPages} hasNext={board.hasNext} hasPrevious={board.hasPrevious} goTo={board.goTo} />
             </div>
 
             <div className="board-controls">
@@ -1396,26 +1342,7 @@ const loadHistory = (i: Instrument) => {
             <div className="section-head">
               <h2>{t('board.portfolioTitle')}</h2>
               <span className="section-note">{t('board.portfolioNote', { n: portfolioInstruments.length })}</span>
-              <div className="pager">
-                <button
-                  type="button"
-                  className="ghost-btn"
-                  disabled={portfolioBoard.stack.length === 0}
-                  onClick={portfolioBoard.prev}
-                  aria-label={t('pager.prev')}
-                >
-                  ‹
-                </button>
-                <button
-                  type="button"
-                  className="ghost-btn"
-                  disabled={portfolioBoard.nextCursor == null}
-                  onClick={portfolioBoard.next}
-                  aria-label={t('pager.next')}
-                >
-                  ›
-                </button>
-              </div>
+              <PageNav page={portfolioBoard.page} totalPages={portfolioBoard.totalPages} hasNext={portfolioBoard.hasNext} hasPrevious={portfolioBoard.hasPrevious} goTo={portfolioBoard.goTo} />
             </div>
 
             {portfolioInstruments.length === 0 ? (
@@ -1461,26 +1388,7 @@ const loadHistory = (i: Instrument) => {
                   replacing={replacing}
                 />
               )}
-              <div className="pager">
-                <button
-                  type="button"
-                  className="ghost-btn"
-                  disabled={openOrders.stack.length === 0}
-                  onClick={openOrders.prev}
-                  aria-label={t('pager.prev')}
-                >
-                  ‹
-                </button>
-                <button
-                  type="button"
-                  className="ghost-btn"
-                  disabled={openOrders.nextCursor == null}
-                  onClick={openOrders.next}
-                  aria-label={t('pager.next')}
-                >
-                  ›
-                </button>
-              </div>
+              <PageNav page={openOrders.page} totalPages={openOrders.totalPages} hasNext={openOrders.hasNext} hasPrevious={openOrders.hasPrevious} goTo={openOrders.goTo} />
             </div>
 
             <div className="panel">
@@ -1489,7 +1397,7 @@ const loadHistory = (i: Instrument) => {
                 <span className="section-note">{t('tx.note')}</span>
               </div>
 
-              {transactions.length === 0 ? (
+              {transactionsList.items.length === 0 ? (
                 <div className="empty-state">
                   {t('tx.empty')}
                 </div>
@@ -1507,7 +1415,7 @@ const loadHistory = (i: Instrument) => {
                       </tr>
                     </thead>
                     <tbody>
-                      {transactions.map(tx => (
+                      {transactionsList.items.map(tx => (
                         <tr key={tx.id}>
                           <td className="sym">{tx.symbol}</td>
                           <td className={tx.direction === 'Buy' ? 'up' : 'down'}>
@@ -1519,7 +1427,7 @@ const loadHistory = (i: Instrument) => {
                           <td>{fmtDate(tx.transactionDate)}</td>
                         </tr>
                       ))}
-                      {Array.from({ length: Math.max(0, PAGE_SIZE - transactions.length) }).map((_, idx) => (
+                      {Array.from({ length: Math.max(0, PAGE_SIZE - transactionsList.items.length) }).map((_, idx) => (
                         <tr key={`filler-${idx}`} className="filler-row" aria-hidden="true">
                           <td colSpan={6}>&nbsp;</td>
                         </tr>
@@ -1528,26 +1436,7 @@ const loadHistory = (i: Instrument) => {
                   </table>
                 </div>
               )}
-              <div className="pager">
-                <button
-                  type="button"
-                  className="ghost-btn"
-                  disabled={txCursorStack.length === 0}
-                  onClick={prevTxPage}
-                  aria-label={t('pager.prev')}
-                >
-                  ‹
-                </button>
-                <button
-                  type="button"
-                  className="ghost-btn"
-                  disabled={txCursor == null}
-                  onClick={nextTxPage}
-                  aria-label={t('pager.next')}
-                >
-                  ›
-                </button>
-              </div>
+              <PageNav page={transactionsList.page} totalPages={transactionsList.totalPages} hasNext={transactionsList.hasNext} hasPrevious={transactionsList.hasPrevious} goTo={transactionsList.goTo} />
             </div>
           </div>
 
@@ -1572,26 +1461,7 @@ const loadHistory = (i: Instrument) => {
                   replacing={replacing}
                 />
               )}
-              <div className="pager">
-                <button
-                  type="button"
-                  className="ghost-btn"
-                  disabled={closedOrders.stack.length === 0}
-                  onClick={closedOrders.prev}
-                  aria-label={t('pager.prev')}
-                >
-                  ‹
-                </button>
-                <button
-                  type="button"
-                  className="ghost-btn"
-                  disabled={closedOrders.nextCursor == null}
-                  onClick={closedOrders.next}
-                  aria-label={t('pager.next')}
-                >
-                  ›
-                </button>
-              </div>
+              <PageNav page={closedOrders.page} totalPages={closedOrders.totalPages} hasNext={closedOrders.hasNext} hasPrevious={closedOrders.hasPrevious} goTo={closedOrders.goTo} />
             </div>
           </div>
 
@@ -1621,26 +1491,7 @@ const loadHistory = (i: Instrument) => {
                       />
                     ))}
                   </div>
-                  <div className="pager">
-                    <button
-                      type="button"
-                      className="ghost-btn"
-                      disabled={favoritesBoard.stack.length === 0}
-                      onClick={favoritesBoard.prev}
-                      aria-label={t('pager.prev')}
-                    >
-                      ‹
-                    </button>
-                    <button
-                      type="button"
-                      className="ghost-btn"
-                      disabled={favoritesBoard.nextCursor == null}
-                      onClick={favoritesBoard.next}
-                      aria-label={t('pager.next')}
-                    >
-                      ›
-                    </button>
-                  </div>
+                  <PageNav page={favoritesBoard.page} totalPages={favoritesBoard.totalPages} hasNext={favoritesBoard.hasNext} hasPrevious={favoritesBoard.hasPrevious} goTo={favoritesBoard.goTo} />
                 </>
               )}
             </div>

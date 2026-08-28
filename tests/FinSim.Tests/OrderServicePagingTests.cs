@@ -1,3 +1,4 @@
+using FinSim.Application.Pagination;
 using FinSim.Domain.Models;
 using FinSim.Domain.Models.Enums;
 using NSubstitute;
@@ -19,102 +20,85 @@ public class OrderServicePagingTests
         return list;
     }
 
+    // ── full multi-page walk: no duplicates, no skipped rows ────────────
+
     [Fact]
-    public async Task GetRecentAsync_trims_the_extra_row_and_returns_a_cursor_when_there_are_more_rows_than_the_limit()
+    public async Task GetRecentAsync_walking_every_page_covers_every_row_exactly_once()
     {
         var ctx = new OrderTestContext();
         ctx.GivenUser();
         const int limit = 3;
+        var all = GivenOrders(ctx, 7);
 
-        // The repo is asked for limit + 1 rows so the service can tell whether
-        // there's a next page; it must trim that extra row before returning.
-        ctx.Orders.GetByUserPagedAsync(
-                ctx.UserId, Arg.Any<bool?>(), Arg.Any<DateTimeOffset?>(), Arg.Any<Guid?>(), limit, Arg.Any<CancellationToken>())
-            .Returns(GivenOrders(ctx, limit + 1));
+        for (var page = 1; page <= 3; page++)
+        {
+            var thisPage = page;
+            ctx.Orders.GetByUserPagedAsync(
+                    ctx.UserId, Arg.Any<bool?>(), thisPage, limit, Arg.Any<CancellationToken>())
+                .Returns(new PagedRows<Order>(
+                    all.Skip((thisPage - 1) * limit).Take(limit).ToList(), all.Count));
+        }
 
-        var result = await ctx.Service.GetRecentAsync(ctx.UserId, null, null, limit, CancellationToken.None);
+        var seen = new List<Guid>();
+        for (var page = 1; page <= 3; page++)
+        {
+            var result = await ctx.Service.GetRecentAsync(ctx.UserId, null, page, limit, CancellationToken.None);
+            seen.AddRange(result.Items.Select(o => o.Id));
+        }
 
-        Assert.Equal(limit, result.Items.Count);
-        Assert.NotNull(result.NextCursor);
+        Assert.Equal(all.Select(o => o.Id), seen);
+        Assert.Equal(all.Count, seen.Distinct().Count());
     }
 
     [Fact]
-    public async Task GetRecentAsync_returns_no_cursor_when_rows_exactly_fill_the_limit()
+    public async Task GetRecentAsync_the_last_page_returns_the_partial_remainder_and_the_correct_total()
     {
         var ctx = new OrderTestContext();
         ctx.GivenUser();
         const int limit = 3;
+        var all = GivenOrders(ctx, 7); // 3 full pages -> page 3 has 1 row
 
-        ctx.Orders.GetByUserPagedAsync(
-                ctx.UserId, Arg.Any<bool?>(), Arg.Any<DateTimeOffset?>(), Arg.Any<Guid?>(), limit, Arg.Any<CancellationToken>())
-            .Returns(GivenOrders(ctx, limit));
+        ctx.Orders.GetByUserPagedAsync(ctx.UserId, Arg.Any<bool?>(), 3, limit, Arg.Any<CancellationToken>())
+            .Returns(new PagedRows<Order>(all.Skip(6).Take(limit).ToList(), all.Count));
 
-        var result = await ctx.Service.GetRecentAsync(ctx.UserId, null, null, limit, CancellationToken.None);
+        var result = await ctx.Service.GetRecentAsync(ctx.UserId, null, 3, limit, CancellationToken.None);
 
-        Assert.Equal(limit, result.Items.Count);
-        Assert.Null(result.NextCursor);
+        Assert.Single(result.Items);
+        Assert.Equal(all.Count, result.TotalCount);
     }
 
     [Fact]
-    public async Task GetRecentAsync_returns_no_cursor_when_there_are_fewer_rows_than_the_limit()
+    public async Task GetRecentAsync_a_page_past_the_last_page_returns_no_items_but_the_correct_total()
     {
         var ctx = new OrderTestContext();
         ctx.GivenUser();
-        const int limit = 5;
+        const int limit = 3;
+        var all = GivenOrders(ctx, 7); // totalPages = 3
 
-        ctx.Orders.GetByUserPagedAsync(
-                ctx.UserId, Arg.Any<bool?>(), Arg.Any<DateTimeOffset?>(), Arg.Any<Guid?>(), limit, Arg.Any<CancellationToken>())
-            .Returns(GivenOrders(ctx, 2));
+        ctx.Orders.GetByUserPagedAsync(ctx.UserId, Arg.Any<bool?>(), 4, limit, Arg.Any<CancellationToken>())
+            .Returns(new PagedRows<Order>(new List<Order>(), all.Count));
 
-        var result = await ctx.Service.GetRecentAsync(ctx.UserId, null, null, limit, CancellationToken.None);
+        var result = await ctx.Service.GetRecentAsync(ctx.UserId, null, 4, limit, CancellationToken.None);
 
-        Assert.Equal(2, result.Items.Count);
-        Assert.Null(result.NextCursor);
+        Assert.Empty(result.Items);
+        Assert.Equal(all.Count, result.TotalCount);
+        Assert.NotEqual(0, result.TotalCount);
     }
 
     [Fact]
-    public async Task GetRecentAsync_returns_empty_items_and_no_cursor_when_the_repo_has_nothing()
+    public async Task GetRecentAsync_returns_empty_items_when_the_repo_has_nothing()
     {
         var ctx = new OrderTestContext();
         ctx.GivenUser();
 
         ctx.Orders.GetByUserPagedAsync(
-                ctx.UserId, Arg.Any<bool?>(), Arg.Any<DateTimeOffset?>(), Arg.Any<Guid?>(), Arg.Any<int>(), Arg.Any<CancellationToken>())
-            .Returns(new List<Order>());
+                ctx.UserId, Arg.Any<bool?>(), Arg.Any<int>(), Arg.Any<int>(), Arg.Any<CancellationToken>())
+            .Returns(new PagedRows<Order>(new List<Order>(), 0));
 
         var result = await ctx.Service.GetRecentAsync(ctx.UserId, null, null, null, CancellationToken.None);
 
         Assert.Empty(result.Items);
-        Assert.Null(result.NextCursor);
-    }
-
-    [Fact]
-    public async Task GetRecentAsync_cursor_minted_for_openOnly_true_does_not_page_the_openOnly_false_list()
-    {
-        var ctx = new OrderTestContext();
-        ctx.GivenUser();
-        const int limit = 2;
-
-        ctx.Orders.GetByUserPagedAsync(
-                ctx.UserId, true, Arg.Any<DateTimeOffset?>(), Arg.Any<Guid?>(), limit, Arg.Any<CancellationToken>())
-            .Returns(GivenOrders(ctx, limit + 1));
-        ctx.Orders.GetByUserPagedAsync(
-                ctx.UserId, false, Arg.Any<DateTimeOffset?>(), Arg.Any<Guid?>(), limit, Arg.Any<CancellationToken>())
-            .Returns(new List<Order>());
-
-        var openPage = await ctx.Service.GetRecentAsync(ctx.UserId, true, null, limit, CancellationToken.None);
-        Assert.NotNull(openPage.NextCursor);
-
-        // The cursor decodes against "orders_open_desc" but this call computes
-        // "orders_closed_desc" — it must fail to decode and fall back to page 1
-        // (afterTs/afterId null) rather than paging into the wrong result set.
-        await ctx.Service.GetRecentAsync(ctx.UserId, false, openPage.NextCursor, limit, CancellationToken.None);
-
-        await ctx.Orders.Received().GetByUserPagedAsync(
-            ctx.UserId, false,
-            Arg.Is<DateTimeOffset?>(x => x == null),
-            Arg.Is<Guid?>(x => x == null),
-            limit, Arg.Any<CancellationToken>());
+        Assert.Equal(0, result.TotalCount);
     }
 
     [Theory]
@@ -127,12 +111,12 @@ public class OrderServicePagingTests
         ctx.GivenUser();
 
         ctx.Orders.GetByUserPagedAsync(
-                ctx.UserId, openOnly, Arg.Any<DateTimeOffset?>(), Arg.Any<Guid?>(), Arg.Any<int>(), Arg.Any<CancellationToken>())
-            .Returns(new List<Order>());
+                ctx.UserId, openOnly, Arg.Any<int>(), Arg.Any<int>(), Arg.Any<CancellationToken>())
+            .Returns(new PagedRows<Order>(new List<Order>(), 0));
 
         await ctx.Service.GetRecentAsync(ctx.UserId, openOnly, null, null, CancellationToken.None);
 
         await ctx.Orders.Received().GetByUserPagedAsync(
-            ctx.UserId, openOnly, Arg.Any<DateTimeOffset?>(), Arg.Any<Guid?>(), Arg.Any<int>(), Arg.Any<CancellationToken>());
+            ctx.UserId, openOnly, Arg.Any<int>(), Arg.Any<int>(), Arg.Any<CancellationToken>());
     }
 }

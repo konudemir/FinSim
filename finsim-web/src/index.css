@@ -571,6 +571,23 @@ input  { font-family: var(--mono); }
   font-variant-numeric: tabular-nums;
 }
 
+.pager .pager-num {
+  min-width: 22px;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+
+.pager .pager-num[aria-current="page"] {
+  color: var(--bone);
+  border-color: var(--mute);
+  background: color-mix(in srgb, var(--mute) 16%, transparent);
+}
+
+.pager-ellipsis {
+  color: var(--faint);
+  padding: 0 2px;
+}
+
 /* ── portfolio tiles (grid, always-on chart) ────────────────── */
 
 .tiles {

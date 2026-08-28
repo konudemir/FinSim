@@ -29,8 +29,7 @@ public class InstrumentBoardPagingTests
         await ctx.Service.GetBoardAsync(sort, null, null, null, CancellationToken.None);
 
         await ctx.Instruments.Received().GetBoardPagedAsync(
-            sort, Arg.Any<string?>(), Arg.Any<decimal?>(), Arg.Any<string?>(), Arg.Any<Guid?>(),
-            Arg.Any<int>(), Arg.Any<CancellationToken>());
+            sort, Arg.Any<string?>(), Arg.Any<int>(), Arg.Any<int>(), Arg.Any<CancellationToken>());
     }
 
     [Theory]
@@ -43,186 +42,7 @@ public class InstrumentBoardPagingTests
         await ctx.Service.GetBoardAsync(badSort, null, null, null, CancellationToken.None);
 
         await ctx.Instruments.Received().GetBoardPagedAsync(
-            "symbol_asc", Arg.Any<string?>(), Arg.Any<decimal?>(), Arg.Any<string?>(), Arg.Any<Guid?>(),
-            Arg.Any<int>(), Arg.Any<CancellationToken>());
-    }
-
-    [Theory]
-    [InlineData("bogus")]
-    [InlineData(null)]
-    public async Task GetBoardAsync_cursor_minted_under_a_bad_sort_still_decodes_on_a_repeat_request_with_the_same_bad_sort(string? badSort)
-    {
-        // This is the bug the normalisation exists to prevent: if the raw
-        // (unrecognised) sort string were baked into the cursor while the repo
-        // query used the normalised "symbol_asc", the follow-up request would
-        // fail TryDecodeString and silently reset to page 1 forever.
-        var ctx = new InstrumentTestContext();
-        const int limit = 2;
-        var rows = GivenInstruments(limit + 1);
-        var expectedSymbol = rows[limit - 1].Symbol; // the row that survives the trim
-
-        ctx.Instruments.GetBoardPagedAsync(
-                "symbol_asc", Arg.Any<string?>(), Arg.Any<decimal?>(), Arg.Any<string?>(), Arg.Any<Guid?>(),
-                limit, Arg.Any<CancellationToken>())
-            .Returns(rows);
-
-        var first = await ctx.Service.GetBoardAsync(badSort, null, null, limit, CancellationToken.None);
-        Assert.NotNull(first.NextCursor);
-
-        ctx.Instruments.GetBoardPagedAsync(
-                "symbol_asc", Arg.Any<string?>(), Arg.Any<decimal?>(), Arg.Any<string?>(), Arg.Any<Guid?>(),
-                limit, Arg.Any<CancellationToken>())
-            .Returns(new List<Instrument>());
-
-        await ctx.Service.GetBoardAsync(badSort, null, first.NextCursor, limit, CancellationToken.None);
-
-        await ctx.Instruments.Received().GetBoardPagedAsync(
-            "symbol_asc", Arg.Any<string?>(), Arg.Any<decimal?>(),
-            Arg.Is<string?>(s => s == expectedSymbol), Arg.Any<Guid?>(),
-            limit, Arg.Any<CancellationToken>());
-    }
-
-    [Theory]
-    [InlineData("price_asc")]
-    [InlineData("price_desc")]
-    public async Task GetBoardAsync_mints_a_decimal_cursor_carrying_CurrentPrice_for_price_sorts(string sort)
-    {
-        var ctx = new InstrumentTestContext();
-        const int limit = 2;
-        var rows = GivenInstruments(limit + 1);
-        var lastRemaining = rows[limit - 1];
-
-        ctx.Instruments.GetBoardPagedAsync(
-                sort, Arg.Any<string?>(), Arg.Any<decimal?>(), Arg.Any<string?>(), Arg.Any<Guid?>(),
-                limit, Arg.Any<CancellationToken>())
-            .Returns(rows);
-
-        var result = await ctx.Service.GetBoardAsync(sort, null, null, limit, CancellationToken.None);
-
-        Assert.True(Cursor.TryDecodeDecimal(result.NextCursor, sort, out var key, out var id));
-        Assert.Equal(lastRemaining.CurrentPrice, key);
-        Assert.Equal(lastRemaining.Id, id);
-    }
-
-    [Theory]
-    [InlineData("symbol_asc")]
-    [InlineData("symbol_desc")]
-    public async Task GetBoardAsync_mints_a_string_cursor_carrying_Symbol_for_symbol_sorts(string sort)
-    {
-        var ctx = new InstrumentTestContext();
-        const int limit = 2;
-        var rows = GivenInstruments(limit + 1);
-        var lastRemaining = rows[limit - 1];
-
-        ctx.Instruments.GetBoardPagedAsync(
-                sort, Arg.Any<string?>(), Arg.Any<decimal?>(), Arg.Any<string?>(), Arg.Any<Guid?>(),
-                limit, Arg.Any<CancellationToken>())
-            .Returns(rows);
-
-        var result = await ctx.Service.GetBoardAsync(sort, null, null, limit, CancellationToken.None);
-
-        Assert.True(Cursor.TryDecodeString(result.NextCursor, sort, out var key, out var id));
-        Assert.Equal(lastRemaining.Symbol, key);
-        Assert.Equal(lastRemaining.Id, id);
-    }
-
-    [Fact]
-    public async Task GetBoardAsync_a_price_cursor_does_not_decode_against_a_symbol_sort()
-    {
-        var ctx = new InstrumentTestContext();
-        const int limit = 2;
-        var rows = GivenInstruments(limit + 1);
-
-        ctx.Instruments.GetBoardPagedAsync(
-                "price_asc", Arg.Any<string?>(), Arg.Any<decimal?>(), Arg.Any<string?>(), Arg.Any<Guid?>(),
-                limit, Arg.Any<CancellationToken>())
-            .Returns(rows);
-        ctx.Instruments.GetBoardPagedAsync(
-                "symbol_asc", Arg.Any<string?>(), Arg.Any<decimal?>(), Arg.Any<string?>(), Arg.Any<Guid?>(),
-                limit, Arg.Any<CancellationToken>())
-            .Returns(new List<Instrument>());
-
-        var priceCursor = (await ctx.Service.GetBoardAsync("price_asc", null, null, limit, CancellationToken.None)).NextCursor;
-        Assert.NotNull(priceCursor);
-
-        await ctx.Service.GetBoardAsync("symbol_asc", null, priceCursor, limit, CancellationToken.None);
-
-        await ctx.Instruments.Received().GetBoardPagedAsync(
-            "symbol_asc", Arg.Any<string?>(),
-            Arg.Is<decimal?>(p => p == null), Arg.Is<string?>(s => s == null), Arg.Is<Guid?>(id => id == null),
-            limit, Arg.Any<CancellationToken>());
-    }
-
-    [Fact]
-    public async Task GetBoardAsync_a_symbol_cursor_does_not_decode_against_a_price_sort()
-    {
-        var ctx = new InstrumentTestContext();
-        const int limit = 2;
-        var rows = GivenInstruments(limit + 1);
-
-        ctx.Instruments.GetBoardPagedAsync(
-                "symbol_asc", Arg.Any<string?>(), Arg.Any<decimal?>(), Arg.Any<string?>(), Arg.Any<Guid?>(),
-                limit, Arg.Any<CancellationToken>())
-            .Returns(rows);
-        ctx.Instruments.GetBoardPagedAsync(
-                "price_asc", Arg.Any<string?>(), Arg.Any<decimal?>(), Arg.Any<string?>(), Arg.Any<Guid?>(),
-                limit, Arg.Any<CancellationToken>())
-            .Returns(new List<Instrument>());
-
-        var symbolCursor = (await ctx.Service.GetBoardAsync("symbol_asc", null, null, limit, CancellationToken.None)).NextCursor;
-        Assert.NotNull(symbolCursor);
-
-        await ctx.Service.GetBoardAsync("price_asc", null, symbolCursor, limit, CancellationToken.None);
-
-        await ctx.Instruments.Received().GetBoardPagedAsync(
-            "price_asc", Arg.Any<string?>(),
-            Arg.Is<decimal?>(p => p == null), Arg.Is<string?>(s => s == null), Arg.Is<Guid?>(id => id == null),
-            limit, Arg.Any<CancellationToken>());
-    }
-
-    [Fact]
-    public async Task GetBoardAsync_trims_the_extra_row_and_returns_a_cursor_when_there_are_more_rows_than_the_limit()
-    {
-        var ctx = new InstrumentTestContext();
-        const int limit = 3;
-
-        ctx.Instruments.GetBoardPagedAsync(
-                "symbol_asc", Arg.Any<string?>(), Arg.Any<decimal?>(), Arg.Any<string?>(), Arg.Any<Guid?>(),
-                limit, Arg.Any<CancellationToken>())
-            .Returns(GivenInstruments(limit + 1));
-
-        var result = await ctx.Service.GetBoardAsync("symbol_asc", null, null, limit, CancellationToken.None);
-
-        Assert.Equal(limit, result.Items.Count);
-        Assert.NotNull(result.NextCursor);
-    }
-
-    [Fact]
-    public async Task GetBoardAsync_returns_no_cursor_when_rows_exactly_fill_the_limit()
-    {
-        var ctx = new InstrumentTestContext();
-        const int limit = 3;
-
-        ctx.Instruments.GetBoardPagedAsync(
-                "symbol_asc", Arg.Any<string?>(), Arg.Any<decimal?>(), Arg.Any<string?>(), Arg.Any<Guid?>(),
-                limit, Arg.Any<CancellationToken>())
-            .Returns(GivenInstruments(limit));
-
-        var result = await ctx.Service.GetBoardAsync("symbol_asc", null, null, limit, CancellationToken.None);
-
-        Assert.Equal(limit, result.Items.Count);
-        Assert.Null(result.NextCursor);
-    }
-
-    [Fact]
-    public async Task GetBoardAsync_returns_empty_items_and_no_cursor_when_the_repo_has_nothing()
-    {
-        var ctx = new InstrumentTestContext();
-
-        var result = await ctx.Service.GetBoardAsync("symbol_asc", null, null, null, CancellationToken.None);
-
-        Assert.Empty(result.Items);
-        Assert.Null(result.NextCursor);
+            "symbol_asc", Arg.Any<string?>(), Arg.Any<int>(), Arg.Any<int>(), Arg.Any<CancellationToken>());
     }
 
     [Theory]
@@ -235,7 +55,123 @@ public class InstrumentBoardPagingTests
         await ctx.Service.GetBoardAsync("symbol_asc", q, null, null, CancellationToken.None);
 
         await ctx.Instruments.Received().GetBoardPagedAsync(
-            "symbol_asc", Arg.Is<string?>(x => x == q), Arg.Any<decimal?>(), Arg.Any<string?>(), Arg.Any<Guid?>(),
-            Arg.Any<int>(), Arg.Any<CancellationToken>());
+            "symbol_asc", Arg.Is<string?>(x => x == q), Arg.Any<int>(), Arg.Any<int>(), Arg.Any<CancellationToken>());
+    }
+
+    // ── full multi-page walk: no duplicates, no skipped rows ────────────
+
+    [Fact]
+    public async Task GetBoardAsync_walking_every_page_covers_every_row_exactly_once()
+    {
+        var ctx = new InstrumentTestContext();
+        const int limit = 2;
+        var all = GivenInstruments(5).OrderBy(i => i.Symbol).ToList();
+
+        for (var page = 1; page <= 3; page++)
+        {
+            var thisPage = page;
+            ctx.Instruments.GetBoardPagedAsync(
+                    "symbol_asc", Arg.Any<string?>(), thisPage, limit, Arg.Any<CancellationToken>())
+                .Returns(new PagedRows<Instrument>(
+                    all.Skip((thisPage - 1) * limit).Take(limit).ToList(), all.Count));
+        }
+
+        var seen = new List<Guid>();
+        for (var page = 1; page <= 3; page++)
+        {
+            var result = await ctx.Service.GetBoardAsync("symbol_asc", null, page, limit, CancellationToken.None);
+            seen.AddRange(result.Items.Select(i => i.Id));
+        }
+
+        Assert.Equal(all.Select(i => i.Id), seen);
+        Assert.Equal(all.Count, seen.Distinct().Count());
+    }
+
+    [Fact]
+    public async Task GetBoardAsync_the_last_page_returns_the_partial_remainder_and_the_correct_total()
+    {
+        var ctx = new InstrumentTestContext();
+        const int limit = 2;
+        var all = GivenInstruments(5).OrderBy(i => i.Symbol).ToList(); // 3 pages, page 3 has 1 row
+
+        ctx.Instruments.GetBoardPagedAsync("symbol_asc", Arg.Any<string?>(), 3, limit, Arg.Any<CancellationToken>())
+            .Returns(new PagedRows<Instrument>(all.Skip(4).Take(limit).ToList(), all.Count));
+
+        var result = await ctx.Service.GetBoardAsync("symbol_asc", null, 3, limit, CancellationToken.None);
+
+        Assert.Single(result.Items);
+        Assert.Equal(all.Count, result.TotalCount);
+    }
+
+    [Fact]
+    public async Task GetBoardAsync_a_page_past_the_last_page_returns_no_items_but_the_correct_total()
+    {
+        var ctx = new InstrumentTestContext();
+        const int limit = 2;
+        var all = GivenInstruments(5); // totalPages = 3
+
+        ctx.Instruments.GetBoardPagedAsync("symbol_asc", Arg.Any<string?>(), 4, limit, Arg.Any<CancellationToken>())
+            .Returns(new PagedRows<Instrument>(new List<Instrument>(), all.Count));
+
+        var result = await ctx.Service.GetBoardAsync("symbol_asc", null, 4, limit, CancellationToken.None);
+
+        Assert.Empty(result.Items);
+        Assert.Equal(all.Count, result.TotalCount);
+        Assert.NotEqual(0, result.TotalCount);
+    }
+
+    [Fact]
+    public async Task GetBoardAsync_returns_empty_items_when_the_repo_has_nothing()
+    {
+        var ctx = new InstrumentTestContext();
+
+        var result = await ctx.Service.GetBoardAsync("symbol_asc", null, null, null, CancellationToken.None);
+
+        Assert.Empty(result.Items);
+    }
+
+    // ── tiebreak regression: rows sharing a CurrentPrice must not repeat or
+    // vanish across page boundaries when paging price_asc by offset. Mirrors
+    // InstrumentRepository.ApplyBoardSort's OrderBy(CurrentPrice).ThenBy(Id). ──
+
+    [Fact]
+    public async Task GetBoardAsync_paging_price_asc_over_tied_prices_covers_every_row_exactly_once()
+    {
+        var ctx = new InstrumentTestContext();
+        const int limit = 2;
+        const decimal tiedPrice = 150m;
+
+        // 5 instruments sharing the same CurrentPrice -- a tied group bigger than the page size.
+        var tied = Enumerable.Range(0, 5).Select(i => new Instrument
+        {
+            Id = Guid.NewGuid(),
+            Symbol = $"TIE{i}",
+            Name = $"Tied {i}",
+            BasePrice = tiedPrice,
+            CurrentPrice = tiedPrice,
+            IsActive = true
+        }).ToList();
+
+        // The stable order a correct ThenBy(Id) tiebreak would produce.
+        var all = tied.OrderBy(i => i.CurrentPrice).ThenBy(i => i.Id).ToList();
+
+        for (var page = 1; page <= 3; page++)
+        {
+            var thisPage = page;
+            ctx.Instruments.GetBoardPagedAsync(
+                    "price_asc", Arg.Any<string?>(), thisPage, limit, Arg.Any<CancellationToken>())
+                .Returns(new PagedRows<Instrument>(
+                    all.Skip((thisPage - 1) * limit).Take(limit).ToList(), all.Count));
+        }
+
+        var seen = new List<Guid>();
+        for (var page = 1; page <= 3; page++)
+        {
+            var result = await ctx.Service.GetBoardAsync("price_asc", null, page, limit, CancellationToken.None);
+            seen.AddRange(result.Items.Select(i => i.Id));
+        }
+
+        Assert.Equal(tied.Select(i => i.Id).OrderBy(id => id), seen.OrderBy(id => id));
+        Assert.Equal(tied.Count, seen.Distinct().Count());
     }
 }

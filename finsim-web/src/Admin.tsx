@@ -2,7 +2,8 @@ import { useEffect, useState } from 'react'
 import api from './api'
 import { useLang, type LangKey } from './lang'
 import { fmt } from './format'
-import { paginate, Pager, signed, dirOf, useCursorPage, PAGE_SIZE } from './App'
+import { paginate, Pager, signed, dirOf, usePagedList, PAGE_SIZE } from './App'
+import PageNav from './PageNav'
 
 type Instrument = {
   id: string
@@ -47,34 +48,6 @@ type OrderBook = {
   bids: BookLevel[]; asks: BookLevel[]
 }
 
-// Prev/next controls for a useCursorPage board — mirrors the market/portfolio
-// board pager in App.tsx (a running "page number" doesn't exist with cursors).
-function CursorPager({ board }: { board: { stack: unknown[]; nextCursor: string | null; prev: () => void; next: () => void } }) {
-  const { t } = useLang()
-  return (
-    <div className="pager">
-      <button
-        type="button"
-        className="ghost-btn"
-        disabled={board.stack.length === 0}
-        onClick={board.prev}
-        aria-label={t('pager.prev')}
-      >
-        ‹
-      </button>
-      <button
-        type="button"
-        className="ghost-btn"
-        disabled={board.nextCursor == null}
-        onClick={board.next}
-        aria-label={t('pager.next')}
-      >
-        ›
-      </button>
-    </div>
-  )
-}
-
 export default function Admin({ onClose }: { onClose: () => void }) {
   const { t, tServer } = useLang()
 
@@ -108,25 +81,26 @@ export default function Admin({ onClose }: { onClose: () => void }) {
 
   // Full lists — still needed for the order-book/share-grant dropdowns (active
   // instruments only) and the bot-view aggregates (net worth, exposure, cash
-  // utilization, leaderboards), which need every bot at once and can't be
-  // computed from a single cursor page.
+  // utilization, leaderboards), which need every bot's full data at once and
+  // can't be computed from a single page (the page's totalCount alone isn't
+  // enough — these aggregates sum/rank actual row values, not just a count).
   const loadInstruments = () =>
     api.get<Instrument[]>('/api/instruments').then(r => setInstruments(r.data)).catch(console.error)
 
   const loadUsers = () =>
     api.get<AdminUser[]>('/api/admin/users').then(r => setUsers(r.data)).catch(console.error)
 
-  // Cursor-paged instrument/user tables — mirrors the market/portfolio boards
-  // in App.tsx. Unlike loadInstruments above, this includes inactive instruments.
-  const instrumentBoard = useCursorPage<Instrument>('/api/instruments/admin-board', {
-    limit: PAGE_SIZE, sort: instrumentSort, q: debouncedInstrumentQuery,
-  })
-  const humanBoard = useCursorPage<AdminUser>('/api/admin/users/board', {
-    bots: false, limit: PAGE_SIZE, sort: userSort, q: debouncedUserQuery,
-  })
-  const botBoard = useCursorPage<AdminUser>('/api/admin/users/board', {
-    bots: true, limit: PAGE_SIZE, sort: userSort, q: debouncedUserQuery,
-  })
+  // Paged instrument/user tables — mirrors the market/portfolio boards in
+  // App.tsx. Unlike loadInstruments above, this includes inactive instruments.
+  const instrumentBoard = usePagedList<Instrument>('/api/instruments/admin-board', {
+    sort: instrumentSort, q: debouncedInstrumentQuery,
+  }, PAGE_SIZE)
+  const humanBoard = usePagedList<AdminUser>('/api/admin/users/board', {
+    bots: false, sort: userSort, q: debouncedUserQuery,
+  }, PAGE_SIZE)
+  const botBoard = usePagedList<AdminUser>('/api/admin/users/board', {
+    bots: true, sort: userSort, q: debouncedUserQuery,
+  }, PAGE_SIZE)
 
   const reloadPrice = async (i: Instrument) => {
     setNotice(''); setBusy(true)
@@ -162,16 +136,14 @@ export default function Admin({ onClose }: { onClose: () => void }) {
     return () => window.clearTimeout(timer)
   }, [userQuery])
 
-  // Sort/query changes reset paging to page 1 — a cursor minted under the old
-  // sort or query wouldn't decode (or would decode against the wrong rows)
-  // under the new one anyway.
+  // Sort/query changes reset paging to page 1.
   useEffect(() => {
-    instrumentBoard.load()
+    instrumentBoard.goTo(1)
   }, [instrumentSort, debouncedInstrumentQuery])
 
   useEffect(() => {
-    humanBoard.load()
-    botBoard.load()
+    humanBoard.goTo(1)
+    botBoard.goTo(1)
   }, [userSort, debouncedUserQuery])
 
   const fail = (e: any, fallback: LangKey) =>
@@ -432,7 +404,7 @@ export default function Admin({ onClose }: { onClose: () => void }) {
         ))}
       </tbody>
     </table>
-    <CursorPager board={instrumentBoard} />
+    <PageNav page={instrumentBoard.page} totalPages={instrumentBoard.totalPages} hasNext={instrumentBoard.hasNext} hasPrevious={instrumentBoard.hasPrevious} goTo={instrumentBoard.goTo} />
   </div>
 
       <div className="panel">
@@ -540,7 +512,7 @@ export default function Admin({ onClose }: { onClose: () => void }) {
         </div>
 
         {humanBoard.items.map(u => renderUserCard(u))}
-        <CursorPager board={humanBoard} />
+        <PageNav page={humanBoard.page} totalPages={humanBoard.totalPages} hasNext={humanBoard.hasNext} hasPrevious={humanBoard.hasPrevious} goTo={humanBoard.goTo} />
       </div>
 
       <div className="panel">
@@ -715,7 +687,7 @@ export default function Admin({ onClose }: { onClose: () => void }) {
         ) : (
           <>
             {botBoard.items.map(u => renderUserCard(u))}
-            <CursorPager board={botBoard} />
+            <PageNav page={botBoard.page} totalPages={botBoard.totalPages} hasNext={botBoard.hasNext} hasPrevious={botBoard.hasPrevious} goTo={botBoard.goTo} />
           </>
         )}
       </div>
