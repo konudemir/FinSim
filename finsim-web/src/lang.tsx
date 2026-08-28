@@ -18,6 +18,7 @@ const tr = {
   'app.offline': 'connection lost',
 
   'nav.toggle': 'Menü',
+  'nav.toggleLang': 'Dili değiştir',
   'nav.favorites': 'Favoriler',
   'nav.portfolio': 'Portföyüm',
   'nav.market': 'Borsa',
@@ -312,6 +313,7 @@ const en: typeof tr = {
   'app.offline': 'connection lost',
 
   'nav.toggle': 'Menu',
+  'nav.toggleLang': 'Switch language',
   'nav.favorites': 'Favorites',
   'nav.portfolio': 'My Portfolio',
   'nav.market': 'Stock Market',

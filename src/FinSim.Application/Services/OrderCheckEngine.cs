@@ -42,6 +42,14 @@ namespace FinSim.Application.Services
             // stamps it onto the PriceHistory row it writes after the save.
             LastTickVolume = new Dictionary<Guid, double>();
 
+            // A user can be filled multiple times against the same instrument within
+            // this one pass (several resting orders on the other side). The position
+            // that creates gets Added to the change tracker but isn't in the database
+            // yet, so a plain re-query for the next fill would miss it and Add a
+            // second row for the same (UserId, InstrumentId) — a duplicate-key failure
+            // at SaveChanges that rolls back the whole tick. Cache it in-process instead.
+            var positionCache = new Dictionary<(Guid UserId, Guid InstrumentId), PortfolioItem?>();
+
             foreach (var instrument in instruments)
             {
                 if (!instrument.IsActive) continue;
@@ -112,14 +120,14 @@ namespace FinSim.Application.Services
                     // price caused the breach) is left untouched. Scenario 3.
                     if (fillPrice < low || fillPrice > high)
                     {
-                        await CancelLeftoverAsync(maker == bid ? ask : bid, instrument, touched, ct);
+                        await CancelLeftoverAsync(maker == bid ? ask : bid, instrument, touched, positionCache, ct);
                         break;
                     }
 
                     var qty = Math.Min(Remaining(bid), Remaining(ask));
 
                     // All-or-nothing: settle both sides; if either can't, skip this pair.
-                    if (!await TrySettleFillAsync(bid, ask, qty, fillPrice, instrument, touched, ct))
+                    if (!await TrySettleFillAsync(bid, ask, qty, fillPrice, instrument, touched, positionCache, ct))
                     {
                         // Couldn't settle (e.g. short side, not yet implemented) — don't
                         // let it wedge the walk; step past the resting order.
@@ -139,7 +147,7 @@ namespace FinSim.Application.Services
                 foreach (var o in book)
                 {
                     if (!o.ImmediateOrCancel) continue;
-                    await CancelLeftoverAsync(o, instrument, touched, ct);
+                    await CancelLeftoverAsync(o, instrument, touched, positionCache, ct);
                 }
             }
 
@@ -152,12 +160,13 @@ namespace FinSim.Application.Services
         /// runs mid-tick against orders the caller already loaded, not by id.
         /// </summary>
         private async Task CancelLeftoverAsync(
-            Order o, Instrument instrument, List<OrderOutcome> touched, CancellationToken ct)
+            Order o, Instrument instrument, List<OrderOutcome> touched,
+            Dictionary<(Guid UserId, Guid InstrumentId), PortfolioItem?> positionCache, CancellationToken ct)
         {
             if (o.Status != OrderStatus.Pending && o.Status != OrderStatus.PartiallyFilled) return;
 
             var owner = await _users.GetByIdAsync(o.UserId, ct);
-            var pos   = await _portfolio.GetAsync(o.UserId, o.InstrumentId, ct);
+            var pos   = await GetPositionAsync(positionCache, o.UserId, o.InstrumentId, ct);
 
             if (o.LockedAmount > 0 && owner is not null)
             {
@@ -183,14 +192,15 @@ namespace FinSim.Application.Services
         /// </summary>
         private async Task<bool> TrySettleFillAsync(
             Order bid, Order ask, int qty, decimal price,
-            Instrument instrument, List<OrderOutcome> touched, CancellationToken ct)
+            Instrument instrument, List<OrderOutcome> touched,
+            Dictionary<(Guid UserId, Guid InstrumentId), PortfolioItem?> positionCache, CancellationToken ct)
         {
             var buyer  = await _users.GetByIdAsync(bid.UserId, ct);
             var seller = await _users.GetByIdAsync(ask.UserId, ct);
             if (buyer is null || seller is null) return false;
 
-            var buyerPos  = await _portfolio.GetAsync(bid.UserId, instrument.Id, ct);
-            var sellerPos = await _portfolio.GetAsync(ask.UserId, instrument.Id, ct);
+            var buyerPos  = await GetPositionAsync(positionCache, bid.UserId, instrument.Id, ct);
+            var sellerPos = await GetPositionAsync(positionCache, ask.UserId, instrument.Id, ct);
 
             var buyerKind  = PortfolioFillExecutor.Classify(buyerPos?.TotalQuantity ?? 0, OrderDirection.Buy);
             var sellerKind = PortfolioFillExecutor.Classify(sellerPos?.TotalQuantity ?? 0, OrderDirection.Sell);
@@ -241,7 +251,8 @@ namespace FinSim.Application.Services
 
             var buyerFill = PortfolioFillExecutor.Apply(
                 _portfolio, buyer, buyerPos, bid.UserId, instrument.Id,
-                OrderDirection.Buy, qty, price);
+                OrderDirection.Buy, qty, price, out var buyerAfter);
+            positionCache[(bid.UserId, instrument.Id)] = buyerAfter;
 
             // ---- SELLER ----
             if (sellerKind == FillKind.ReduceOrCloseLong) sellerPos!.LockedQuantity -= qty;
@@ -262,7 +273,8 @@ namespace FinSim.Application.Services
 
             var sellerFill = PortfolioFillExecutor.Apply(
                 _portfolio, seller, sellerPos, ask.UserId, instrument.Id,
-                OrderDirection.Sell, qty, price);
+                OrderDirection.Sell, qty, price, out var sellerAfter);
+            positionCache[(ask.UserId, instrument.Id)] = sellerAfter;
 
             seller.FreeCashBalance += gross;
 
@@ -300,6 +312,22 @@ namespace FinSim.Application.Services
             touched.Add(new OrderOutcome(ask.UserId, ToDto(ask, instrument, gross)));
             return true;
         }
+        /// <summary>
+        /// Position lookup scoped to this tick's cache — see the comment on
+        /// <c>positionCache</c> in MatchAsync for why a plain DB query isn't enough.
+        /// </summary>
+        private async Task<PortfolioItem?> GetPositionAsync(
+            Dictionary<(Guid UserId, Guid InstrumentId), PortfolioItem?> cache,
+            Guid userId, Guid instrumentId, CancellationToken ct)
+        {
+            var key = (userId, instrumentId);
+            if (cache.TryGetValue(key, out var cached)) return cached;
+
+            var item = await _portfolio.GetAsync(userId, instrumentId, ct);
+            cache[key] = item;
+            return item;
+        }
+
         private static void ApplyFillCache(Order o, int qty, decimal price)
         {
             var newFilled = o.FilledQuantity + qty;

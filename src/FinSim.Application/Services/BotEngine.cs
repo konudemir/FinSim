@@ -48,7 +48,7 @@ public class BotEngine
         _log = log;
     }
 
-    public async Task RunAsync(List<Instrument> instruments, CancellationToken ct)
+    public async Task RunAsync(List<Instrument> instruments, decimal marketMove, CancellationToken ct)
     {
         if (!_config.GetValue("Bots:Enabled", false)) return;
 
@@ -65,13 +65,15 @@ public class BotEngine
 
         var bots = await _users.GetBotsAsync(ct);
         if (bots.Count == 0) return;
-        var botIds = bots.Select(b => b.Id).ToHashSet();
-        var cancelled = await RequoteAsync(tradable, botIds, ct);
 
+        var prices = tradable.ToDictionary(i => i.Id, i => i.CurrentPrice);
         var hotList = BuildHotList(tradable);
+        var hotIds = hotList.Select(i => i.Id).ToHashSet();
+        var coldList = tradable.Where(i => !hotIds.Contains(i.Id)).ToList();
 
         var placed = 0;
         var rejected = 0;
+        var cancelled = 0;
 
         foreach (var bot in bots)
         {
@@ -80,23 +82,43 @@ public class BotEngine
             // making every bot act a little less.
             if (multiplier < 1.0 && Rng.NextDouble() > multiplier) continue;
 
-            // Without a cap a bot keeps quoting until its cash is fully locked
-            // in resting orders, then goes silent — the opposite of what a
-            // liquidity provider should do.
+            // A bot approaching its cap trims its own least-likely-to-fill
+            // quotes (furthest from currentPrice) to make room, instead of
+            // quoting until it's full and then going silent.
             var open = await _orderRepo.GetPendingByUserAsync(bot.Id, ct);
-            if (open.Count >= maxOpen) continue;
+            var freed = await TrimNearCapacityAsync(bot, open, prices, maxOpen, ct);
+            cancelled += freed;
+            if (open.Count - freed >= maxOpen) continue;
 
             var scaled = (int)Math.Round(Rng.Next(minActions, maxActions + 1)
                                          * Math.Max(multiplier, 1.0));
 
             for (var n = 0; n < scaled; n++)
             {
-                var instrument = Pick(tradable, hotList);
-                var result = await ActAsync(bot, instrument, ct);
+                var instrument = Pick(hotList, coldList);
+                var result = await ActAsync(bot, instrument, marketMove, ct);
 
                 if (result == OrderResult.Success) placed++;
                 else rejected++;
             }
+        }
+
+        // The hot list soaks up most random picks by design, so a large cold
+        // tail can go ticks without a single quote purely by chance — its book
+        // thins out and its liquidity dies, not because anyone chose to ignore
+        // it. Round-robin a few guaranteed actions across the cold list every
+        // tick so every instrument gets touched regularly regardless of luck.
+        var guaranteedCold = _config.GetValue("Bots:GuaranteedColdPicksPerTick", 3);
+        for (var g = 0; g < Math.Min(guaranteedCold, coldList.Count); g++)
+        {
+            var instrument = coldList[_coldRotation % coldList.Count];
+            _coldRotation++;
+
+            var bot = bots[Rng.Next(bots.Count)];
+            var result = await ActAsync(bot, instrument, marketMove, ct);
+
+            if (result == OrderResult.Success) placed++;
+            else rejected++;
         }
 
         if (placed > 0 || rejected > 0 || cancelled > 0)
@@ -104,28 +126,36 @@ public class BotEngine
                 placed, rejected, cancelled);
     }
 
-    private async Task<OrderResult> ActAsync(User bot, Instrument instrument, CancellationToken ct)
+    // Shared across ticks so the round-robin keeps advancing through the cold
+    // list rather than resetting to the same starting point every tick.
+    private static int _coldRotation;
+
+    private async Task<OrderResult> ActAsync(User bot, Instrument instrument, decimal marketMove, CancellationToken ct)
     {
         var p = PersonalityOf(bot.Id);
 
-        var direction = await ChooseDirectionAsync(bot, instrument, ct);
+        var (direction, isShortOpen) = await ChooseDirectionAsync(bot, instrument, p, marketMove, ct);
         if (direction is null) return OrderResult.InsufficientFunds;
 
         // Most quotes sit off currentPrice and rest. A minority are priced
         // through it, which is the only way a bot ever crosses — it can't see
         // the book, so aggression is a pricing choice, not a reaction to what's
-        // actually resting there.
-        var crosses = Rng.NextDouble() < _config.GetValue("Bots:CrossChance", 0.12);
+        // actually resting there. Contrarians cross far more often: leaning
+        // against the trend only moves the price if the order actually trades.
+        var crossChance = p.Contrarian
+            ? _config.GetValue("Bots:ContrarianCrossChance", 0.55)
+            : _config.GetValue("Bots:CrossChance", 0.16);
+        var crosses = Rng.NextDouble() < crossChance;
         var spread  = p.Spread * (decimal)(0.5 + Rng.NextDouble());
 
-        var maxSpread = (decimal)_config.GetValue("Bots:MaxSpreadPct", 0.012);
+        var maxSpread = (decimal)_config.GetValue("Bots:MaxSpreadPct", 0.016);
         var offset = crosses ? -(maxSpread * 1.2m) : spread;
 
         var price = direction == OrderDirection.Buy
             ? instrument.CurrentPrice * (1m - offset)
             : instrument.CurrentPrice * (1m + offset);
 
-        var quantity = QuantityFor(bot, instrument, direction.Value, p);
+        var quantity = QuantityFor(bot, instrument, direction.Value, p, isShortOpen);
         if (quantity < 1) return OrderResult.InvalidQuantity;
 
         var (result, _) = await _orders.PlaceLimitOrderAsync(
@@ -140,30 +170,57 @@ public class BotEngine
     }
 
     /// <summary>
-    /// Sell only what the bot actually holds unlocked, otherwise buy. Shorting
-    /// is allowed by the rules, but a liquidity provider that shorts on a coin
-    /// flip accumulates margin obligations it never intends to manage.
+    /// Sell only what the bot actually holds unlocked, otherwise buy — except most
+    /// bots hold only a handful of the ~100 tradable names (seeded to half the
+    /// bots, 2-5 instruments each), so for most bot/instrument pairs canSell is
+    /// false and the old rule forced a buy every time. Applied across the whole
+    /// crowd that's a one-way bid on nearly every instrument, not a coin flip —
+    /// it pushes price up regardless of what direction any individual bot wants.
+    ///
+    /// A bounded slice of that would-be-buy flow instead opens a small short, so
+    /// instruments nobody happens to hold still get real sell-side pressure. This
+    /// isn't unconstrained "coin-flip shorting" the size cap in QuantityFor keeps
+    /// any one short small, and OrderService's margin check bounds it further.
+    ///
+    /// Most bots are trend-neutral and coin-flip when both sides are open. A
+    /// small contrarian minority leans the other way on purpose: they buy
+    /// into a falling market and sell into a rising one, fading the move
+    /// instead of following it. That's what stops the book from being pure
+    /// one-way liquidity and makes the tape push back on runs.
     /// </summary>
-    private async Task<OrderDirection?> ChooseDirectionAsync(
-        User bot, Instrument instrument, CancellationToken ct)
+    private async Task<(OrderDirection? Direction, bool IsShortOpen)> ChooseDirectionAsync(
+        User bot, Instrument instrument, Personality p, decimal marketMove, CancellationToken ct)
     {
         var item = await _portfolio.GetAsync(bot.Id, instrument.Id, ct);
         var sellable = item is null ? 0 : item.TotalQuantity - item.LockedQuantity;
 
-        var canSell = true;
+        var canSell = sellable > 0;
         var canBuy  = bot.FreeCashBalance > instrument.CurrentPrice * 5m;
 
-        if (canSell && canBuy) return Rng.Next(2) == 0 ? OrderDirection.Buy : OrderDirection.Sell;
-        if (canSell) return OrderDirection.Sell;
-        if (canBuy)  return OrderDirection.Buy;
-        return null;
+        if (canSell && canBuy)
+        {
+            var deadband = (decimal)_config.GetValue("Bots:ContrarianDeadbandPct", 0.001);
+            if (p.Contrarian && Math.Abs(marketMove) > deadband)
+                return (marketMove > 0 ? OrderDirection.Sell : OrderDirection.Buy, false);
+
+            return (Rng.Next(2) == 0 ? OrderDirection.Buy : OrderDirection.Sell, false);
+        }
+        if (canSell) return (OrderDirection.Sell, false);
+        if (canBuy)
+        {
+            var shortChance = _config.GetValue("Bots:ShortChance", 0.35);
+            if (Rng.NextDouble() < shortChance) return (OrderDirection.Sell, true);
+            return (OrderDirection.Buy, false);
+        }
+        return (null, false);
     }
 
     /// <summary>
     /// Deliberately smaller than a typical user order, so a user's order fills
     /// across several bot quotes and exercises the partial-fill path.
     /// </summary>
-    private int QuantityFor(User bot, Instrument instrument, OrderDirection direction, Personality p)
+    private int QuantityFor(
+        User bot, Instrument instrument, OrderDirection direction, Personality p, bool isShortOpen)
     {
         var min = _config.GetValue("Bots:MinQuantity", 5);
         var max = _config.GetValue("Bots:MaxQuantity", 30);
@@ -177,6 +234,17 @@ public class BotEngine
             // a single name.
             var affordable = (int)(bot.FreeCashBalance * 0.05m
                                    / Math.Max(instrument.CurrentPrice, 0.01m));
+            return Math.Clamp(baseQty, 0, affordable);
+        }
+
+        if (isShortOpen)
+        {
+            // Same slice-of-cash discipline as a buy, sized against the margin a
+            // short actually reserves rather than the full notional, so opening
+            // one doesn't lock up a wildly different share of the bot's cash
+            // than a buy of the same "size" would.
+            var affordable = (int)(bot.FreeCashBalance * 0.05m
+                                   / Math.Max(instrument.CurrentPrice * MarginCalculator.InitialMarginRate, 0.01m));
             return Math.Clamp(baseQty, 0, affordable);
         }
 
@@ -200,16 +268,22 @@ public class BotEngine
             .ToList();
     }
 
-    private Instrument Pick(List<Instrument> all, List<Instrument> hot)
+    /// <summary>
+    /// The non-hot branch draws only from <paramref name="cold"/>, not the full
+    /// universe — sampling from everyone there would re-hit hot names too and
+    /// starve the cold tail of the share it's supposed to get.
+    /// </summary>
+    private Instrument Pick(List<Instrument> hot, List<Instrument> cold)
     {
         var share = _config.GetValue("Bots:HotListShare", 0.8);
 
-        return hot.Count > 0 && Rng.NextDouble() < share
-            ? hot[Rng.Next(hot.Count)]
-            : all[Rng.Next(all.Count)];
+        if (hot.Count > 0 && (cold.Count == 0 || Rng.NextDouble() < share))
+            return hot[Rng.Next(hot.Count)];
+
+        return cold[Rng.Next(cold.Count)];
     }
 
-    private readonly record struct Personality(decimal Spread, double Size);
+    private readonly record struct Personality(decimal Spread, double Size, bool Contrarian);
 
     /// <summary>
     /// Derived from the Id rather than stored: no migration, and a bot behaves
@@ -220,56 +294,56 @@ public class BotEngine
         var h = Math.Abs(id.GetHashCode());
 
         var minSpread = _config.GetValue("Bots:MinSpreadPct", 0.002);
-        var maxSpread = _config.GetValue("Bots:MaxSpreadPct", 0.012);
+        var maxSpread = _config.GetValue("Bots:MaxSpreadPct", 0.016);
 
         var spread = minSpread + (maxSpread - minSpread) * ((h % 100) / 100.0);
         var size   = 0.5 + ((h / 100) % 100) / 100.0 * 1.5;   // 0.5x - 2.0x
 
-        return new Personality((decimal)spread, size);
+        // A fixed, deterministic slice of bots are contrarians — same bot,
+        // same role, every tick and every restart.
+        var contrarianShare = _config.GetValue("Bots:ContrarianShare", 0.15);
+        var contrarian = (h / 10_000 % 100) / 100.0 < contrarianShare;
+
+        return new Personality((decimal)spread, size, contrarian);
     }
 
 
     /// <summary>
-    /// Cancels bot quotes that currentPrice has drifted away from. Without this
-    /// they rest forever: nothing expires them, and the external feed moves price
-    /// with no trade behind it, so the whole book silently goes stale and the
-    /// order count climbs without limit.
+    /// A bot's resting quotes only free up by filling. If price drifts away from
+    /// one it just never fills, and with nothing else expiring it the bot's open
+    /// orders climb until it hits MaxOpenOrdersPerBot and goes silent — the
+    /// opposite of what a liquidity provider should do.
     ///
-    /// Cancelled, not re-priced — the next ActAsync writes a fresh quote against
-    /// the current price, and going through CancelAsync releases the reservation
-    /// the same way a user's cancel does.
+    /// Instead of cancelling on drift alone, this only triggers once a bot is
+    /// close to its cap, and only cancels as many of its own quotes as needed
+    /// to make room — the ones furthest from currentPrice, since those are the
+    /// least likely to ever fill. Cancelled, not re-priced: the next ActAsync
+    /// in this same tick can write a fresh quote against the current price, and
+    /// going through CancelAsync releases the reservation like a user's cancel.
     /// </summary>
-    private async Task<int> RequoteAsync(List<Instrument> tradable, HashSet<Guid> botIds, CancellationToken ct)
+    private async Task<int> TrimNearCapacityAsync(
+        User bot, List<Order> open, Dictionary<Guid, decimal> prices, int maxOpen, CancellationToken ct)
     {
-        var driftLimit = (decimal)_config.GetValue("Bots:DriftCancelPct", 0.008);
-        var maxCancels = _config.GetValue("Bots:MaxCancelsPerTick", 120);
+        var nearLimitShare = _config.GetValue("Bots:NearLimitShare", 0.8);
+        var threshold = (int)(maxOpen * nearLimitShare);
+        if (open.Count < threshold) return 0;
 
-        var prices = tradable.ToDictionary(i => i.Id, i => i.CurrentPrice);
-        var open = await _orderRepo.GetPendingLimitOrdersAsync(ct);
+        // Leave enough headroom for at least one fresh quote this tick.
+        var toFree = open.Count - threshold + 1;
 
-        var stale = open
-            .Where(o => botIds.Contains(o.UserId))
-            .Where(o => o.Price is > 0)
-            .Where(o =>
-            {
-                if (!prices.TryGetValue(o.InstrumentId, out var current) || current <= 0)
-                    return false;
-
-                var drift = Math.Abs(o.Price!.Value - current) / current;
-                return drift > driftLimit;
-            })
-            // Furthest away first, so the worst quotes go even when the cap bites.
+        var candidates = open
+            .Where(o => o.Price is > 0 && prices.TryGetValue(o.InstrumentId, out var current) && current > 0)
             .OrderByDescending(o =>
                 Math.Abs(o.Price!.Value - prices[o.InstrumentId]) / prices[o.InstrumentId])
-            .Take(maxCancels)
+            .Take(toFree)
             .ToList();
 
         var cancelled = 0;
 
-        foreach (var order in stale)
+        foreach (var order in candidates)
         {
             // NotCancellable means the match pass filled it first — expected, not an error.
-            var result = await _orders.CancelAsync(order.UserId, order.Id, ct);
+            var result = await _orders.CancelAsync(bot.Id, order.Id, ct);
             if (result == OrderResult.Success) cancelled++;
         }
 

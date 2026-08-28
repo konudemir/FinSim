@@ -329,7 +329,7 @@ public class InstrumentService
                 if (order.Direction == OrderDirection.Sell)
                 {
                     PortfolioFillExecutor.Apply(
-                        _portfolio, user, position, order.UserId, id, OrderDirection.Sell, remainder, price);
+                        _portfolio, user, position, order.UserId, id, OrderDirection.Sell, remainder, price, out _);
                     user.FreeCashBalance += Money(remainder * price);
                 }
                 else
@@ -338,7 +338,7 @@ public class InstrumentService
                     var avgCostBefore = position.AverageCost;
 
                     PortfolioFillExecutor.Apply(
-                        _portfolio, user, position, order.UserId, id, OrderDirection.Buy, remainder, price);
+                        _portfolio, user, position, order.UserId, id, OrderDirection.Buy, remainder, price, out _);
                     user.FreeCashBalance -= Money(remainder * price);   // pays the buyback out of pocket
 
                     var shortAfter = Math.Max(0, -position.TotalQuantity);

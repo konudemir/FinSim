@@ -22,6 +22,13 @@ internal static class PortfolioFillExecutor
             ? currentQuantity < 0 ? FillKind.CoverShort : FillKind.OpenOrAddLong
             : currentQuantity > 0 ? FillKind.ReduceOrCloseLong : FillKind.OpenOrAddShort;
 
+    /// <summary>
+    /// <paramref name="resultItem"/> is the position after this fill (null once a
+    /// close/cover empties it) — callers matching several fills for the same
+    /// user+instrument in one pass must feed it back in as <paramref name="portItem"/>
+    /// next time instead of re-querying, since a newly opened position isn't in the
+    /// database yet to be found there.
+    /// </summary>
     public static FillResult Apply(
         IPortfolioRepository portfolio,
         User user,
@@ -30,7 +37,8 @@ internal static class PortfolioFillExecutor
         Guid instrumentId,
         OrderDirection direction,
         int quantity,
-        decimal price)
+        decimal price,
+        out PortfolioItem? resultItem)
     {
         var kind = Classify(portItem?.TotalQuantity ?? 0, direction);
 
@@ -38,23 +46,36 @@ internal static class PortfolioFillExecutor
         {
             case FillKind.OpenOrAddLong:
                 if (portItem is null)
-                    portfolio.Add(PortfolioItem.Open(userId, instrumentId, quantity, price));
+                {
+                    resultItem = PortfolioItem.Open(userId, instrumentId, quantity, price);
+                    portfolio.Add(resultItem);
+                }
                 else
+                {
                     portItem.ApplyBuy(quantity, price);
+                    resultItem = portItem;
+                }
                 return new FillResult(kind, null);
 
             case FillKind.OpenOrAddShort:
                 if (portItem is null)
-                    portfolio.Add(PortfolioItem.Open(userId, instrumentId, -quantity, price));
+                {
+                    resultItem = PortfolioItem.Open(userId, instrumentId, -quantity, price);
+                    portfolio.Add(resultItem);
+                }
                 else
+                {
                     portItem.ApplyShortOpen(quantity, price);
+                    resultItem = portItem;
+                }
                 return new FillResult(kind, null);
 
             case FillKind.ReduceOrCloseLong:
             {
                 var realized = portItem!.ApplySell(quantity, price);
                 user.RealizedProfitLoss += realized;
-                if (portItem.TotalQuantity == 0) portfolio.Remove(portItem);
+                if (portItem.TotalQuantity == 0) { portfolio.Remove(portItem); resultItem = null; }
+                else resultItem = portItem;
                 return new FillResult(kind, realized);
             }
 
@@ -62,7 +83,8 @@ internal static class PortfolioFillExecutor
             {
                 var realized = portItem!.ApplyShortCover(quantity, price);
                 user.RealizedProfitLoss += realized;
-                if (portItem.TotalQuantity == 0) portfolio.Remove(portItem);
+                if (portItem.TotalQuantity == 0) { portfolio.Remove(portItem); resultItem = null; }
+                else resultItem = portItem;
                 return new FillResult(kind, realized);
             }
         }

@@ -20,6 +20,7 @@ type Instrument = {
   id: string
   symbol: string
   name: string
+  basePrice: number
   currentPrice: number
   isActive: boolean
   type: 'Stock' | 'Fund'
@@ -484,55 +485,19 @@ const seeded = useRef<Set<string>>(new Set())
   const [now, setNow] = useState(() => Date.now())
   const [replacing, setReplacing] = useState<Set<string>>(new Set())
 
-  // The menu button sits at the midpoint between the true left edge of the
-  // screen and the logo's left edge. That gap isn't a fixed CSS value — the
-  // .wrap column centers itself (max-width + auto margins) on wide viewports,
-  // so the logo can sit well past the 28px padding alone. Measure it instead.
-  const railRef = useRef<HTMLElement>(null)
-  const logoRef = useRef<HTMLSpanElement>(null)
-  const [navTogglePos, setNavTogglePos] = useState(14)
-
-  useEffect(() => {
-    const recalc = () => {
-      if (!railRef.current || !logoRef.current) return
-      const railLeft = railRef.current.getBoundingClientRect().left
-      const logoLeft = logoRef.current.getBoundingClientRect().left
-      setNavTogglePos((logoLeft - railLeft) / 2)
-    }
-    recalc()
-    window.addEventListener('resize', recalc)
-    return () => window.removeEventListener('resize', recalc)
-  }, [])
-
   const [ticks, setTicks] = useState<Record<string, Tick>>({})
   const prevPrices = useRef<Record<string, number>>({})
   const [online, setOnline] = useState(true)
   const pathname = usePath()
   // /stocks/:symbol opens as an overlay on top of whatever page was already
   // showing, so the background view tracks the last non-overlay path
-  // instead of flipping to 'portfolio' while a stock page is open.
-  const bgPathRef = useRef(pathname)
+  // instead of flipping to 'portfolio' while a stock page is open. A cold
+  // load straight into /stocks/:symbol has no prior page to fall back to,
+  // so default it to the market board rather than the stock page itself.
+  const bgPathRef = useRef(pathname.startsWith('/stocks/') ? '/market' : pathname)
   if (!pathname.startsWith('/stocks/')) bgPathRef.current = pathname
   const view: 'portfolio' | 'market' | 'admin' =
     bgPathRef.current === '/market' ? 'market' : bgPathRef.current === '/admin' ? 'admin' : 'portfolio'
-  const [menuOpen, setMenuOpen] = useState(false)
-  const menuCloseTimer = useRef<number | null>(null)
-
-  const openMenu = () => {
-    if (menuCloseTimer.current !== null) {
-      window.clearTimeout(menuCloseTimer.current)
-      menuCloseTimer.current = null
-    }
-    setMenuOpen(true)
-  }
-
-  const scheduleCloseMenu = () => {
-    menuCloseTimer.current = window.setTimeout(() => setMenuOpen(false), 150)
-  }
-
-  useEffect(() => () => {
-    if (menuCloseTimer.current !== null) window.clearTimeout(menuCloseTimer.current)
-  }, [])
   const [query, setQuery] = useState('')
   const [sort, setSort] = useState(() => urlSort() ?? 'symbol_asc')
   const [marketQuery, setMarketQuery] = useState('')
@@ -606,6 +571,17 @@ const seeded = useRef<Set<string>>(new Set())
       .then(res => {
         setInstruments(res.data)
         for (const i of res.data) prevPrices.current[i.symbol] = i.currentPrice
+        // Seed the index from the initial snapshot so it reads correctly
+        // right away instead of showing "—" until the first tick arrives
+        // over the websocket (up to MarketTickWorker.Every seconds later).
+        const stocks = res.data.filter(i => i.type === 'Stock' && i.basePrice > 0)
+        if (stocks.length > 0) {
+          const idx = Math.round(
+            (stocks.reduce((sum, i) => sum + i.currentPrice / i.basePrice, 0) / stocks.length) * 10_000 * 100
+          ) / 100
+          setIndexValue(idx)
+          setMarketMove(idx / 10_000 - 1)
+        }
       })
       .catch(console.error)
       .finally(() => setInstrumentsLoaded(true))
@@ -644,9 +620,9 @@ const seeded = useRef<Set<string>>(new Set())
 
   useEffect(() => {
     for (const i of instruments) {
-      if (portfolio[i.symbol]) loadHistory(i)
+      if (portfolio[i.symbol] || favorites.has(i.id)) loadHistory(i)
     }
-  }, [instruments, portfolio])
+  }, [instruments, portfolio, favorites])
 
   useEffect(() => {
     const conn = new signalR.HubConnectionBuilder()
@@ -1076,98 +1052,92 @@ const loadHistory = (i: Instrument) => {
 
   return (
     <div className="shell">
-      {menuOpen && (
-        <div className="nav-backdrop" onClick={() => setMenuOpen(false)}>
-          <nav
-            className="nav-drawer"
-            onClick={e => e.stopPropagation()}
-            onMouseEnter={openMenu}
-            onMouseLeave={scheduleCloseMenu}
-          >
-            <div className="nav-drawer-head">
+      <header className="rail">
+        <div className="wrap rail-in">
+          <span className="rail-brand">
+            <Logomark size={26} />
+            <span className="rail-brand-text">
               <span className="mark">Fin<em>Sim</em></span>
-              <button className="ghost-btn" onClick={() => setMenuOpen(false)} aria-label={t('app.close')}>×</button>
-            </div>
-            <button
-              className="nav-item"
-              aria-pressed={view === 'portfolio'}
-              onClick={() => { navigate('/home'); setMenuOpen(false) }}
-            >
-              {t('nav.portfolio')}
-            </button>
-            <button
-              className="nav-item"
-              aria-pressed={view === 'market'}
-              onClick={() => { navigate('/market'); setMenuOpen(false) }}
-            >
-              {t('nav.market')}
-            </button>
+              <span className="mark-sub">{t('app.tagline')}</span>
+            </span>
+          </span>
+
+          <nav className="top-nav" aria-label={t('nav.toggle')}>
             {balance?.isAdmin && (
               <button
-                className="nav-item"
+                className="top-nav-item top-nav-wide"
                 aria-pressed={view === 'admin'}
-                onClick={() => { navigate('/admin'); setMenuOpen(false) }}
+                onClick={() => navigate('/admin')}
               >
-                {t('admin.panelButton')}
+                <span className="top-nav-label">{t('admin.panelButton')}</span>
               </button>
             )}
-          </nav>
-        </div>
-      )}
+            <button
+              className="top-nav-item top-nav-wide"
+              aria-pressed={view === 'portfolio'}
+              onClick={() => navigate('/home')}
+            >
+              <span className="top-nav-label">{t('nav.portfolio')}</span>
+            </button>
+            <button
+              className="top-nav-item top-nav-wide"
+              aria-pressed={view === 'market'}
+              onClick={() => navigate('/market')}
+            >
+              <span className="top-nav-label">{t('nav.market')}</span>
+            </button>
 
-      <header className="rail" ref={railRef}>
-        <button
-          className="nav-toggle"
-          style={{ left: navTogglePos }}
-          onClick={() => setMenuOpen(true)}
-          onMouseEnter={openMenu}
-          onMouseLeave={scheduleCloseMenu}
-          aria-label={t('nav.toggle')}
-        >
-          <span />
-          <span />
-          <span />
-        </button>
-        <div className="wrap rail-in">
-          <span ref={logoRef}>
-            <Logomark size={26} />
-          </span>
-          <span className="mark">Fin<em>Sim</em></span>
-          <span className="mark-sub">{t('app.tagline')}</span>
-          <span className="rail-spacer" />
-          <span style={{ fontFamily: 'var(--mono)', fontSize: 13, display: 'inline-flex', alignItems: 'baseline', gap: 6 }}>
-            {online && <span className="live-dot" aria-hidden="true" />}
-            <span style={{ color: 'var(--faint)', letterSpacing: '0.08em' }}>{t('app.market')} </span>
-            {indexValue ? fmt(indexValue) : '—'}
-            <span className={dirOf(marketMove)}>
-              {' '}{marketMove >= 0 ? '▲' : '▼'} {(Math.abs(marketMove) * 100).toFixed(2)}%
+            <span className="top-nav-item index-readout">
+              <span className="top-nav-icon" aria-hidden="true">
+                {online ? <span className="live-dot" /> : '●'}
+              </span>
+              <span className="top-nav-label">
+                {t('app.market')} {indexValue ? fmt(indexValue) : '—'}
+                <span className={dirOf(marketMove)}>
+                  {' '}{marketMove >= 0 ? '▲' : '▼'} {(Math.abs(marketMove) * 100).toFixed(2)}%
+                </span>
+              </span>
             </span>
-          </span>
+
+            <div className="top-nav-utility">
+              {(view === 'portfolio' || view === 'market') && (
+                <button
+                  type="button"
+                  className="top-nav-icon-btn"
+                  aria-pressed={showFavorites}
+                  aria-label={t('nav.favorites')}
+                  onClick={() => setShowFavorites(v => !v)}
+                >
+                  <span aria-hidden="true">♥</span>
+                </button>
+              )}
+              <button
+                type="button"
+                className="top-nav-icon-btn"
+                onClick={toggleTheme}
+                aria-label={theme === 'night' ? t('app.toDay') : t('app.toNight')}
+              >
+                <span aria-hidden="true">{theme === 'night' ? '☀' : '☾'}</span>
+              </button>
+              <button
+                type="button"
+                className="top-nav-icon-btn top-nav-lang"
+                onClick={toggleLang}
+                aria-label={t('nav.toggleLang')}
+              >
+                {lang === 'tr' ? 'EN' : 'TR'}
+              </button>
+            </div>
+
+            <button className="top-nav-item top-nav-exit top-nav-wide" onClick={onLogout}>
+              <span className="top-nav-icon" aria-hidden="true">⏻</span>
+              <span className="top-nav-label">{t('app.logout')}</span>
+            </button>
+          </nav>
 
           {!online && (
-            <span style={{ fontFamily: 'var(--mono)', fontSize: 11, color: 'var(--fall)' }}>
-              ● {t('app.offline')}
-            </span>
+            <span className="offline-pill">● {t('app.offline')}</span>
           )}
-
-          <button
-            className="ghost-btn"
-            onClick={toggleTheme}
-            aria-label={theme === 'night' ? t('app.toDay') : t('app.toNight')}
-          >
-            {theme === 'night' ? '☀' : '☾'}
-          </button>
-          <button className="ghost-btn" onClick={toggleLang} aria-label="Language">
-            {lang === 'tr' ? 'EN' : 'TR'}
-          </button>
-          <button className="ghost-btn" onClick={onLogout}>{t('app.logout')}</button>
-          <button
-            className="ghost-btn"
-            aria-pressed={showFavorites}
-            onClick={() => setShowFavorites(v => !v)}
-          >
-            ♥ {t('nav.favorites')}
-          </button>
         </div>
       </header>
 
@@ -1310,7 +1280,7 @@ const loadHistory = (i: Instrument) => {
           </div>
         )}
 
-        <div className="terminal-layout" data-favs={showFavorites}>
+        <div className="terminal-layout">
           <div className="terminal-left">
             <div className="board-controls">
               <div className="search-input">
@@ -1464,42 +1434,26 @@ const loadHistory = (i: Instrument) => {
               <PageNav page={closedOrders.page} totalPages={closedOrders.totalPages} hasNext={closedOrders.hasNext} hasPrevious={closedOrders.hasPrevious} goTo={closedOrders.goTo} />
             </div>
           </div>
-
-          {showFavorites && (
-            <div className="terminal-fav">
-              <div className="section-head">
-                <h2>{t('nav.favorites')}</h2>
-                <span className="section-note">{t('board.favoritesNote', { n: favoriteInstruments.length })}</span>
-                <button className="ghost-btn" onClick={() => setShowFavorites(false)} aria-label={t('app.close')}>
-                  ×
-                </button>
-              </div>
-              {favoriteInstruments.length === 0 ? (
-                <div className="empty-state">{t('board.favoritesEmpty')}</div>
-              ) : (
-                <>
-                  <div className="board">
-                    {favoriteInstruments.map(i => (
-                      <InstrumentRow
-                        key={i.id}
-                        i={i}
-                        tick={ticks[i.symbol]}
-                        pos={livePortfolio[i.symbol]}
-                        onClick={() => openFullscreen(i)}
-                        isFavorite
-                        onToggleFavorite={() => toggleFavorite(i)}
-                      />
-                    ))}
-                  </div>
-                  <PageNav page={favoritesBoard.page} totalPages={favoritesBoard.totalPages} hasNext={favoritesBoard.hasNext} hasPrevious={favoritesBoard.hasPrevious} goTo={favoritesBoard.goTo} />
-                </>
-              )}
-            </div>
-          )}
         </div>
         </>
         )}
       </main>
+
+      <FavoritesDrawer
+        open={showFavorites}
+        onClose={() => setShowFavorites(false)}
+        items={favoriteInstruments}
+        ticks={ticks}
+        livePortfolio={livePortfolio}
+        history={history}
+        onOpenStock={openFullscreen}
+        onToggleFavorite={toggleFavorite}
+        page={favoritesBoard.page}
+        totalPages={favoritesBoard.totalPages}
+        hasNext={favoritesBoard.hasNext}
+        hasPrevious={favoritesBoard.hasPrevious}
+        goTo={favoritesBoard.goTo}
+      />
 
       {(view === 'portfolio' || view === 'market') && (
       <div className="ticket">
@@ -1533,6 +1487,97 @@ const loadHistory = (i: Instrument) => {
         />
       )}
     </div>
+  )
+}
+
+function FavoritesDrawer({
+  open, onClose, items, ticks, livePortfolio, history, onOpenStock, onToggleFavorite,
+  page, totalPages, hasNext, hasPrevious, goTo,
+}: {
+  open: boolean
+  onClose: () => void
+  items: Instrument[]
+  ticks: Record<string, Tick>
+  livePortfolio: Record<string, PortfolioItem>
+  history: Record<string, PricePoint[]>
+  onOpenStock: (i: Instrument) => void
+  onToggleFavorite: (i: Instrument) => void
+  page: number
+  totalPages: number
+  hasNext: boolean
+  hasPrevious: boolean
+  goTo: (n: number) => void
+}) {
+  const { t } = useLang()
+  return (
+    <>
+      <div className={`fav-veil${open ? ' open' : ''}`} onClick={onClose} aria-hidden="true" />
+      <aside className={`fav-drawer${open ? ' open' : ''}`} aria-hidden={!open} aria-label={t('nav.favorites')}>
+        <div className="fav-drawer-head">
+          <span className="fav-drawer-icon" aria-hidden="true">♥</span>
+          <div className="fav-drawer-title">
+            <h2>{t('nav.favorites')}</h2>
+            <span className="section-note">{t('board.favoritesNote', { n: items.length })}</span>
+          </div>
+          <button className="ghost-btn" onClick={onClose} aria-label={t('app.close')}>×</button>
+        </div>
+
+        <div className="fav-drawer-body">
+          {items.length === 0 ? (
+            <div className="fav-empty">
+              <span className="fav-empty-icon" aria-hidden="true">♡</span>
+              <p>{t('board.favoritesEmpty')}</p>
+            </div>
+          ) : (
+            <div className="fav-grid">
+              {items.map(i => {
+                const pos = livePortfolio[i.symbol]
+                const h = history[i.symbol] ?? []
+                return (
+                  <div key={i.id} className="fav-card" onClick={() => i.isActive && onOpenStock(i)} data-inactive={!i.isActive}>
+                    <button
+                      type="button"
+                      className="fav-card-unfav"
+                      aria-label={t('board.unfavorite')}
+                      onClick={e => { e.stopPropagation(); onToggleFavorite(i) }}
+                    >
+                      ♥
+                    </button>
+                    <div className="fav-card-head">
+                      <span className="fav-card-sym">{i.symbol}</span>
+                      {i.type === 'Fund' && <span className="fund-badge">{t('board.fundBadge')}</span>}
+                      {pos?.isShort && <span className="short-badge">{t('board.shortBadge')}</span>}
+                    </div>
+                    <span className="fav-card-name">{i.name}</span>
+
+                    <div className="fav-card-spark">
+                      <AreaSpark data={h} className="fav-spark" />
+                    </div>
+
+                    <div className="fav-card-foot">
+                      <span className="fav-card-px" data-tick={ticks[i.symbol]} key={i.currentPrice}>
+                        {fmt(i.currentPrice)}
+                      </span>
+                      {pos ? (
+                        <span className={dirOf(pos.profitLoss)}>{signed(pos.profitLoss)}</span>
+                      ) : !i.isActive ? (
+                        <span className="empty">{t('board.closed')}</span>
+                      ) : null}
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          )}
+        </div>
+
+        {items.length > 0 && (
+          <div className="fav-drawer-foot">
+            <PageNav page={page} totalPages={totalPages} hasNext={hasNext} hasPrevious={hasPrevious} goTo={goTo} />
+          </div>
+        )}
+      </aside>
+    </>
   )
 }
 
@@ -1688,15 +1733,19 @@ function PnlChart({ live }: {
   )
 }
 
-function AreaSpark({ data, className, zeroBaseline }: { data: PricePoint[]; className: string; zeroBaseline?: boolean }) {
+function AreaSpark({ data, className }: { data: PricePoint[]; className: string }) {
   const [hover, setHover] = useState<number | null>(null)
   if (data.length < 2) return null
   const { lang } = useLang()
   const prices = data.map(p => p.price)
   const dataMin = Math.min(...prices)
   const dataMax = Math.max(...prices)
+  // Pad above and below the shown range so the line isn't flush against
+  // the edges, and don't anchor the floor at zero — that squashes normal
+  // price movement into a sliver when the price is far from zero.
   const pad = (dataMax - dataMin) * 0.15 || dataMax * 0.05 || 1
-  const min = zeroBaseline ? 0 : Math.max(0, dataMin - pad)
+  const padBottom = (dataMax - dataMin) * 0.35 || dataMax * 0.1 || 1
+  const min = Math.max(0, dataMin - padBottom)
   const top = dataMax + pad
   const range = top - min || 1
   const last = data.length - 1
@@ -1799,16 +1848,23 @@ function buildCandles(data: PricePoint[], count: number): Candle[] {
   if (data.length === 0) return []
   const bucketSize = Math.max(1, Math.ceil(data.length / count))
   const candles: Candle[] = []
+  let prevClose: number | null = null
   for (let idx = 0; idx < data.length; idx += bucketSize) {
     const slice = data.slice(idx, idx + bucketSize)
     const prices = slice.map(p => p.price)
+    // Chain to the previous candle's close, not this bucket's first tick —
+    // with short history buckets are often a single tick, which would make
+    // open === close (and the candle flat/gray) on every candle regardless
+    // of how the price is actually trending between them.
+    const open = prevClose ?? slice[0].price
     candles.push({
       t: slice[0].timestamp,
-      open: slice[0].price,
+      open,
       close: slice[slice.length - 1].price,
-      high: Math.max(...prices),
-      low: Math.min(...prices),
+      high: Math.max(...prices, open),
+      low: Math.min(...prices, open),
     })
+    prevClose = slice[slice.length - 1].price
   }
   return candles
 }
@@ -1824,7 +1880,8 @@ function CandleChart({ data, className }: { data: PricePoint[]; className: strin
   const dataMax = Math.max(...highs)
   const dataMin = Math.min(...lows)
   const pad = (dataMax - dataMin) * 0.1 || dataMax * 0.05 || 1
-  const min = Math.max(0, dataMin - pad)
+  const padBottom = (dataMax - dataMin) * 0.3 || dataMax * 0.1 || 1
+  const min = Math.max(0, dataMin - padBottom)
   const top = dataMax + pad
   const range = top - min || 1
   const last = candles.length - 1
@@ -1843,8 +1900,7 @@ function CandleChart({ data, className }: { data: PricePoint[]; className: strin
     <div className={`spark-wrap ${className}`} onMouseMove={onMove} onMouseLeave={() => setHover(null)}>
       <svg className="spark-svg" viewBox="0 0 100 30" preserveAspectRatio="none" aria-hidden="true">
         {candles.map((c, idx) => {
-          const rising = c.close >= c.open
-          const color = rising ? 'var(--rise)' : 'var(--fall)'
+          const color = c.close > c.open ? 'var(--rise)' : c.close < c.open ? 'var(--fall)' : 'var(--flat)'
           const x = px(idx)
           const bodyTop = py(Math.max(c.open, c.close))
           const bodyBottom = py(Math.min(c.open, c.close))
@@ -1895,7 +1951,9 @@ function InstrumentFullscreen({
   const high = Math.max(...prices, i.currentPrice)
   const low = Math.min(...prices, i.currentPrice)
   const areaPad = (high - low) * 0.15 || high * 0.05 || 1
+  const areaPadBottom = (high - low) * 0.35 || high * 0.1 || 1
   const areaTop = high + areaPad
+  const areaMin = Math.max(0, low - areaPadBottom)
   const volume = history.reduce((sum, p) => sum + p.volume, 0)
   const change = i.currentPrice - open
   const changePct = open ? (change / open) * 100 : 0
@@ -1982,9 +2040,9 @@ function InstrumentFullscreen({
             </div>
             {chartMode === 'area' ? (
               <>
-                <AreaSpark data={history} className="fullscreen-spark" zeroBaseline />
+                <AreaSpark data={history} className="fullscreen-spark" />
                 {history.length >= 2 && (
-                  <ChartAxes min={0} max={areaTop} times={history.map(p => p.timestamp)} lang={lang} />
+                  <ChartAxes min={areaMin} max={areaTop} times={history.map(p => p.timestamp)} lang={lang} />
                 )}
               </>
             ) : (
