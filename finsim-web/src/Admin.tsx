@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import api from './api'
 import { useLang, type LangKey } from './lang'
 import { fmt } from './format'
-import { paginate, Pager, signed, dirOf } from './App'
+import { paginate, Pager, signed, dirOf, useCursorPage, PAGE_SIZE } from './App'
 
 type Instrument = {
   id: string
@@ -47,6 +47,34 @@ type OrderBook = {
   bids: BookLevel[]; asks: BookLevel[]
 }
 
+// Prev/next controls for a useCursorPage board — mirrors the market/portfolio
+// board pager in App.tsx (a running "page number" doesn't exist with cursors).
+function CursorPager({ board }: { board: { stack: unknown[]; nextCursor: string | null; prev: () => void; next: () => void } }) {
+  const { t } = useLang()
+  return (
+    <div className="pager">
+      <button
+        type="button"
+        className="ghost-btn"
+        disabled={board.stack.length === 0}
+        onClick={board.prev}
+        aria-label={t('pager.prev')}
+      >
+        ‹
+      </button>
+      <button
+        type="button"
+        className="ghost-btn"
+        disabled={board.nextCursor == null}
+        onClick={board.next}
+        aria-label={t('pager.next')}
+      >
+        ›
+      </button>
+    </div>
+  )
+}
+
 export default function Admin({ onClose }: { onClose: () => void }) {
   const { t, tServer } = useLang()
 
@@ -62,12 +90,11 @@ export default function Admin({ onClose }: { onClose: () => void }) {
     useState<{ instrument: Instrument; preview: LiquidationPreview } | null>(null)
 
   const [instrumentQuery, setInstrumentQuery] = useState('')
-  const [instrumentSort, setInstrumentSort] = useState('symbol-asc')
-  const [instrumentPage, setInstrumentPage] = useState(1)
+  const [instrumentSort, setInstrumentSort] = useState('symbol_asc')
+  const [debouncedInstrumentQuery, setDebouncedInstrumentQuery] = useState('')
   const [userQuery, setUserQuery] = useState('')
-  const [userSort, setUserSort] = useState('name-asc')
-  const [userPage, setUserPage] = useState(1)
-  const [botUserPage, setBotUserPage] = useState(1)
+  const [userSort, setUserSort] = useState('name_asc')
+  const [debouncedUserQuery, setDebouncedUserQuery] = useState('')
   const [botView, setBotView] = useState(false)
   const [exposurePage, setExposurePage] = useState(1)
   const [netWorthPage, setNetWorthPage] = useState(1)
@@ -79,11 +106,27 @@ export default function Admin({ onClose }: { onClose: () => void }) {
   const [shareInstrument, setShareInstrument] = useState<Record<string, string>>({})
   const [shareQty, setShareQty] = useState<Record<string, string>>({})
 
+  // Full lists — still needed for the order-book/share-grant dropdowns (active
+  // instruments only) and the bot-view aggregates (net worth, exposure, cash
+  // utilization, leaderboards), which need every bot at once and can't be
+  // computed from a single cursor page.
   const loadInstruments = () =>
     api.get<Instrument[]>('/api/instruments').then(r => setInstruments(r.data)).catch(console.error)
 
   const loadUsers = () =>
     api.get<AdminUser[]>('/api/admin/users').then(r => setUsers(r.data)).catch(console.error)
+
+  // Cursor-paged instrument/user tables — mirrors the market/portfolio boards
+  // in App.tsx. Unlike loadInstruments above, this includes inactive instruments.
+  const instrumentBoard = useCursorPage<Instrument>('/api/instruments/admin-board', {
+    limit: PAGE_SIZE, sort: instrumentSort, q: debouncedInstrumentQuery,
+  })
+  const humanBoard = useCursorPage<AdminUser>('/api/admin/users/board', {
+    bots: false, limit: PAGE_SIZE, sort: userSort, q: debouncedUserQuery,
+  })
+  const botBoard = useCursorPage<AdminUser>('/api/admin/users/board', {
+    bots: true, limit: PAGE_SIZE, sort: userSort, q: debouncedUserQuery,
+  })
 
   const reloadPrice = async (i: Instrument) => {
     setNotice(''); setBusy(true)
@@ -91,9 +134,10 @@ export default function Admin({ onClose }: { onClose: () => void }) {
       const r = await api.post(`/api/admin/instruments/${i.id}/reload-price`)
       setNotice(`${i.symbol}: ${r.data.outcome} ${fmt(r.data.oldPrice)} → ${fmt(r.data.newPrice)}`)
       loadInstruments()
+      instrumentBoard.reload()
     } catch (e: any) { fail(e, 'err.orderFailed') } finally { setBusy(false) }
   }
-  
+
 
   useEffect(() => { loadInstruments(); loadUsers() }, [])
 
@@ -107,8 +151,28 @@ export default function Admin({ onClose }: { onClose: () => void }) {
   }, [bookSymbol])
 
   useEffect(() => { setAskPage(1); setBidPage(1) }, [bookSymbol])
-  useEffect(() => { setInstrumentPage(1) }, [instrumentQuery, instrumentSort])
-  useEffect(() => { setUserPage(1); setBotUserPage(1) }, [userQuery, userSort])
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => setDebouncedInstrumentQuery(instrumentQuery), 300)
+    return () => window.clearTimeout(timer)
+  }, [instrumentQuery])
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => setDebouncedUserQuery(userQuery), 300)
+    return () => window.clearTimeout(timer)
+  }, [userQuery])
+
+  // Sort/query changes reset paging to page 1 — a cursor minted under the old
+  // sort or query wouldn't decode (or would decode against the wrong rows)
+  // under the new one anyway.
+  useEffect(() => {
+    instrumentBoard.load()
+  }, [instrumentSort, debouncedInstrumentQuery])
+
+  useEffect(() => {
+    humanBoard.load()
+    botBoard.load()
+  }, [userSort, debouncedUserQuery])
 
   const fail = (e: any, fallback: LangKey) =>
     setNotice(e.response ? tServer(e.response.data) : t(fallback))
@@ -119,6 +183,7 @@ export default function Admin({ onClose }: { onClose: () => void }) {
       await api.put(`/api/instruments/${i.id}/active`, { isActive: true })
       setNotice(t('admin.reactivated'))
       loadInstruments()
+      instrumentBoard.reload()
     } catch (e: any) {
       fail(e, 'err.orderFailed')
     }
@@ -144,6 +209,7 @@ export default function Admin({ onClose }: { onClose: () => void }) {
       setNotice(t('admin.deactivated'))
       loadInstruments()
       loadUsers()
+      instrumentBoard.reload()
     } catch (e: any) {
       fail(e, 'err.orderFailed')
     }
@@ -162,6 +228,8 @@ export default function Admin({ onClose }: { onClose: () => void }) {
       setCashDelta(prev => ({ ...prev, [userId]: '' }))
       setCashReason(prev => ({ ...prev, [userId]: '' }))
       loadUsers()
+      humanBoard.reload()
+      botBoard.reload()
     } catch (e: any) {
       fail(e, 'err.orderFailed')
     }
@@ -180,51 +248,15 @@ export default function Admin({ onClose }: { onClose: () => void }) {
       setNotice(t('admin.sharesApplied'))
       setShareQty(prev => ({ ...prev, [userId]: '' }))
       loadUsers()
+      humanBoard.reload()
+      botBoard.reload()
     } catch (e: any) {
       fail(e, 'err.orderFailed')
     }
   }
 
-  const visibleInstruments = (() => {
-    const q = instrumentQuery.trim().toLocaleLowerCase('tr')
-    const filtered = q
-      ? instruments.filter(i =>
-          i.symbol.toLocaleLowerCase('tr').includes(q) ||
-          i.name.toLocaleLowerCase('tr').includes(q))
-      : instruments
-    const cmp: Record<string, (a: Instrument, b: Instrument) => number> = {
-      'symbol-asc':  (a, b) => a.symbol.localeCompare(b.symbol, 'tr'),
-      'symbol-desc': (a, b) => b.symbol.localeCompare(a.symbol, 'tr'),
-      'price-asc':   (a, b) => a.currentPrice - b.currentPrice,
-      'price-desc':  (a, b) => b.currentPrice - a.currentPrice,
-    }
-    return [...filtered].sort(cmp[instrumentSort])
-  })()
-
-  const instrumentPaged = paginate(visibleInstruments, instrumentPage)
-
   const isBotUser = (u: AdminUser) =>
     u.email.toLocaleLowerCase('tr').endsWith('@bots.finsim.local')
-
-  const visibleUsers = (all: AdminUser[]) => {
-    const q = userQuery.trim().toLocaleLowerCase('tr')
-    const filtered = q
-      ? all.filter(u =>
-          u.username.toLocaleLowerCase('tr').includes(q) ||
-          u.email.toLocaleLowerCase('tr').includes(q))
-      : all
-    const cmp: Record<string, (a: AdminUser, b: AdminUser) => number> = {
-      'name-asc':  (a, b) => a.username.localeCompare(b.username, 'tr'),
-      'name-desc': (a, b) => b.username.localeCompare(a.username, 'tr'),
-    }
-    return [...filtered].sort(cmp[userSort])
-  }
-
-  const humanUsers = visibleUsers(users.filter(u => !isBotUser(u)))
-  const botUsers = visibleUsers(users.filter(isBotUser))
-
-  const userPaged = paginate(humanUsers, userPage)
-  const botUserPaged = paginate(botUsers, botUserPage)
 
   const botsAll = users.filter(isBotUser)
 
@@ -353,10 +385,10 @@ export default function Admin({ onClose }: { onClose: () => void }) {
         )}
       </div>
       <select className="field-input" value={instrumentSort} onChange={e => setInstrumentSort(e.target.value)}>
-        <option value="symbol-asc">{t('sort.symbolAsc')}</option>
-        <option value="symbol-desc">{t('sort.symbolDesc')}</option>
-        <option value="price-desc">{t('sort.priceDesc')}</option>
-        <option value="price-asc">{t('sort.priceAsc')}</option>
+        <option value="symbol_asc">{t('sort.symbolAsc')}</option>
+        <option value="symbol_desc">{t('sort.symbolDesc')}</option>
+        <option value="price_desc">{t('sort.priceDesc')}</option>
+        <option value="price_asc">{t('sort.priceAsc')}</option>
       </select>
     </div>
 
@@ -372,7 +404,7 @@ export default function Admin({ onClose }: { onClose: () => void }) {
         </tr>
       </thead>
       <tbody>
-        {instrumentPaged.items.map(i => (
+        {instrumentBoard.items.map(i => (
           <tr key={i.id}>
             <td className="sym">{i.symbol}</td>
             <td>{i.name}</td>
@@ -400,7 +432,7 @@ export default function Admin({ onClose }: { onClose: () => void }) {
         ))}
       </tbody>
     </table>
-    <Pager page={instrumentPaged.page} totalPages={instrumentPaged.totalPages} onChange={setInstrumentPage} />
+    <CursorPager board={instrumentBoard} />
   </div>
 
       <div className="panel">
@@ -502,13 +534,13 @@ export default function Admin({ onClose }: { onClose: () => void }) {
             )}
           </div>
           <select className="field-input" value={userSort} onChange={e => setUserSort(e.target.value)}>
-            <option value="name-asc">{t('sort.nameAsc')}</option>
-            <option value="name-desc">{t('sort.nameDesc')}</option>
+            <option value="name_asc">{t('sort.nameAsc')}</option>
+            <option value="name_desc">{t('sort.nameDesc')}</option>
           </select>
         </div>
 
-        {userPaged.items.map(u => renderUserCard(u))}
-        <Pager page={userPaged.page} totalPages={userPaged.totalPages} onChange={setUserPage} />
+        {humanBoard.items.map(u => renderUserCard(u))}
+        <CursorPager board={humanBoard} />
       </div>
 
       <div className="panel">
@@ -682,8 +714,8 @@ export default function Admin({ onClose }: { onClose: () => void }) {
           </div>
         ) : (
           <>
-            {botUserPaged.items.map(u => renderUserCard(u))}
-            <Pager page={botUserPaged.page} totalPages={botUserPaged.totalPages} onChange={setBotUserPage} />
+            {botBoard.items.map(u => renderUserCard(u))}
+            <CursorPager board={botBoard} />
           </>
         )}
       </div>

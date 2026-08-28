@@ -37,10 +37,10 @@ namespace FinSim.Controllers
         public async Task<IActionResult> GetPortfolioBoard(
             [FromQuery] string? sort,
             [FromQuery] string? q,
-            [FromQuery] string? cursor,
+            [FromQuery] int? page,
             [FromQuery] int? limit,
             CancellationToken ct) =>
-            Ok(await _instruments.GetPortfolioBoardAsync(CurrentUserId, sort, q, cursor, limit, ct));
+            Ok(await _instruments.GetPortfolioBoardAsync(CurrentUserId, sort, q, page, limit, ct));
 
         [HttpGet("pnl-history")]
         public async Task<IActionResult> GetPnlHistory(

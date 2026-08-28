@@ -60,10 +60,10 @@ namespace FinSim.Controllers
         [HttpGet]
         public async Task<IActionResult> GetOrders(
             [FromQuery] bool? open,
-            [FromQuery] string? cursor,
+            [FromQuery] int? page,
             [FromQuery] int? limit,
             CancellationToken ct) =>
-            Ok(await _orders.GetRecentAsync(CurrentUserId, open, cursor, limit, ct));
+            Ok(await _orders.GetRecentAsync(CurrentUserId, open, page, limit, ct));
 
         private IActionResult ToError(OrderResult result) => result switch
         {

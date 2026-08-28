@@ -29,6 +29,16 @@ namespace FinSim.Controllers
         public async Task<IActionResult> GetUsers(CancellationToken ct) =>
             Ok(await _admin.GetUsersOverviewAsync(ct));
 
+        [HttpGet("users/board")]
+        public async Task<IActionResult> GetUsersBoard(
+            [FromQuery] bool bots,
+            [FromQuery] string? sort,
+            [FromQuery] string? q,
+            [FromQuery] int? page,
+            [FromQuery] int? limit,
+            CancellationToken ct) =>
+            Ok(await _admin.GetUsersBoardAsync(bots, sort, q, page, limit, ct));
+
         [HttpPost("users/{id:guid}/cash")]
         public async Task<IActionResult> AdjustCash(
             Guid id, [FromBody] AdjustCashRequest request, CancellationToken ct)

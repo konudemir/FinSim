@@ -1,3 +1,4 @@
+using FinSim.Application.Pagination;
 using FinSim.Domain.Models;
 using FinSim.Domain.Models.Enums;
 
@@ -16,9 +17,8 @@ namespace FinSim.Application.Interfaces
 
         Task<bool> TrySaveChangesAsync(CancellationToken ct);
 
-        Task<List<Order>> GetByUserPagedAsync(
+        Task<PagedRows<Order>> GetByUserPagedAsync(
         Guid userId, bool? openOnly,
-        DateTimeOffset? afterTs, Guid? afterId,
-        int limit, CancellationToken ct);
+        int page, int pageSize, CancellationToken ct);
     }
 }

@@ -215,34 +215,21 @@ public class OrderService
     }
 
     public async Task<PagedResult<OrderDto>> GetRecentAsync(
-        Guid userId, bool? openOnly, string? cursor, int? limit, CancellationToken ct)
+        Guid userId, bool? openOnly, int? page, int? limit, CancellationToken ct)
     {
-        var Sort = openOnly switch
-        {
-            true  => "orders_open_desc",
-            false => "orders_closed_desc",
-            null  => "orders_all_desc"
-        };
-        var take = Cursor.ClampLimit(limit);
+        var pageSize = Paging.ClampLimit(limit);
+        var p = Paging.ClampPage(page);
 
-        DateTimeOffset? ts = null;
-        Guid? id = null;
-        if (Cursor.TryDecode(cursor, Sort, out var dts, out var did))
-        {
-            ts = dts;
-            id = did;
-        }
+        var result = await _orders.GetByUserPagedAsync(userId, openOnly, p, pageSize, ct);
 
-        var rows = await _orders.GetByUserPagedAsync(userId, openOnly, ts, id, take, ct);
-
-        var hasMore = rows.Count > take;
-        if (hasMore) rows.RemoveAt(rows.Count - 1);
-        if (rows.Count == 0) return new PagedResult<OrderDto>([], null);
+        if (result.Items.Count == 0)
+            return new PagedResult<OrderDto>([], p, pageSize, result.Total);
 
         var instruments = (await _instruments.GetActiveAsync(ct)).ToDictionary(i => i.Id);
-        var totals = await _transactions.GetTotalsByOrderIdsAsync(rows.Select(o => o.Id), ct);
+        var totals = await _transactions.GetTotalsByOrderIdsAsync(
+            result.Items.Select(o => o.Id), ct);
 
-        var items = rows.Select(o => OrderDtoMapper.ToDto(
+        var items = result.Items.Select(o => OrderDtoMapper.ToDto(
             o,
             instruments.TryGetValue(o.InstrumentId, out var i) ? i.Symbol! : "?",
             lockedAmount: (o.Status == OrderStatus.Pending || o.Status == OrderStatus.PartiallyFilled)
@@ -251,9 +238,7 @@ public class OrderService
                 : null,
             executedAmount: totals.TryGetValue(o.Id, out var spent) ? spent : null)).ToList();
 
-        var last = rows[^1];
-        return new PagedResult<OrderDto>(
-            items,
-            hasMore ? Cursor.Encode(Sort, last.CreatedAt, last.Id) : null);
+        return new PagedResult<OrderDto>(items, p, pageSize, result.Total);
     }
+
 }

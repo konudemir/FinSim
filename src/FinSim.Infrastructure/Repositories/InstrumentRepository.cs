@@ -1,4 +1,5 @@
 using FinSim.Application.Interfaces;
+using FinSim.Application.Pagination;
 using FinSim.Infrastructure.Data;
 using FinSim.Domain.Models;
 using Microsoft.EntityFrameworkCore;
@@ -30,7 +31,7 @@ namespace FinSim.Infrastructure.Repositories
 
         public Task<Instrument?> GetBySymbolAsync(string symbol, CancellationToken ct) =>
             _db.Instruments.FirstOrDefaultAsync(i => i.Symbol == symbol.ToUpper(), ct);
-        
+
         public async Task AddAsync(Instrument instrument, CancellationToken ct)
         {
             _db.Instruments.Add(instrument);
@@ -117,131 +118,109 @@ namespace FinSim.Infrastructure.Repositories
                 .ToList();
         }
 
-        public Task<List<Instrument>> GetBoardPagedAsync(
+        public Task<PagedRows<Instrument>> GetBoardPagedAsync(
             string sort, string? q,
-            decimal? afterPrice, string? afterSymbol, Guid? afterId,
-            int limit, CancellationToken ct)
+            int page, int pageSize, CancellationToken ct)
         {
-            var qry = _db.Instruments
-                .Where(i => i.IsActive && i.Type == InstrumentType.Stock);
+            var qry = ApplySearch(
+                _db.Instruments.Where(i => i.IsActive && i.Type == InstrumentType.Stock), q);
 
-            if (!string.IsNullOrWhiteSpace(q))
-            {
-                var pattern = $"%{q.Trim()}%";
-                qry = qry.Where(i => EF.Functions.ILike(i.Symbol, pattern)
-                                || EF.Functions.ILike(i.Name, pattern));
-            }
-
-            switch (sort)
-            {
-                case "price_asc":
-                    if (afterPrice is not null && afterId is not null)
-                        qry = qry.Where(i => i.CurrentPrice > afterPrice
-                                        || (i.CurrentPrice == afterPrice && i.Id.CompareTo(afterId.Value) > 0));
-                    qry = qry.OrderBy(i => i.CurrentPrice).ThenBy(i => i.Id);
-                    break;
-
-                case "price_desc":
-                    if (afterPrice is not null && afterId is not null)
-                        qry = qry.Where(i => i.CurrentPrice < afterPrice
-                                        || (i.CurrentPrice == afterPrice && i.Id.CompareTo(afterId.Value) < 0));
-                    qry = qry.OrderByDescending(i => i.CurrentPrice).ThenByDescending(i => i.Id);
-                    break;
-
-                case "symbol_desc":
-                    if (afterSymbol is not null)
-                        qry = qry.Where(i => string.Compare(i.Symbol, afterSymbol) < 0);
-                    qry = qry.OrderByDescending(i => i.Symbol);
-                    break;
-
-                default: // symbol_asc
-                    if (afterSymbol is not null)
-                        qry = qry.Where(i => string.Compare(i.Symbol, afterSymbol) > 0);
-                    qry = qry.OrderBy(i => i.Symbol);
-                    break;
-            }
-
-            return qry.Take(limit + 1).ToListAsync(ct);
+            return PageAsync(qry, sort, page, pageSize, ct);
         }
 
-        // Turkish symbols (İ/I, Ş, Ç, ...) don't sort the way the client's
-        // localeCompare(..., 'tr') expects under Postgres's default collation.
-        // Collating explicitly here — and on the cursor comparisons below —
-        // keeps the ORDER BY and the keyset "after" predicate consistent with
-        // each other, which is what keyset paging actually depends on.
-        private const string TrCollation = "tr-TR-x-icu";
-
-        public Task<List<Instrument>> GetPortfolioBoardPagedAsync(
+        public Task<PagedRows<Instrument>> GetPortfolioBoardPagedAsync(
             Guid userId, string sort, string? q,
-            decimal? afterPrice, string? afterSymbol, Guid? afterId,
-            int limit, CancellationToken ct)
+            int page, int pageSize, CancellationToken ct)
         {
             var heldIds = _db.PortfolioItems
                 .Where(p => p.UserId == userId)
                 .Select(p => p.InstrumentId);
 
-            var qry = _db.Instruments
-                .Where(i => i.IsActive && heldIds.Contains(i.Id));
+            var qry = ApplySearch(
+                _db.Instruments.Where(i => i.IsActive && heldIds.Contains(i.Id)), q);
 
-            if (!string.IsNullOrWhiteSpace(q))
-            {
-                var pattern = $"%{q.Trim()}%";
-                qry = qry.Where(i => EF.Functions.ILike(i.Symbol, pattern)
-                                || EF.Functions.ILike(i.Name, pattern));
-            }
-
-            return ApplyBoardSort(qry, sort, afterPrice, afterSymbol, afterId)
-                .Take(limit + 1).ToListAsync(ct);
+            return PageAsync(qry, sort, page, pageSize, ct);
         }
 
-        public Task<List<Instrument>> GetFavoritesBoardPagedAsync(
+        public Task<PagedRows<Instrument>> GetFavoritesBoardPagedAsync(
             Guid userId, string sort,
-            decimal? afterPrice, string? afterSymbol, Guid? afterId,
-            int limit, CancellationToken ct)
+            int page, int pageSize, CancellationToken ct)
         {
             var favIds = _db.FavoriteInstruments
                 .Where(f => f.UserId == userId)
                 .Select(f => f.InstrumentId);
 
-            var qry = _db.Instruments
-                .Where(i => i.IsActive && favIds.Contains(i.Id));
+            var qry = _db.Instruments.Where(i => i.IsActive && favIds.Contains(i.Id));
 
-            return ApplyBoardSort(qry, sort, afterPrice, afterSymbol, afterId)
-                .Take(limit + 1).ToListAsync(ct);
+            return PageAsync(qry, sort, page, pageSize, ct);
         }
 
-        private static IQueryable<Instrument> ApplyBoardSort(
-            IQueryable<Instrument> qry, string sort,
-            decimal? afterPrice, string? afterSymbol, Guid? afterId)
+        // Unlike the market/portfolio/favorites boards, admin needs to see
+        // inactive instruments and funds too, so there's no IsActive/Type filter here.
+        public Task<PagedRows<Instrument>> GetAdminBoardPagedAsync(
+            string sort, string? q,
+            int page, int pageSize, CancellationToken ct)
         {
-            switch (sort)
-            {
-                case "price_asc":
-                    if (afterPrice is not null && afterId is not null)
-                        qry = qry.Where(i => i.CurrentPrice > afterPrice
-                                        || (i.CurrentPrice == afterPrice && i.Id.CompareTo(afterId.Value) > 0));
-                    return qry.OrderBy(i => i.CurrentPrice).ThenBy(i => i.Id);
+            var qry = ApplySearch(_db.Instruments, q);
 
-                case "price_desc":
-                    if (afterPrice is not null && afterId is not null)
-                        qry = qry.Where(i => i.CurrentPrice < afterPrice
-                                        || (i.CurrentPrice == afterPrice && i.Id.CompareTo(afterId.Value) < 0));
-                    return qry.OrderByDescending(i => i.CurrentPrice).ThenByDescending(i => i.Id);
-
-                case "symbol_desc":
-                    if (afterSymbol is not null)
-                        qry = qry.Where(i => string.Compare(
-                            EF.Functions.Collate(i.Symbol, TrCollation),
-                            EF.Functions.Collate(afterSymbol, TrCollation)) < 0);
-                    return qry.OrderByDescending(i => EF.Functions.Collate(i.Symbol, TrCollation));
-
-                default: // symbol_asc
-                    if (afterSymbol is not null)
-                        qry = qry.Where(i => string.Compare(
-                            EF.Functions.Collate(i.Symbol, TrCollation),
-                            EF.Functions.Collate(afterSymbol, TrCollation)) > 0);
-                    return qry.OrderBy(i => EF.Functions.Collate(i.Symbol, TrCollation));
-            }
+            return PageAsync(qry, sort, page, pageSize, ct);
         }
+
+        private static IQueryable<Instrument> ApplySearch(IQueryable<Instrument> qry, string? q)
+        {
+            if (string.IsNullOrWhiteSpace(q)) return qry;
+
+            var pattern = $"%{q.Trim()}%";
+            return qry.Where(i => EF.Functions.ILike(i.Symbol, pattern)
+                             || EF.Functions.ILike(i.Name, pattern));
+        }
+
+        /// <summary>
+        /// Counts the filtered set, then fetches one page of it. The COUNT runs
+        /// against the unsorted query on purpose — Postgres shouldn't sort rows it
+        /// is only going to count. Both queries see the same filters, so the total
+        /// always describes the same set the page was drawn from.
+        /// </summary>
+        private static async Task<PagedRows<Instrument>> PageAsync(
+            IQueryable<Instrument> qry, string sort,
+            int page, int pageSize, CancellationToken ct)
+        {
+            var total = await qry.CountAsync(ct);
+
+            var items = await ApplyBoardSort(qry, sort)
+                .Skip((page - 1) * pageSize)
+                .Take(pageSize)
+                .ToListAsync(ct);
+
+            return new PagedRows<Instrument>(items, total);
+        }
+
+        // Turkish symbols (İ/I, Ş, Ç, ...) don't sort the way the client's
+        // localeCompare(..., 'tr') expects under Postgres's default collation, so
+        // the ORDER BY collates explicitly to match what the UI renders.
+        private const string TrCollation = "tr-TR-x-icu";
+
+        // Every sort ends in Id so the ordering is total. Without that tiebreak,
+        // rows sharing a price (or comparing equal under the collation) can land
+        // on two different pages, or on none.
+        private static IQueryable<Instrument> ApplyBoardSort(
+            IQueryable<Instrument> qry, string sort) => sort switch
+            {
+                "price_asc" => qry
+                    .OrderBy(i => i.CurrentPrice)
+                    .ThenBy(i => i.Id),
+
+                "price_desc" => qry
+                    .OrderByDescending(i => i.CurrentPrice)
+                    .ThenByDescending(i => i.Id),
+
+                "symbol_desc" => qry
+                    .OrderByDescending(i => EF.Functions.Collate(i.Symbol, TrCollation))
+                    .ThenByDescending(i => i.Id),
+
+                _ => qry // symbol_asc
+                    .OrderBy(i => EF.Functions.Collate(i.Symbol, TrCollation))
+                    .ThenBy(i => i.Id),
+            };
     }
 }

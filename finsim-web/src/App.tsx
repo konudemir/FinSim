@@ -107,7 +107,7 @@ type OrderUpdate = {
   portfolio: PortfolioItem[]
 }
 
-type Paged<T> = { items: T[]; nextCursor: string | null }
+export type Paged<T> = { items: T[]; nextCursor: string | null }
 
 // "42,5" -> 42.5 ; "" / "42." / "abc" -> NaN
 const parseDecimal = (s: string) => parseFloat(s.replace(',', '.'))
@@ -200,7 +200,7 @@ export function Pager({ page, totalPages, onChange }: { page: number; totalPages
  * fetches page 1 under the latest params, and reload() re-fetches whichever
  * page is currently shown, without touching the cursor stack.
  */
-function useCursorPage<T>(url: string, params: Record<string, unknown>) {
+export function useCursorPage<T>(url: string, params: Record<string, unknown>) {
   const [items, setItems] = useState<T[]>([])
   const [nextCursor, setNextCursor] = useState<string | null>(null)
   const [pageCursor, setPageCursor] = useState<string | null>(null)

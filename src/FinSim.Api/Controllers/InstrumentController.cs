@@ -19,10 +19,20 @@ namespace FinSim.Controllers
         public async Task<IActionResult> GetBoard(
             [FromQuery] string? sort,
             [FromQuery] string? q,
-            [FromQuery] string? cursor,
+            [FromQuery] int? page,
             [FromQuery] int? limit,
             CancellationToken ct) =>
-            Ok(await _inst.GetBoardAsync(sort, q, cursor, limit, ct));
+            Ok(await _inst.GetBoardAsync(sort, q, page, limit, ct));
+
+        [HttpGet("admin-board")]
+        [Authorize(Roles = "Admin")]
+        public async Task<IActionResult> GetAdminBoard(
+            [FromQuery] string? sort,
+            [FromQuery] string? q,
+            [FromQuery] int? page,
+            [FromQuery] int? limit,
+            CancellationToken ct) =>
+            Ok(await _inst.GetAdminBoardAsync(sort, q, page, limit, ct));
 
         [HttpGet("{id:guid}/history")]
         [AllowAnonymous]
