@@ -64,7 +64,7 @@ namespace FinSim.Api.Services
                     var tick    = await prices.TickAsync(stoppingToken);
                     var expired = await expiry.SweepAsync(stoppingToken);
 
-                    await bots.RunAsync(tick.Instruments, stoppingToken);
+                    await bots.RunAsync(tick.Instruments, tick.MarketMove, stoppingToken);
 
                     var touched = await matcher.MatchAsync(tick.Instruments, stoppingToken);
                     var liquidated = await margin.CheckAsync(tick.Instruments, stoppingToken);
