@@ -1831,7 +1831,7 @@ function PnlChart({ live }: {
   )
 }
 
-function AreaSpark({ data, className }: { data: PricePoint[]; className: string }) {
+function AreaSpark({ data, className, zeroBaseline }: { data: PricePoint[]; className: string; zeroBaseline?: boolean }) {
   const [hover, setHover] = useState<number | null>(null)
   if (data.length < 2) return null
   const { lang } = useLang()
@@ -1839,7 +1839,7 @@ function AreaSpark({ data, className }: { data: PricePoint[]; className: string 
   const dataMin = Math.min(...prices)
   const dataMax = Math.max(...prices)
   const pad = (dataMax - dataMin) * 0.15 || dataMax * 0.05 || 1
-  const min = Math.max(0, dataMin - pad)
+  const min = zeroBaseline ? 0 : Math.max(0, dataMin - pad)
   const top = dataMax + pad
   const range = top - min || 1
   const last = data.length - 1
@@ -1994,7 +1994,7 @@ function InstrumentFullscreen({
 
         <div className="instrument-fullscreen-body">
           <div className="instrument-fullscreen-chart">
-            <AreaSpark data={history} className="fullscreen-spark" />
+            <AreaSpark data={history} className="fullscreen-spark" zeroBaseline />
             {history.length < 2 && <div className="fs-chart-empty">{t('fs.loading')}</div>}
           </div>
           <div className="ticket-in fullscreen-ticket">

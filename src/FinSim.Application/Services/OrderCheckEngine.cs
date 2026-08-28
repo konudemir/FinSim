@@ -97,10 +97,13 @@ namespace FinSim.Application.Services
                     // Cross? highest bid must meet lowest ask.
                     if (bid.Price!.Value < ask.Price!.Value) break;
 
-                    var resting = bid.CreatedAt <= ask.CreatedAt ? bid : ask;
-                    var fillPrice = (bid.ImmediateOrCancel && ask.ImmediateOrCancel)
-                        ? reference
-                        : resting.Price!.Value;
+                    Order? maker =
+                        bid.ImmediateOrCancel && ask.ImmediateOrCancel ? null
+                        : bid.ImmediateOrCancel ? ask
+                        : ask.ImmediateOrCancel ? bid
+                        : (bid.CreatedAt <= ask.CreatedAt ? bid : ask);
+
+                    var fillPrice = maker?.Price!.Value ?? reference;   // both takers → frozen reference
 
                     // Collar: resting price outside frozen ±5% → no trade, walk stops.
                     // The aggressor can't complete this tick either — rather than leave
@@ -109,7 +112,7 @@ namespace FinSim.Application.Services
                     // price caused the breach) is left untouched. Scenario 3.
                     if (fillPrice < low || fillPrice > high)
                     {
-                        await CancelLeftoverAsync(resting == bid ? ask : bid, instrument, touched, ct);
+                        await CancelLeftoverAsync(maker == bid ? ask : bid, instrument, touched, ct);
                         break;
                     }
 
@@ -120,7 +123,7 @@ namespace FinSim.Application.Services
                     {
                         // Couldn't settle (e.g. short side, not yet implemented) — don't
                         // let it wedge the walk; step past the resting order.
-                        if (resting == bid) bi++; else ai++;
+                        if (maker == bid) bi++; else ai++;
                         continue;
                     }
 
