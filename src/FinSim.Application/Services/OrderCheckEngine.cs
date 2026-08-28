@@ -176,11 +176,10 @@ namespace FinSim.Application.Services
             o.UpdatedAt = DateTimeOffset.UtcNow;
             touched.Add(new OrderOutcome(o.UserId, ToDto(o, instrument, null)));
         }
-
-                /// <summary>
+        
+        /// <summary>
         /// Settles one fill against BOTH orders. All-or-nothing: returns false without
         /// mutating anything if either side can't be settled, so the caller skips the pair.
-        /// Short open/cover deferred to Aşama 6 — they surface as a false return.
         /// </summary>
         private async Task<bool> TrySettleFillAsync(
             Order bid, Order ask, int qty, decimal price,
@@ -203,6 +202,23 @@ namespace FinSim.Application.Services
                 return false;
 
             var gross = Math.Round(price * qty, 2, MidpointRounding.AwayFromZero);
+
+            // ---- NEW: cash reservation, verified on the same all-or-nothing footing ----
+            // A short sell reserves margin at its limit price, which is the LOWEST price it
+            // can fill at — so any fill above the limit needs more margin than was reserved.
+            // The proceeds half of the collateral is self-financing (gross comes in, gross
+            // gets locked), so the entire shortfall is the margin half. Verify the seller
+            // can cover it before anything mutates; otherwise the caller skips the pair.
+            if (sellerKind == FillKind.OpenOrAddShort)
+            {
+                var askRemainingPre     = ask.Quantity - ask.FilledQuantity;
+                var askLockedPerUnitPre = askRemainingPre > 0 ? ask.LockedAmount / askRemainingPre : 0m;
+                var askReleasePre       = Math.Round(askLockedPerUnitPre * qty, 2, MidpointRounding.AwayFromZero);
+                var requiredMargin      = Math.Round(MarginCalculator.InitialMarginRate * gross, 2, MidpointRounding.AwayFromZero);
+
+                if (requiredMargin - askReleasePre > seller.FreeCashBalance) return false;
+            }
+            // ---- end NEW ----
 
             // Short size and entry price before the fill. The collateral recompute needs
             // the pair, and ApplyShortOpen moves both at once.
@@ -284,7 +300,7 @@ namespace FinSim.Application.Services
             touched.Add(new OrderOutcome(ask.UserId, ToDto(ask, instrument, gross)));
             return true;
         }
-                private static void ApplyFillCache(Order o, int qty, decimal price)
+        private static void ApplyFillCache(Order o, int qty, decimal price)
         {
             var newFilled = o.FilledQuantity + qty;
             o.AvgPrice = ((o.AvgPrice * o.FilledQuantity) + price * qty) / newFilled;
