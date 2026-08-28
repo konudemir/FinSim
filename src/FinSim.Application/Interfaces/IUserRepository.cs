@@ -1,3 +1,4 @@
+using FinSim.Application.Pagination;
 using FinSim.Domain.Models;
 
 namespace FinSim.Application.Interfaces
@@ -16,5 +17,8 @@ namespace FinSim.Application.Interfaces
         Task<string> GeneratePasswordResetTokenAsync(User user, CancellationToken ct);
         Task<IReadOnlyList<string>> ResetPasswordAsync(User user, string token, string newPassword, CancellationToken ct);
         Task<List<User>> GetBotsAsync(CancellationToken ct);
+        Task<PagedRows<User>> GetUsersBoardPagedAsync(
+            bool bots, string? q, string sort,
+            int page, int pageSize, CancellationToken ct);
     }
 }

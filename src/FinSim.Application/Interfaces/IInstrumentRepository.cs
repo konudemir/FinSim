@@ -1,4 +1,5 @@
 using FinSim.Domain.Models;
+using FinSim.Application.Pagination;
 
 namespace FinSim.Application.Interfaces
 {
@@ -14,17 +15,20 @@ namespace FinSim.Application.Interfaces
         Task<List<PriceHistory>> GetHistoryAsync(
         Guid instrumentId, DateTime from, DateTime to, int maxPoints, CancellationToken ct);
         Task<List<decimal>> GetIndexHistoryAsync(int points, CancellationToken ct);
-        Task<List<Instrument>> GetBoardPagedAsync(
+        Task<PagedRows<Instrument>> GetBoardPagedAsync(
             string sort, string? q,
-            decimal? afterPrice, string? afterSymbol, Guid? afterId,
-            int limit, CancellationToken ct);
-        Task<List<Instrument>> GetPortfolioBoardPagedAsync(
+            int page, int pageSize, CancellationToken ct);
+
+        Task<PagedRows<Instrument>> GetPortfolioBoardPagedAsync(
             Guid userId, string sort, string? q,
-            decimal? afterPrice, string? afterSymbol, Guid? afterId,
-            int limit, CancellationToken ct);
-        Task<List<Instrument>> GetFavoritesBoardPagedAsync(
+            int page, int pageSize, CancellationToken ct);
+
+        Task<PagedRows<Instrument>> GetFavoritesBoardPagedAsync(
             Guid userId, string sort,
-            decimal? afterPrice, string? afterSymbol, Guid? afterId,
-            int limit, CancellationToken ct);
+            int page, int pageSize, CancellationToken ct);
+
+        Task<PagedRows<Instrument>> GetAdminBoardPagedAsync(
+            string sort, string? q,
+            int page, int pageSize, CancellationToken ct);
     }
 }

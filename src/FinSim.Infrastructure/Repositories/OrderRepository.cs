@@ -1,4 +1,5 @@
 using FinSim.Application.Interfaces;
+using FinSim.Application.Pagination;
 using FinSim.Domain.Models;
 using FinSim.Domain.Models.Enums;
 using FinSim.Infrastructure.Data;
@@ -66,28 +67,30 @@ namespace FinSim.Infrastructure.Repositories
             }
         }
 
-        public Task<List<Order>> GetByUserPagedAsync(
-        Guid userId, bool? openOnly,
-        DateTimeOffset? afterTs, Guid? afterId,
-        int limit, CancellationToken ct)
-    {
-        var q = _db.Orders.Where(o => o.UserId == userId);
+        public async Task<PagedRows<Order>> GetByUserPagedAsync(
+            Guid userId, bool? openOnly,
+            int page, int pageSize, CancellationToken ct)
+        {
+            var q = _db.Orders.Where(o => o.UserId == userId);
 
-        if (openOnly == true)
-            q = q.Where(o => o.Status == OrderStatus.Pending
-                        || o.Status == OrderStatus.PartiallyFilled);
-        else if (openOnly == false)
-            q = q.Where(o => o.Status != OrderStatus.Pending
-                        && o.Status != OrderStatus.PartiallyFilled);
+            if (openOnly == true)
+                q = q.Where(o => o.Status == OrderStatus.Pending
+                            || o.Status == OrderStatus.PartiallyFilled);
+            else if (openOnly == false)
+                q = q.Where(o => o.Status != OrderStatus.Pending
+                            && o.Status != OrderStatus.PartiallyFilled);
 
-        if (afterTs is not null && afterId is not null)
-            q = q.Where(o => o.CreatedAt < afterTs
-                        || (o.CreatedAt == afterTs && o.Id.CompareTo(afterId.Value) < 0));
+            var total = await q.CountAsync(ct);
 
-        return q.OrderByDescending(o => o.CreatedAt)
+            var items = await q
+                .OrderByDescending(o => o.CreatedAt)
                 .ThenByDescending(o => o.Id)
-                .Take(limit + 1)
+                .Skip((page - 1) * pageSize)
+                .Take(pageSize)
                 .ToListAsync(ct);
-    }
+
+            return new PagedRows<Order>(items, total);
+        }
+
     }
 }

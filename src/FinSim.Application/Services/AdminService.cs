@@ -1,5 +1,6 @@
 using FinSim.Application.Dtos;
 using FinSim.Application.Interfaces;
+using FinSim.Application.Pagination;
 using FinSim.Domain.Models;
 using FinSim.Domain.Models.Enums;
 
@@ -65,6 +66,51 @@ public class AdminService
         }).ToList();
     }
 
+    /// <summary>
+    /// Paged counterpart to GetUsersOverviewAsync, used for the admin human/bot
+    /// user lists — the aggregate views (net worth, exposure, cash utilization,
+    /// leaderboards) still need the full bot roster and keep calling
+    /// GetUsersOverviewAsync instead.
+    /// </summary>
+    public async Task<PagedResult<AdminUserDto>> GetUsersBoardAsync(
+        bool bots, string? sort, string? q, int? page, int? limit, CancellationToken ct)
+    {
+        var sortKey = sort == "name_desc" ? "name_desc" : "name_asc";
+        var pageSize = Paging.ClampLimit(limit);
+        var p = Paging.ClampPage(page);
+
+        var result = await _users.GetUsersBoardPagedAsync(bots, q, sortKey, p, pageSize, ct);
+
+        if (result.Items.Count == 0)
+            return new PagedResult<AdminUserDto>([], p, pageSize, result.Total);
+
+        var instruments = (await _instruments.GetActiveAsync(ct)).ToDictionary(i => i.Id);
+        var ids = result.Items.Select(u => u.Id).ToHashSet();
+        var positionsByUser = (await _portfolio.GetAllAsync(ct))
+            .Where(pi => ids.Contains(pi.UserId) && instruments.ContainsKey(pi.InstrumentId))
+            .GroupBy(pi => pi.UserId)
+            .ToDictionary(g => g.Key, g => g.ToList());
+
+        var dtos = result.Items.Select(u =>
+        {
+            var holdings = positionsByUser.TryGetValue(u.Id, out var items)
+                ? items.Select(pi =>
+                {
+                    var i = instruments[pi.InstrumentId];
+                    return new PortfolioItemDto(
+                        i.Symbol, i.Name, pi.TotalQuantity, pi.LockedQuantity, pi.AverageCost,
+                        i.CurrentPrice, i.CurrentPrice * pi.TotalQuantity,
+                        (i.CurrentPrice - pi.AverageCost) * pi.TotalQuantity, pi.IsShort);
+                }).ToList()
+                : [];
+
+            return new AdminUserDto(
+                u.Id, u.UserName!, u.Email!, u.FreeCashBalance, u.LockedCashBalance,
+                u.RealizedProfitLoss, u.NetDeposits, holdings);
+        }).ToList();
+
+        return new PagedResult<AdminUserDto>(dtos, p, pageSize, result.Total);
+    }
     /// <summary>
     /// Adjusts FreeCashBalance only — LockedCashBalance belongs to the order
     /// reservation logic and editing it here would desync open orders.

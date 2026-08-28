@@ -2,6 +2,7 @@ using FinSim.Application.Interfaces;
 using FinSim.Infrastructure.Data;
 using FinSim.Domain.Models;
 using Microsoft.EntityFrameworkCore;
+using FinSim.Application.Pagination;
 
 namespace FinSim.Infrastructure.Repositories
 {
@@ -33,26 +34,25 @@ namespace FinSim.Infrastructure.Repositories
 
             return totals;
         }
-        public Task<List<Transaction>> GetByUserPagedAsync(
-            Guid userId, DateTimeOffset? afterTs, Guid? afterId,
-            int limit, CancellationToken ct)
+        public async Task<PagedRows<Transaction>> GetByUserPagedAsync(
+            Guid userId, int page, int pageSize, CancellationToken ct)
         {
             var q = _db.Transactions
                 .AsNoTracking()
-                .Include(t => t.BuyerOrder)
-                .Include(t => t.SellerOrder)
                 .Where(t => t.BuyerUserId == userId || t.SellerUserId == userId);
 
-            if (afterTs is not null && afterId is not null)
-                q = q.Where(t => t.TransactionDate < afterTs
-                            || (t.TransactionDate == afterTs && t.Id.CompareTo(afterId.Value) < 0));
+            var total = await q.CountAsync(ct);
 
-            return q.OrderByDescending(t => t.TransactionDate)
-                    .ThenByDescending(t => t.Id)
-                    .Take(limit + 1)
-                    .ToListAsync(ct);
+            var items = await q
+                .Include(t => t.BuyerOrder)
+                .Include(t => t.SellerOrder)
+                .OrderByDescending(t => t.TransactionDate)
+                .ThenByDescending(t => t.Id)
+                .Skip((page - 1) * pageSize)
+                .Take(pageSize)
+                .ToListAsync(ct);
+
+            return new PagedRows<Transaction>(items, total);
         }
-
-        
     }
 }

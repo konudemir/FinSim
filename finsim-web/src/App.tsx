@@ -1,4 +1,6 @@
 import { memo, useEffect, useMemo, useRef, useState } from 'react'
+import { usePath, navigate, replacePath } from './router'
+import PageNav from './PageNav'
 import * as signalR from '@microsoft/signalr'
 import api, { API } from './api'
 import { useAuth } from './auth'
@@ -106,7 +108,7 @@ type OrderUpdate = {
   portfolio: PortfolioItem[]
 }
 
-type Paged<T> = { items: T[]; nextCursor: string | null }
+export type Paged<T> = { items: T[]; page: number; pageSize: number; totalCount: number }
 
 // "42,5" -> 42.5 ; "" / "42." / "abc" -> NaN
 const parseDecimal = (s: string) => parseFloat(s.replace(',', '.'))
@@ -192,80 +194,50 @@ export function Pager({ page, totalPages, onChange }: { page: number; totalPages
 }
 
 /**
- * Generic cursor-paged list: load/next/prev plus a cursor stack so "prev" can
- * step back without a round trip that re-derives the previous page's cursor.
- * `params` is read fresh on every call (not captured once) so callers can pass
- * an object literal that changes across renders (sort, q, ...) — load() always
- * fetches page 1 under the latest params, and reload() re-fetches whichever
- * page is currently shown, without touching the cursor stack.
+ * Generic offset-paged list: goTo(n) fetches an arbitrary page, next/prev step
+ * by one, reload() re-fetches whichever page is currently shown. `params` is
+ * read fresh on every call (not captured once) so callers can pass an object
+ * literal that changes across renders (sort, q, ...).
  */
-function useCursorPage<T>(url: string, params: Record<string, unknown>) {
+export function usePagedList<T>(url: string, params: Record<string, unknown>, pageSize: number) {
   const [items, setItems] = useState<T[]>([])
-  const [nextCursor, setNextCursor] = useState<string | null>(null)
-  const [pageCursor, setPageCursor] = useState<string | null>(null)
-  const [stack, setStack] = useState<(string | null)[]>([])
+  const [page, setPage] = useState(1)
+  const [totalCount, setTotalCount] = useState(0)
 
-  const load = () =>
-    api.get<Paged<T>>(url, { params: { ...params, cursor: undefined } })
+  const fetchPage = (n: number) =>
+    api.get<Paged<T>>(url, { params: { ...params, page: n, limit: pageSize } })
       .then(r => {
         setItems(r.data.items)
-        setNextCursor(r.data.nextCursor)
-        setPageCursor(null)
-        setStack([])
+        setPage(r.data.page)
+        setTotalCount(r.data.totalCount)
       })
       .catch(console.error)
 
-  const next = () => {
-    if (!nextCursor) return
-    const cursor = nextCursor
-    api.get<Paged<T>>(url, { params: { ...params, cursor } })
-      .then(r => {
-        setStack(prev => [...prev, pageCursor])
-        setItems(r.data.items)
-        setNextCursor(r.data.nextCursor)
-        setPageCursor(cursor)
-      })
-      .catch(console.error)
-  }
+  const totalPages = Math.max(1, Math.ceil(totalCount / pageSize))
+  const goTo = (n: number) => fetchPage(n)
+  const next = () => goTo(page + 1)
+  const prev = () => goTo(page - 1)
+  const reload = () => fetchPage(page)
+  const hasNext = page < totalPages
+  const hasPrevious = page > 1
 
-  const prev = () => {
-    if (stack.length === 0) return
-    const prevCursor = stack[stack.length - 1]
-    api.get<Paged<T>>(url, { params: { ...params, cursor: prevCursor ?? undefined } })
-      .then(r => {
-        setStack(p => p.slice(0, -1))
-        setItems(r.data.items)
-        setNextCursor(r.data.nextCursor)
-        setPageCursor(prevCursor)
-      })
-      .catch(console.error)
-  }
-
-  const reload = () =>
-    api.get<Paged<T>>(url, { params: { ...params, cursor: pageCursor ?? undefined } })
-      .then(r => {
-        setItems(r.data.items)
-        setNextCursor(r.data.nextCursor)
-      })
-      .catch(console.error)
-
-  return { items, nextCursor, stack, load, next, prev, reload }
+  return { items, page, totalPages, hasNext, hasPrevious, goTo, next, prev, reload }
 }
 
 function useOrderPage(open: boolean) {
-  return useCursorPage<Order>('/api/order', { limit: PAGE_SIZE, open })
+  return usePagedList<Order>('/api/order', { open }, PAGE_SIZE)
 }
 
 function useBoardPage(sort: string, q: string) {
-  return useCursorPage<Instrument>('/api/instruments/board', { limit: MARKET_PAGE_SIZE, sort, q })
+  return usePagedList<Instrument>('/api/instruments/board', { sort, q }, MARKET_PAGE_SIZE)
 }
 
 function usePortfolioBoardPage(sort: string, q: string) {
-  return useCursorPage<Instrument>('/api/users/portfolio/board', { limit: PAGE_SIZE, sort, q })
+  return usePagedList<Instrument>('/api/users/portfolio/board', { sort, q }, PAGE_SIZE)
 }
 
 function useFavoritesBoardPage(sort: string) {
-  return useCursorPage<Instrument>('/api/favorites/board', { limit: PAGE_SIZE, sort })
+  return usePagedList<Instrument>('/api/favorites/board', { sort }, PAGE_SIZE)
 }
 
 function OrderTable({ orders, pending, now, onCancel, onReplace, replacing, minRows = PAGE_SIZE }: {
@@ -365,21 +337,18 @@ function OrderTable({ orders, pending, now, onCancel, onReplace, replacing, minR
 
 
 const InstrumentRow = memo(function InstrumentRow({
-  i, open, tick, pos, sparkData, onClick, isFavorite, onToggleFavorite, onExpand,
+  i, tick, pos, onClick, isFavorite, onToggleFavorite,
 }: {
   i: Instrument
-  open: boolean
   tick: Tick | undefined
   pos: PortfolioItem | undefined
-  sparkData: PricePoint[]
   onClick: () => void
   isFavorite: boolean
   onToggleFavorite: () => void
-  onExpand: () => void
 }) {
   const { t } = useLang()
   return (
-    <div className="row" data-open={open}>
+    <div className="row">
       <div className="row-line">
         <button
           type="button"
@@ -393,9 +362,7 @@ const InstrumentRow = memo(function InstrumentRow({
         <button
           type="button"
           className="row-head"
-          data-selected={open}
           data-inactive={!i.isActive}
-          aria-expanded={open}
           onClick={onClick}
           disabled={!i.isActive}
         >
@@ -426,26 +393,30 @@ const InstrumentRow = memo(function InstrumentRow({
         </span>
         </button>
       </div>
-      <div className="row-body">
-        <div className="row-body-in">
-          {open && (
-            <>
-              <button
-                type="button"
-                className="row-spark-expand"
-                onClick={e => { e.stopPropagation(); onExpand() }}
-                aria-label={t('board.fullscreen')}
-              >
-                ⛶
-              </button>
-              <AreaSpark data={sparkData} className="row-spark" />
-            </>
-          )}
-        </div>
-      </div>
     </div>
   )
 })
+
+// URL <-> primary-board page/sort sync, so a page is linkable and survives a
+// refresh. Only one board (market or portfolio) is visible at a time, so the
+// two views share the same `page`/`sort` keys — whichever view is active reads
+// and writes them.
+function urlSort(): string | null {
+  return new URLSearchParams(window.location.search).get('sort')
+}
+
+function urlPage(): number {
+  const n = Number(new URLSearchParams(window.location.search).get('page'))
+  return Number.isFinite(n) && n >= 1 ? n : 1
+}
+
+function setUrlParams(page: number, sort: string) {
+  const params = new URLSearchParams(window.location.search)
+  params.set('page', String(page))
+  params.set('sort', sort)
+  const qs = params.toString()
+  window.history.replaceState(null, '', window.location.pathname + (qs ? `?${qs}` : ''))
+}
 
 export default function App() {
   const { loggedIn, checking, logout } = useAuth()
@@ -470,6 +441,10 @@ export default function App() {
     return <Login onSuccess={() => window.location.reload()} />
   }
 
+  if (window.location.pathname === '/') {
+    replacePath('/home')
+  }
+
   return <Terminal onLogout={logout} />
 }
 
@@ -479,14 +454,12 @@ function Terminal({ onLogout }: { onLogout: () => void }) {
 
   const [indexValue, setIndexValue] = useState(0)
   const [instruments, setInstruments] = useState<Instrument[]>([])
+  const [instrumentsLoaded, setInstrumentsLoaded] = useState(false)
   const [balance, setBalance] = useState<Balance | null>(null)
   const [portfolio, setPortfolio] = useState<Record<string, PortfolioItem>>({})
   const openOrders = useOrderPage(true)
   const closedOrders = useOrderPage(false)
-  const [transactions, setTransactions] = useState<Transaction[]>([])
-  const [txCursor, setTxCursor] = useState<string | null>(null)
-  const [txPageCursor, setTxPageCursor] = useState<string | null>(null)
-  const [txCursorStack, setTxCursorStack] = useState<(string | null)[]>([])
+  const transactionsList = usePagedList<Transaction>('/api/transactions', {}, PAGE_SIZE)
   const [marketMove, setMarketMove] = useState(0)
   const [favorites, setFavorites] = useState<Set<string>>(new Set())
   const [showFavorites, setShowFavorites] = useState(false)
@@ -499,8 +472,6 @@ const MAX_POINTS = (WINDOW_HOURS * 3600) / TICK_SECONDS
 const [history, setHistory] = useState<Record<string, PricePoint[]>>({})
 const seeded = useRef<Set<string>>(new Set())
   const [selected, setSelected] = useState<string | null>(null)
-  const [selectedPanel, setSelectedPanel] = useState<string | null>(null)
-  const [fullscreenInstrumentId, setFullscreenInstrumentId] = useState<string | null>(null)
   const [fullscreenHistory, setFullscreenHistory] = useState<PricePoint[]>([])
   const [mode, setMode] = useState<'market' | 'limit'>('market')
   const [qty, setQty] = useState('1')
@@ -536,7 +507,14 @@ const seeded = useRef<Set<string>>(new Set())
   const [ticks, setTicks] = useState<Record<string, Tick>>({})
   const prevPrices = useRef<Record<string, number>>({})
   const [online, setOnline] = useState(true)
-  const [view, setView] = useState<'portfolio' | 'market' | 'admin'>('portfolio')
+  const pathname = usePath()
+  // /stocks/:symbol opens as an overlay on top of whatever page was already
+  // showing, so the background view tracks the last non-overlay path
+  // instead of flipping to 'portfolio' while a stock page is open.
+  const bgPathRef = useRef(pathname)
+  if (!pathname.startsWith('/stocks/')) bgPathRef.current = pathname
+  const view: 'portfolio' | 'market' | 'admin' =
+    bgPathRef.current === '/market' ? 'market' : bgPathRef.current === '/admin' ? 'admin' : 'portfolio'
   const [menuOpen, setMenuOpen] = useState(false)
   const menuCloseTimer = useRef<number | null>(null)
 
@@ -556,9 +534,9 @@ const seeded = useRef<Set<string>>(new Set())
     if (menuCloseTimer.current !== null) window.clearTimeout(menuCloseTimer.current)
   }, [])
   const [query, setQuery] = useState('')
-  const [sort, setSort] = useState('symbol_asc')
+  const [sort, setSort] = useState(() => urlSort() ?? 'symbol_asc')
   const [marketQuery, setMarketQuery] = useState('')
-  const [marketSort, setMarketSort] = useState('symbol_asc')
+  const [marketSort, setMarketSort] = useState(() => urlSort() ?? 'symbol_asc')
   const [debouncedMarketQuery, setDebouncedMarketQuery] = useState('')
   const [debouncedQuery, setDebouncedQuery] = useState('')
   // No sort control in the favorites panel (matches the pre-pagination UI) —
@@ -579,56 +557,34 @@ const seeded = useRef<Set<string>>(new Set())
   const portfolioBoard = usePortfolioBoardPage(sort, debouncedQuery)
   const favoritesBoard = useFavoritesBoardPage(favSort)
 
+  // The market view seeds its initial page from the URL (a linked/refreshed
+  // page); every later sort/query change resets to page 1.
+  const marketInitial = useRef(true)
   useEffect(() => {
-    board.load()
+    board.goTo(marketInitial.current && bgPathRef.current === '/market' ? urlPage() : 1)
+    marketInitial.current = false
   }, [marketSort, debouncedMarketQuery])
 
-  // Sort/query changes reset paging to page 1 — a cursor minted under the old
-  // sort or query wouldn't decode (or would decode against the wrong rows)
-  // under the new one anyway.
+  const portfolioInitial = useRef(true)
   useEffect(() => {
-    portfolioBoard.load()
+    portfolioBoard.goTo(portfolioInitial.current && bgPathRef.current !== '/market' ? urlPage() : 1)
+    portfolioInitial.current = false
   }, [sort, debouncedQuery])
 
   useEffect(() => {
-    favoritesBoard.load()
+    favoritesBoard.goTo(1)
   }, [favSort])
 
-  const loadTransactions = () =>
-    api.get<Paged<Transaction>>('/api/transactions', { params: { limit: PAGE_SIZE } })
-      .then(r => {
-        setTransactions(r.data.items)
-        setTxCursor(r.data.nextCursor)
-        setTxPageCursor(null)
-        setTxCursorStack([])
-      })
-      .catch(console.error)
+  // Keep the URL's page/sort in sync with whichever board is currently active.
+  useEffect(() => {
+    if (bgPathRef.current !== '/market') return
+    setUrlParams(board.page, marketSort)
+  }, [board.page, marketSort])
 
-  const nextTxPage = () => {
-    if (!txCursor) return
-    const cursor = txCursor
-    api.get<Paged<Transaction>>('/api/transactions', { params: { limit: PAGE_SIZE, cursor } })
-      .then(r => {
-        setTxCursorStack(prev => [...prev, txPageCursor])
-        setTransactions(r.data.items)
-        setTxCursor(r.data.nextCursor)
-        setTxPageCursor(cursor)
-      })
-      .catch(console.error)
-  }
-
-  const prevTxPage = () => {
-    if (txCursorStack.length === 0) return
-    const prevCursor = txCursorStack[txCursorStack.length - 1]
-    api.get<Paged<Transaction>>('/api/transactions', { params: { limit: PAGE_SIZE, cursor: prevCursor ?? undefined } })
-      .then(r => {
-        setTxCursorStack(prev => prev.slice(0, -1))
-        setTransactions(r.data.items)
-        setTxCursor(r.data.nextCursor)
-        setTxPageCursor(prevCursor)
-      })
-      .catch(console.error)
-  }
+  useEffect(() => {
+    if (bgPathRef.current === '/market') return
+    setUrlParams(portfolioBoard.page, sort)
+  }, [portfolioBoard.page, sort])
 
   const loadBalance = () =>
     api.get<Balance>('/api/users/balance').then(r => setBalance(r.data)).catch(console.error)
@@ -640,8 +596,7 @@ const seeded = useRef<Set<string>>(new Set())
         for (const p of r.data) map[p.symbol] = p
         setPortfolio(map)
         // A fill/cancel/replace can add or remove a row from the paged
-        // portfolio board; the current page's cursor no longer matches
-        // what the server would return, so it needs an explicit refetch.
+        // portfolio board, so the current page needs an explicit refetch.
         portfolioBoard.reload()
       })
       .catch(console.error)
@@ -653,12 +608,13 @@ const seeded = useRef<Set<string>>(new Set())
         for (const i of res.data) prevPrices.current[i.symbol] = i.currentPrice
       })
       .catch(console.error)
+      .finally(() => setInstrumentsLoaded(true))
     api.get<string[]>('/api/favorites')
       .then(res => setFavorites(new Set(res.data)))
       .catch(console.error)
-    openOrders.load()
-    closedOrders.load()
-    loadTransactions()
+    openOrders.goTo(1)
+    closedOrders.goTo(1)
+    transactionsList.goTo(1)
     loadBalance()
     loadPortfolio()
   }, [])
@@ -675,8 +631,7 @@ const seeded = useRef<Set<string>>(new Set())
       : api.post(`/api/favorites/${i.id}`)
     req
       // The favorites board is paged server-side, so the toggle's membership
-      // change won't show up until the current page is re-fetched — a stale
-      // cursor would otherwise keep paging against the pre-toggle set.
+      // change won't show up until the current page is re-fetched.
       .then(() => favoritesBoard.reload())
       .catch(() => {
         setFavorites(prev => {
@@ -740,7 +695,7 @@ const seeded = useRef<Set<string>>(new Set())
       // PAGE_SIZE'ın ötesine büyütür, o yüzden merge değil refetch.
       if (p.orders.some(o => o.status === 'Filled' || o.status === 'Cancelled')) {
         closedOrders.reload()
-        loadTransactions()
+        transactionsList.reload()
       }
 
       setBalance(prev => ({ ...p.balance, isAdmin: prev?.isAdmin ?? false }))
@@ -772,7 +727,7 @@ const seeded = useRef<Set<string>>(new Set())
     conn.onreconnected(() => {
       // Kopukken kaçırılan OrderUpdate'ler geri gelmez; bir kez telafi et.
       setOnline(true)
-      openOrders.load(); closedOrders.load(); loadBalance(); loadPortfolio(); loadTransactions()
+      openOrders.goTo(1); closedOrders.goTo(1); loadBalance(); loadPortfolio(); transactionsList.goTo(1)
     })
     conn.onclose(() => setOnline(false))
     conn.start().then(() => setOnline(true)).catch(() => setOnline(false))
@@ -780,7 +735,21 @@ const seeded = useRef<Set<string>>(new Set())
   }, [])
 
   const chosen = instruments.find(i => i.id === selected) ?? null
-  const fullscreenInstrument = instruments.find(i => i.id === fullscreenInstrumentId) ?? null
+  const stockSymbol = pathname.startsWith('/stocks/') ? pathname.slice('/stocks/'.length).toLowerCase() : null
+  const fullscreenInstrument = stockSymbol
+    ? instruments.find(i => i.symbol.toLowerCase() === stockSymbol) ?? null
+    : null
+
+  useEffect(() => {
+    document.title = stockSymbol
+      ? (fullscreenInstrument?.symbol ?? stockSymbol.toUpperCase())
+      : view === 'admin'
+      ? t('admin.panelButton')
+      : view === 'market'
+      ? t('nav.market')
+      : t('nav.portfolio')
+  }, [stockSymbol, fullscreenInstrument, view, t])
+
   const livePortfolio = useMemo(() => {
     const priceBySymbol: Record<string, number> = {}
     for (const i of instruments) priceBySymbol[i.symbol] = i.currentPrice
@@ -905,8 +874,8 @@ const seeded = useRef<Set<string>>(new Set())
     }
     loadPortfolio()
     loadBalance()
-    openOrders.load(); closedOrders.load()
-    loadTransactions()
+    openOrders.goTo(1); closedOrders.goTo(1)
+    transactionsList.goTo(1)
   }
 
   const cancelOrder = async (id: string) => {
@@ -916,7 +885,7 @@ const seeded = useRef<Set<string>>(new Set())
     } catch (e: any) {
       setNotice(e.response ? tServer(e.response.data) : t('err.cancelFailed'))
     }
-    loadBalance(); loadPortfolio(); openOrders.load(); closedOrders.load(); loadTransactions()
+    loadBalance(); loadPortfolio(); openOrders.goTo(1); closedOrders.goTo(1); transactionsList.goTo(1)
   }
 
   const replaceOrder = async (id: string) => {
@@ -924,7 +893,7 @@ const seeded = useRef<Set<string>>(new Set())
     setReplacing(prev => new Set(prev).add(id))
     try {
       await api.post(`/api/order/${id}/replace`)
-      loadBalance(); loadPortfolio(); openOrders.load(); closedOrders.load(); loadTransactions()
+      loadBalance(); loadPortfolio(); openOrders.goTo(1); closedOrders.goTo(1); transactionsList.goTo(1)
     } catch (e: any) {
       setNotice(e.response ? tServer(e.response.data) : t('err.orderFailed'))
     } finally {
@@ -939,34 +908,29 @@ const seeded = useRef<Set<string>>(new Set())
   const dismissLiquidation = (id: string) =>
     setLiquidations(prev => prev.filter(l => l.id !== id))
 
-  const pick = (i: Instrument, panel: string) => {
-  if (!i.isActive) return
-  const isOpen = selected === i.id && selectedPanel === panel
-  setSelected(isOpen ? null : i.id)
-  setSelectedPanel(isOpen ? null : panel)
-  setLimitPrice(prev => (prev === '' ? i.currentPrice.toFixed(2).replace('.', ',') : prev))
-  loadHistory(i)
-}
-
   // Opening the fullscreen panel always selects that instrument for the
-  // trade ticket (rather than toggling like pick() does), so the ticket
-  // duplicated inside the panel comes up with it already chosen.
+  // trade ticket duplicated inside the panel, so it comes up already chosen.
   const openFullscreen = (i: Instrument) => {
-    setFullscreenInstrumentId(i.id)
+    if (!i.isActive) return
+    navigate('/stocks/' + i.symbol.toLowerCase())
     setSelected(i.id)
-    setSelectedPanel('fullscreen')
     setLimitPrice(prev => (prev === '' ? i.currentPrice.toFixed(2).replace('.', ',') : prev))
     loadHistory(i)
+  }
 
-    // The board sparkline only ever holds the last 24h (WINDOW_HOURS). The
-    // fullscreen chart is meant to show the whole run, so it gets its own
-    // fetch — the API clamps any range over 30 days, which in practice is
-    // "everything" for an instrument that's only ever run in this sim.
+  // The board sparkline only ever holds the last 24h (WINDOW_HOURS). The
+  // fullscreen chart is meant to show the whole run, so it gets its own
+  // fetch — the API clamps any range over 30 days, which in practice is
+  // "everything" for an instrument that's only ever run in this sim. This
+  // also covers a direct/cold navigation to /stocks/:symbol, where
+  // openFullscreen was never called.
+  useEffect(() => {
+    if (!fullscreenInstrument) { setFullscreenHistory([]); return }
     setFullscreenHistory([])
-    api.get<PricePoint[]>(`/api/instruments/${i.id}/history`, { params: { from: '2000-01-01T00:00:00Z' } })
+    api.get<PricePoint[]>(`/api/instruments/${fullscreenInstrument.id}/history`, { params: { from: '2000-01-01T00:00:00Z' } })
       .then(r => setFullscreenHistory(r.data))
       .catch(console.error)
-  }
+  }, [fullscreenInstrument?.id])
 
 const loadHistory = (i: Instrument) => {
   if (seeded.current.has(i.symbol)) return
@@ -1127,14 +1091,14 @@ const loadHistory = (i: Instrument) => {
             <button
               className="nav-item"
               aria-pressed={view === 'portfolio'}
-              onClick={() => { setView('portfolio'); setMenuOpen(false) }}
+              onClick={() => { navigate('/home'); setMenuOpen(false) }}
             >
               {t('nav.portfolio')}
             </button>
             <button
               className="nav-item"
               aria-pressed={view === 'market'}
-              onClick={() => { setView('market'); setMenuOpen(false) }}
+              onClick={() => { navigate('/market'); setMenuOpen(false) }}
             >
               {t('nav.market')}
             </button>
@@ -1142,7 +1106,7 @@ const loadHistory = (i: Instrument) => {
               <button
                 className="nav-item"
                 aria-pressed={view === 'admin'}
-                onClick={() => { setView('admin'); setMenuOpen(false) }}
+                onClick={() => { navigate('/admin'); setMenuOpen(false) }}
               >
                 {t('admin.panelButton')}
               </button>
@@ -1255,31 +1219,20 @@ const loadHistory = (i: Instrument) => {
       )}
 
       <main className="wrap">
-        {view === 'admin' ? <Admin onClose={() => setView('portfolio')} /> : view === 'market' ? (
+        {stockSymbol && !instrumentsLoaded ? null : view === 'admin' ? (
+          balance === null ? (
+            <div className="market-page">{t('fs.loading')}</div>
+          ) : !balance.isAdmin ? (
+            <div className="market-page">{t('admin.notAuthorized')}</div>
+          ) : (
+            <Admin onClose={() => navigate('/home')} />
+          )
+        ) : view === 'market' ? (
           <div className="market-page">
             <div className="section-head">
               <h2>{t('nav.market')}</h2>
               <span className="section-note">{t('board.otherNote', { n: board.items.length })}</span>
-              <div className="pager">
-                <button
-                  type="button"
-                  className="ghost-btn"
-                  disabled={board.stack.length === 0}
-                  onClick={board.prev}
-                  aria-label={t('pager.prev')}
-                >
-                  ‹
-                </button>
-                <button
-                  type="button"
-                  className="ghost-btn"
-                  disabled={board.nextCursor == null}
-                  onClick={board.next}
-                  aria-label={t('pager.next')}
-                >
-                  ›
-                </button>
-              </div>
+              <PageNav page={board.page} totalPages={board.totalPages} hasNext={board.hasNext} hasPrevious={board.hasPrevious} goTo={board.goTo} />
             </div>
 
             <div className="board-controls">
@@ -1318,14 +1271,11 @@ const loadHistory = (i: Instrument) => {
                     <InstrumentRow
                       key={i.id}
                       i={i}
-                      open={selected === i.id && selectedPanel === 'market'}
                       tick={ticks[i.symbol]}
                       pos={livePortfolio[i.symbol]}
-                      sparkData={history[i.symbol] ?? []}
-                      onClick={() => pick(i, 'market')}
+                      onClick={() => openFullscreen(i)}
                       isFavorite={favorites.has(i.id)}
                       onToggleFavorite={() => toggleFavorite(i)}
-                      onExpand={() => openFullscreen(i)}
                     />
                   ))}
                 </div>
@@ -1334,14 +1284,11 @@ const loadHistory = (i: Instrument) => {
                     <InstrumentRow
                       key={i.id}
                       i={i}
-                      open={selected === i.id && selectedPanel === 'market'}
                       tick={ticks[i.symbol]}
                       pos={livePortfolio[i.symbol]}
-                      sparkData={history[i.symbol] ?? []}
-                      onClick={() => pick(i, 'market')}
+                      onClick={() => openFullscreen(i)}
                       isFavorite={favorites.has(i.id)}
                       onToggleFavorite={() => toggleFavorite(i)}
-                      onExpand={() => openFullscreen(i)}
                     />
                   ))}
                 </div>
@@ -1395,26 +1342,7 @@ const loadHistory = (i: Instrument) => {
             <div className="section-head">
               <h2>{t('board.portfolioTitle')}</h2>
               <span className="section-note">{t('board.portfolioNote', { n: portfolioInstruments.length })}</span>
-              <div className="pager">
-                <button
-                  type="button"
-                  className="ghost-btn"
-                  disabled={portfolioBoard.stack.length === 0}
-                  onClick={portfolioBoard.prev}
-                  aria-label={t('pager.prev')}
-                >
-                  ‹
-                </button>
-                <button
-                  type="button"
-                  className="ghost-btn"
-                  disabled={portfolioBoard.nextCursor == null}
-                  onClick={portfolioBoard.next}
-                  aria-label={t('pager.next')}
-                >
-                  ›
-                </button>
-              </div>
+              <PageNav page={portfolioBoard.page} totalPages={portfolioBoard.totalPages} hasNext={portfolioBoard.hasNext} hasPrevious={portfolioBoard.hasPrevious} goTo={portfolioBoard.goTo} />
             </div>
 
             {portfolioInstruments.length === 0 ? (
@@ -1425,14 +1353,11 @@ const loadHistory = (i: Instrument) => {
                   <InstrumentRow
                     key={i.id}
                     i={i}
-                    open={selected === i.id && selectedPanel === 'portfolio'}
                     tick={ticks[i.symbol]}
                     pos={livePortfolio[i.symbol]}
-                    sparkData={history[i.symbol] ?? []}
-                    onClick={() => pick(i, 'portfolio')}
+                    onClick={() => openFullscreen(i)}
                     isFavorite={favorites.has(i.id)}
                     onToggleFavorite={() => toggleFavorite(i)}
-                    onExpand={() => openFullscreen(i)}
                   />
                 ))}
                 {Array.from({ length: Math.max(0, PAGE_SIZE - portfolioInstruments.length) }).map((_, idx) => (
@@ -1463,26 +1388,7 @@ const loadHistory = (i: Instrument) => {
                   replacing={replacing}
                 />
               )}
-              <div className="pager">
-                <button
-                  type="button"
-                  className="ghost-btn"
-                  disabled={openOrders.stack.length === 0}
-                  onClick={openOrders.prev}
-                  aria-label={t('pager.prev')}
-                >
-                  ‹
-                </button>
-                <button
-                  type="button"
-                  className="ghost-btn"
-                  disabled={openOrders.nextCursor == null}
-                  onClick={openOrders.next}
-                  aria-label={t('pager.next')}
-                >
-                  ›
-                </button>
-              </div>
+              <PageNav page={openOrders.page} totalPages={openOrders.totalPages} hasNext={openOrders.hasNext} hasPrevious={openOrders.hasPrevious} goTo={openOrders.goTo} />
             </div>
 
             <div className="panel">
@@ -1491,7 +1397,7 @@ const loadHistory = (i: Instrument) => {
                 <span className="section-note">{t('tx.note')}</span>
               </div>
 
-              {transactions.length === 0 ? (
+              {transactionsList.items.length === 0 ? (
                 <div className="empty-state">
                   {t('tx.empty')}
                 </div>
@@ -1509,7 +1415,7 @@ const loadHistory = (i: Instrument) => {
                       </tr>
                     </thead>
                     <tbody>
-                      {transactions.map(tx => (
+                      {transactionsList.items.map(tx => (
                         <tr key={tx.id}>
                           <td className="sym">{tx.symbol}</td>
                           <td className={tx.direction === 'Buy' ? 'up' : 'down'}>
@@ -1521,7 +1427,7 @@ const loadHistory = (i: Instrument) => {
                           <td>{fmtDate(tx.transactionDate)}</td>
                         </tr>
                       ))}
-                      {Array.from({ length: Math.max(0, PAGE_SIZE - transactions.length) }).map((_, idx) => (
+                      {Array.from({ length: Math.max(0, PAGE_SIZE - transactionsList.items.length) }).map((_, idx) => (
                         <tr key={`filler-${idx}`} className="filler-row" aria-hidden="true">
                           <td colSpan={6}>&nbsp;</td>
                         </tr>
@@ -1530,26 +1436,7 @@ const loadHistory = (i: Instrument) => {
                   </table>
                 </div>
               )}
-              <div className="pager">
-                <button
-                  type="button"
-                  className="ghost-btn"
-                  disabled={txCursorStack.length === 0}
-                  onClick={prevTxPage}
-                  aria-label={t('pager.prev')}
-                >
-                  ‹
-                </button>
-                <button
-                  type="button"
-                  className="ghost-btn"
-                  disabled={txCursor == null}
-                  onClick={nextTxPage}
-                  aria-label={t('pager.next')}
-                >
-                  ›
-                </button>
-              </div>
+              <PageNav page={transactionsList.page} totalPages={transactionsList.totalPages} hasNext={transactionsList.hasNext} hasPrevious={transactionsList.hasPrevious} goTo={transactionsList.goTo} />
             </div>
           </div>
 
@@ -1574,26 +1461,7 @@ const loadHistory = (i: Instrument) => {
                   replacing={replacing}
                 />
               )}
-              <div className="pager">
-                <button
-                  type="button"
-                  className="ghost-btn"
-                  disabled={closedOrders.stack.length === 0}
-                  onClick={closedOrders.prev}
-                  aria-label={t('pager.prev')}
-                >
-                  ‹
-                </button>
-                <button
-                  type="button"
-                  className="ghost-btn"
-                  disabled={closedOrders.nextCursor == null}
-                  onClick={closedOrders.next}
-                  aria-label={t('pager.next')}
-                >
-                  ›
-                </button>
-              </div>
+              <PageNav page={closedOrders.page} totalPages={closedOrders.totalPages} hasNext={closedOrders.hasNext} hasPrevious={closedOrders.hasPrevious} goTo={closedOrders.goTo} />
             </div>
           </div>
 
@@ -1615,37 +1483,15 @@ const loadHistory = (i: Instrument) => {
                       <InstrumentRow
                         key={i.id}
                         i={i}
-                        open={selected === i.id && selectedPanel === 'favorites'}
                         tick={ticks[i.symbol]}
                         pos={livePortfolio[i.symbol]}
-                        sparkData={history[i.symbol] ?? []}
-                        onClick={() => pick(i, 'favorites')}
+                        onClick={() => openFullscreen(i)}
                         isFavorite
                         onToggleFavorite={() => toggleFavorite(i)}
-                        onExpand={() => openFullscreen(i)}
                       />
                     ))}
                   </div>
-                  <div className="pager">
-                    <button
-                      type="button"
-                      className="ghost-btn"
-                      disabled={favoritesBoard.stack.length === 0}
-                      onClick={favoritesBoard.prev}
-                      aria-label={t('pager.prev')}
-                    >
-                      ‹
-                    </button>
-                    <button
-                      type="button"
-                      className="ghost-btn"
-                      disabled={favoritesBoard.nextCursor == null}
-                      onClick={favoritesBoard.next}
-                      aria-label={t('pager.next')}
-                    >
-                      ›
-                    </button>
-                  </div>
+                  <PageNav page={favoritesBoard.page} totalPages={favoritesBoard.totalPages} hasNext={favoritesBoard.hasNext} hasPrevious={favoritesBoard.hasPrevious} goTo={favoritesBoard.goTo} />
                 </>
               )}
             </div>
@@ -1663,6 +1509,17 @@ const loadHistory = (i: Instrument) => {
       </div>
       )}
 
+      {stockSymbol && !instrumentsLoaded && (
+        <div className="market-page">{t('fs.loading')}</div>
+      )}
+
+      {stockSymbol && instrumentsLoaded && !fullscreenInstrument && (
+        <div className="market-page">
+          <p>{t('stock.unknownSymbol', { symbol: stockSymbol })}</p>
+          <button className="ghost-btn" onClick={() => navigate('/market')}>{t('stock.backToMarket')}</button>
+        </div>
+      )}
+
       {fullscreenInstrument && (
         <InstrumentFullscreen
           i={fullscreenInstrument}
@@ -1671,7 +1528,7 @@ const loadHistory = (i: Instrument) => {
           history={fullscreenHistory}
           isFavorite={favorites.has(fullscreenInstrument.id)}
           onToggleFavorite={() => toggleFavorite(fullscreenInstrument)}
-          onClose={() => setFullscreenInstrumentId(null)}
+          onClose={() => navigate(bgPathRef.current)}
           renderTicketFields={renderTicketFields}
         />
       )}
@@ -1831,7 +1688,7 @@ function PnlChart({ live }: {
   )
 }
 
-function AreaSpark({ data, className }: { data: PricePoint[]; className: string }) {
+function AreaSpark({ data, className, zeroBaseline }: { data: PricePoint[]; className: string; zeroBaseline?: boolean }) {
   const [hover, setHover] = useState<number | null>(null)
   if (data.length < 2) return null
   const { lang } = useLang()
@@ -1839,7 +1696,7 @@ function AreaSpark({ data, className }: { data: PricePoint[]; className: string 
   const dataMin = Math.min(...prices)
   const dataMax = Math.max(...prices)
   const pad = (dataMax - dataMin) * 0.15 || dataMax * 0.05 || 1
-  const min = Math.max(0, dataMin - pad)
+  const min = zeroBaseline ? 0 : Math.max(0, dataMin - pad)
   const top = dataMax + pad
   const range = top - min || 1
   const last = data.length - 1
@@ -1902,6 +1759,122 @@ function AreaSpark({ data, className }: { data: PricePoint[]; className: string 
 }
 
 
+const fmtAxisTime = (iso: string, lang: string) =>
+  new Date(iso).toLocaleString(lang === 'tr' ? 'tr-TR' : 'en-US', {
+    day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit',
+  })
+
+function ChartAxes({ min, max, times, lang }: { min: number; max: number; times: string[]; lang: string }) {
+  const yTicks = 4
+  const rows = Array.from({ length: yTicks + 1 }, (_, idx) => {
+    const frac = idx / yTicks
+    return { frac, price: max - frac * (max - min) }
+  })
+  const xCount = Math.min(times.length, 5)
+  const xIdx = Array.from({ length: xCount }, (_, idx) =>
+    Math.round((idx / (xCount - 1 || 1)) * (times.length - 1)))
+
+  return (
+    <>
+      <div className="fs-chart-yaxis">
+        {rows.map((r, idx) => (
+          <span key={idx} className="fs-axis-label" style={{ top: `${r.frac * 100}%` }}>{fmt(r.price)}</span>
+        ))}
+      </div>
+      <div className="fs-chart-xaxis">
+        {xIdx.map((idx, pos) => (
+          <span key={pos} className="fs-axis-label"
+                style={{ left: `${(idx / (times.length - 1 || 1)) * 100}%` }}>
+            {fmtAxisTime(times[idx], lang)}
+          </span>
+        ))}
+      </div>
+    </>
+  )
+}
+
+type Candle = { t: string; open: number; high: number; low: number; close: number }
+
+function buildCandles(data: PricePoint[], count: number): Candle[] {
+  if (data.length === 0) return []
+  const bucketSize = Math.max(1, Math.ceil(data.length / count))
+  const candles: Candle[] = []
+  for (let idx = 0; idx < data.length; idx += bucketSize) {
+    const slice = data.slice(idx, idx + bucketSize)
+    const prices = slice.map(p => p.price)
+    candles.push({
+      t: slice[0].timestamp,
+      open: slice[0].price,
+      close: slice[slice.length - 1].price,
+      high: Math.max(...prices),
+      low: Math.min(...prices),
+    })
+  }
+  return candles
+}
+
+function CandleChart({ data, className }: { data: PricePoint[]; className: string }) {
+  const { lang } = useLang()
+  const [hover, setHover] = useState<number | null>(null)
+  const candles = useMemo(() => buildCandles(data, 40), [data])
+  if (candles.length < 2) return null
+
+  const highs = candles.map(c => c.high)
+  const lows = candles.map(c => c.low)
+  const dataMax = Math.max(...highs)
+  const dataMin = Math.min(...lows)
+  const pad = (dataMax - dataMin) * 0.1 || dataMax * 0.05 || 1
+  const min = Math.max(0, dataMin - pad)
+  const top = dataMax + pad
+  const range = top - min || 1
+  const last = candles.length - 1
+
+  const px = (idx: number) => ((idx + 0.5) / candles.length) * 100
+  const py = (price: number) => 30 - ((price - min) / range) * 26
+  const barW = (100 / candles.length) * 0.6
+
+  const onMove = (e: React.MouseEvent<HTMLDivElement>) => {
+    const rect = e.currentTarget.getBoundingClientRect()
+    const frac = (e.clientX - rect.left) / rect.width
+    setHover(Math.max(0, Math.min(last, Math.floor(frac * candles.length))))
+  }
+
+  return (
+    <div className={`spark-wrap ${className}`} onMouseMove={onMove} onMouseLeave={() => setHover(null)}>
+      <svg className="spark-svg" viewBox="0 0 100 30" preserveAspectRatio="none" aria-hidden="true">
+        {candles.map((c, idx) => {
+          const rising = c.close >= c.open
+          const color = rising ? 'var(--rise)' : 'var(--fall)'
+          const x = px(idx)
+          const bodyTop = py(Math.max(c.open, c.close))
+          const bodyBottom = py(Math.min(c.open, c.close))
+          return (
+            <g key={idx}>
+              <line x1={x} x2={x} y1={py(c.high)} y2={py(c.low)}
+                    stroke={color} strokeWidth="0.6" vectorEffect="non-scaling-stroke" />
+              <rect x={x - barW / 2} width={barW}
+                    y={bodyTop} height={Math.max(bodyBottom - bodyTop, 0.4)}
+                    fill={color} />
+            </g>
+          )
+        })}
+        {hover !== null && (
+          <line x1={px(hover)} y1="0" x2={px(hover)} y2="30"
+                stroke="var(--edge)" strokeWidth="1" vectorEffect="non-scaling-stroke" />
+        )}
+      </svg>
+      <ChartAxes min={min} max={top} times={candles.map(c => c.t)} lang={lang} />
+      {hover !== null && (
+        <div className="spark-tip">
+          <strong>{fmt(candles[hover].close)}</strong>
+          <span>{fmtAxisTime(candles[hover].t, lang)}</span>
+          <span>O {fmt(candles[hover].open)} H {fmt(candles[hover].high)} L {fmt(candles[hover].low)}</span>
+        </div>
+      )}
+    </div>
+  )
+}
+
 function InstrumentFullscreen({
   i, pos, tick, history, isFavorite, onToggleFavorite, onClose, renderTicketFields,
 }: {
@@ -1914,12 +1887,15 @@ function InstrumentFullscreen({
   onClose: () => void
   renderTicketFields: (idPrefix: string) => React.ReactNode
 }) {
-  const { t } = useLang()
+  const { t, lang } = useLang()
+  const [chartMode, setChartMode] = useState<'area' | 'candle'>('area')
 
   const open = history[0]?.price ?? i.currentPrice
   const prices = history.length ? history.map(p => p.price) : [i.currentPrice]
   const high = Math.max(...prices, i.currentPrice)
   const low = Math.min(...prices, i.currentPrice)
+  const areaPad = (high - low) * 0.15 || high * 0.05 || 1
+  const areaTop = high + areaPad
   const volume = history.reduce((sum, p) => sum + p.volume, 0)
   const change = i.currentPrice - open
   const changePct = open ? (change / open) * 100 : 0
@@ -1994,7 +1970,26 @@ function InstrumentFullscreen({
 
         <div className="instrument-fullscreen-body">
           <div className="instrument-fullscreen-chart">
-            <AreaSpark data={history} className="fullscreen-spark" />
+            <div className="fs-chart-toolbar">
+              <button type="button" className="ghost-btn" aria-pressed={chartMode === 'area'}
+                      onClick={() => setChartMode('area')}>
+                {t('fs.areaView')}
+              </button>
+              <button type="button" className="ghost-btn" aria-pressed={chartMode === 'candle'}
+                      onClick={() => setChartMode('candle')}>
+                {t('fs.candleView')}
+              </button>
+            </div>
+            {chartMode === 'area' ? (
+              <>
+                <AreaSpark data={history} className="fullscreen-spark" zeroBaseline />
+                {history.length >= 2 && (
+                  <ChartAxes min={0} max={areaTop} times={history.map(p => p.timestamp)} lang={lang} />
+                )}
+              </>
+            ) : (
+              <CandleChart data={history} className="fullscreen-spark" />
+            )}
             {history.length < 2 && <div className="fs-chart-empty">{t('fs.loading')}</div>}
           </div>
           <div className="ticket-in fullscreen-ticket">

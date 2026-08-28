@@ -1,4 +1,5 @@
 using FinSim.Application.Interfaces;
+using FinSim.Application.Pagination;
 using FinSim.Domain.Models;
 using FinSim.Infrastructure.Data;
 using Microsoft.AspNetCore.Identity;
@@ -67,6 +68,39 @@ namespace FinSim.Infrastructure.Repositories
         public Task<List<User>> GetBotsAsync(CancellationToken ct) =>
             _db.Users.Where(u => u.IsBot).ToListAsync(ct);
 
-        
+        // Turkish usernames don't sort the way the client's localeCompare(..., 'tr')
+        // expects under Postgres's default collation — collate explicitly, matching
+        // InstrumentRepository's board queries.
+        private const string TrCollation = "tr-TR-x-icu";
+
+        public async Task<PagedRows<User>> GetUsersBoardPagedAsync(
+            bool bots, string? q, string sort,
+            int page, int pageSize, CancellationToken ct)
+        {
+            var qry = _db.Users.Where(u => u.IsBot == bots);
+
+            if (!string.IsNullOrWhiteSpace(q))
+            {
+                var pattern = $"%{q.Trim()}%";
+                qry = qry.Where(u => EF.Functions.ILike(u.UserName!, pattern)
+                                || EF.Functions.ILike(u.Email!, pattern));
+            }
+
+            var total = await qry.CountAsync(ct);
+
+            qry = sort == "name_desc"
+                ? qry.OrderByDescending(u => EF.Functions.Collate(u.UserName!, TrCollation))
+                     .ThenByDescending(u => u.Id)
+                : qry.OrderBy(u => EF.Functions.Collate(u.UserName!, TrCollation))
+                     .ThenBy(u => u.Id);
+
+            var items = await qry
+                .Skip((page - 1) * pageSize)
+                .Take(pageSize)
+                .ToListAsync(ct);
+
+            return new PagedRows<User>(items, total);
+        }
+    
     }
 }

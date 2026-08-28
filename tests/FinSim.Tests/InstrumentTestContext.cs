@@ -1,4 +1,5 @@
 using FinSim.Application.Interfaces;
+using FinSim.Application.Pagination;
 using FinSim.Application.Services;
 using FinSim.Domain.Models;
 using FinSim.Domain.Models.Enums;
@@ -54,19 +55,19 @@ public class InstrumentTestContext
                           .ToList());
 
         Instruments.GetBoardPagedAsync(
-                Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<decimal?>(), Arg.Any<string?>(), Arg.Any<Guid?>(),
-                Arg.Any<int>(), Arg.Any<CancellationToken>())
-            .Returns(new List<Instrument>());
+                Arg.Any<string>(), Arg.Any<string?>(),
+                Arg.Any<int>(), Arg.Any<int>(), Arg.Any<CancellationToken>())
+            .Returns(new PagedRows<Instrument>(new List<Instrument>(), 0));
 
         Instruments.GetPortfolioBoardPagedAsync(
-                Arg.Any<Guid>(), Arg.Any<string>(), Arg.Any<string?>(), Arg.Any<decimal?>(), Arg.Any<string?>(), Arg.Any<Guid?>(),
-                Arg.Any<int>(), Arg.Any<CancellationToken>())
-            .Returns(new List<Instrument>());
+                Arg.Any<Guid>(), Arg.Any<string>(), Arg.Any<string?>(),
+                Arg.Any<int>(), Arg.Any<int>(), Arg.Any<CancellationToken>())
+            .Returns(new PagedRows<Instrument>(new List<Instrument>(), 0));
 
         Instruments.GetFavoritesBoardPagedAsync(
-                Arg.Any<Guid>(), Arg.Any<string>(), Arg.Any<decimal?>(), Arg.Any<string?>(), Arg.Any<Guid?>(),
-                Arg.Any<int>(), Arg.Any<CancellationToken>())
-            .Returns(new List<Instrument>());
+                Arg.Any<Guid>(), Arg.Any<string>(),
+                Arg.Any<int>(), Arg.Any<int>(), Arg.Any<CancellationToken>())
+            .Returns(new PagedRows<Instrument>(new List<Instrument>(), 0));
     }
 
     public InstrumentService Service => new(

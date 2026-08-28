@@ -137,7 +137,20 @@ namespace FinSim.Infrastructure.Data
                 // Backs the portfolio board's "WHERE InstrumentId IN (subquery on
                 // UserId)" keyset query the same way the FavoriteInstrument index
                 // backs the favorites board.
-                e.HasIndex(p => new { p.UserId, p.InstrumentId });
+                //
+                // Unique because it is also the position's real identity: the API and the
+                // tick worker both create positions, and a token can only protect a row
+                // that already exists — it does nothing about two concurrent inserts for
+                // the same (user, instrument) pair.
+                e.HasIndex(p => new { p.UserId, p.InstrumentId }).IsUnique();
+
+                // The tick worker writes TotalQuantity and LockedQuantity on fills while
+                // the API writes LockedQuantity on limit-sell placement and cancellation.
+                // Without this, EF's "update only changed columns" means the worker's save
+                // silently discards a lock the API wrote mid-tick. Same token as User.
+                e.Property<uint>("Version")
+                .IsRowVersion()
+                .HasColumnName("xmin");
             });
 
             modelBuilder.Entity<Order>(e =>

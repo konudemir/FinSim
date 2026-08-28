@@ -18,9 +18,9 @@ namespace FinSim.Controllers
         public TransactionController(TransactionService transactions) => _transactions = transactions;
         [HttpGet]
         public async Task<IActionResult> GetTransactions(
-            [FromQuery] string? cursor,
+            [FromQuery] int? page,
             [FromQuery] int? limit,
             CancellationToken ct) =>
-            Ok(await _transactions.GetRecentTransactionsAsync(CurrentUserId, cursor, limit, ct));
+            Ok(await _transactions.GetRecentTransactionsAsync(CurrentUserId, page, limit, ct));
     }
 }
