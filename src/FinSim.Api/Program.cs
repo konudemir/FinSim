@@ -20,8 +20,17 @@ var builder = WebApplication.CreateBuilder(args);
 // Learn more about configuring OpenAPI at https://aka.ms/aspnet/openapi
 builder.Services.AddOpenApi();
 
-builder.Services.AddDbContext<FinSimDbContext>(options =>
-    options.UseNpgsql(builder.Configuration.GetConnectionString("BorsaDb")));
+var rawConn = builder.Configuration.GetConnectionString("BorsaDb")!;
+
+if (rawConn.StartsWith("postgres"))
+{
+    var uri = new Uri(rawConn);
+    var parts = uri.UserInfo.Split(':');
+    rawConn = $"Host={uri.Host};Port={uri.Port};Database={uri.AbsolutePath.TrimStart('/')};"
+            + $"Username={parts[0]};Password={parts[1]}";
+}
+
+builder.Services.AddDbContext<FinSimDbContext>(options => options.UseNpgsql(rawConn));
 
 builder.Services.AddControllers()
     .AddJsonOptions(o => o.JsonSerializerOptions.Converters.Add(new JsonStringEnumConverter()));
