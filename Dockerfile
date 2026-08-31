@@ -15,6 +15,7 @@ COPY src/FinSim.Api/FinSim.Api.csproj                src/FinSim.Api/
 RUN dotnet restore src/FinSim.Api/FinSim.Api.csproj
 
 COPY src/ src/
+COPY --from=web /web/dist/ src/FinSim.Api/wwwroot/
 
 RUN dotnet publish src/FinSim.Api/FinSim.Api.csproj \
     -c Release \
