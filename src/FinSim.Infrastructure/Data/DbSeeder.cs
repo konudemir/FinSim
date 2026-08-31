@@ -155,7 +155,17 @@ private sealed record SeedInstrument(
     string Symbol,
     string Name,
     decimal FallbackPrice,
-    bool Active = true);
+    bool Active = true,
+    // Company profile, imported into seed.json by enrichseed.py. Optional on the
+    // record rather than required: a symbol added to seed.json by hand shouldn't
+    // fail to deserialise just because nobody looked its sector up.
+    string? Sector = null,
+    string? Industry = null,
+    string? Description = null,
+    int? Employees = null,
+    string? Website = null,
+    string? City = null,
+    long? SharesOutstanding = null);
 
 private static List<SeedInstrument> LoadSeedInstruments()
 {
@@ -181,14 +191,16 @@ public static async Task SeedInstrumentsAsync(
     CancellationToken ct = default)
 {
     var seed = LoadSeedInstruments();
+    var bySymbol = seed.ToDictionary(x => x.Symbol);
 
-    var existing = await db.Instruments
-        .Select(i => i.Symbol!)
-        .ToListAsync(ct);
+    // Tracked entities, not just symbols: the backfill below needs to write to
+    // the existing rows, and this way both passes share one query.
+    var existing = await db.Instruments.ToListAsync(ct);
+    var existingSymbols = existing.Select(i => i.Symbol).ToHashSet();
 
     var missing = new List<Instrument>();
 
-    foreach (var x in seed.Where(x => !existing.Contains(x.Symbol)))
+    foreach (var x in seed.Where(x => !existingSymbols.Contains(x.Symbol)))
     {
         var realSymbol = x.Symbol + ".IS";
 
@@ -214,11 +226,42 @@ public static async Task SeedInstrumentsAsync(
             // engine seeds it on first poll rather than computing a ratio
             // against a made-up number.
             LastRealPrice   = real,
-            LastRealPriceAt = real is null ? null : DateTimeOffset.UtcNow
+            LastRealPriceAt = real is null ? null : DateTimeOffset.UtcNow,
+
+            Sector            = x.Sector,
+            Industry          = x.Industry,
+            Description       = x.Description,
+            Employees         = x.Employees,
+            Website           = x.Website,
+            City              = x.City,
+            SharesOutstanding = x.SharesOutstanding
         });
     }
 
-    if (missing.Count == 0) return;
+    // Rows that predate the profile columns. Without this the profile fields only
+    // ever reach a database seeded from scratch — every symbol already exists in
+    // production, so the insert loop above skips all of them and nothing changes.
+    //
+    // ??= rather than =: an admin edit to a description must survive the next
+    // deploy. And the Sector == null test makes the pass self-terminating, so
+    // after the first boot it matches nothing.
+    var backfilled = 0;
+    foreach (var inst in existing.Where(i => i.Sector is null))
+    {
+        if (!bySymbol.TryGetValue(inst.Symbol, out var x)) continue;   // funds
+        if (x.Sector is null) continue;
+
+        inst.Sector            ??= x.Sector;
+        inst.Industry          ??= x.Industry;
+        inst.Description       ??= x.Description;
+        inst.Employees         ??= x.Employees;
+        inst.Website           ??= x.Website;
+        inst.City              ??= x.City;
+        inst.SharesOutstanding ??= x.SharesOutstanding;
+        backfilled++;
+    }
+
+    if (missing.Count == 0 && backfilled == 0) return;
 
     db.Instruments.AddRange(missing);
     await db.SaveChangesAsync(ct);
