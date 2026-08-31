@@ -12,6 +12,7 @@ import { Logomark } from './icons'
 import GateLayout from './Gate'
 import Admin from './Admin'
 import { fmt } from './format'
+import { sectorLabel } from './lang'
 
 export const PAGE_SIZE = 5
 const MARKET_PAGE_SIZE = 20
@@ -24,6 +25,13 @@ type Instrument = {
   currentPrice: number
   isActive: boolean
   type: 'Stock' | 'Fund'
+  sector: string | null
+  industry: string | null
+  description: string | null
+  employees: number | null
+  website: string | null
+  city: string | null
+  sharesOutstanding: number | null
 }
 type PricePoint = {
   timestamp: string
@@ -1931,6 +1939,23 @@ function CandleChart({ data, className }: { data: PricePoint[]; className: strin
   )
 }
 
+function fmtCompactTRY(n: number): string {
+  const abs = Math.abs(n)
+  const units: [number, string][] = [
+    [1_000_000_000_000, 'Tr'],
+    [1_000_000_000, 'Mr'],
+    [1_000_000, 'Mn'],
+    [1_000, 'B'],
+  ]
+  for (const [threshold, suffix] of units) {
+    if (abs >= threshold) {
+      const value = (n / threshold).toLocaleString('tr-TR', { minimumFractionDigits: 1, maximumFractionDigits: 1 })
+      return `${value} ${suffix} ₺`
+    }
+  }
+  return `${n.toLocaleString('tr-TR', { maximumFractionDigits: 0 })} ₺`
+}
+
 function InstrumentFullscreen({
   i, pos, tick, history, isFavorite, onToggleFavorite, onClose, renderTicketFields,
 }: {
@@ -1945,6 +1970,14 @@ function InstrumentFullscreen({
 }) {
   const { t, lang } = useLang()
   const [chartMode, setChartMode] = useState<'area' | 'candle'>('area')
+
+  // The panel is its own scroll surface — the board underneath must not
+  // move while it's open, even if a wheel scroll spills past the panel edge.
+  useEffect(() => {
+    const prev = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    return () => { document.body.style.overflow = prev }
+  }, [])
 
   const open = history[0]?.price ?? i.currentPrice
   const prices = history.length ? history.map(p => p.price) : [i.currentPrice]
@@ -2014,6 +2047,36 @@ function InstrumentFullscreen({
             <span className="fs-stat-label">{t('fs.volume')}</span>
             <span className="fs-stat-value">{volume.toLocaleString('tr-TR')}</span>
           </div>
+          {i.sector != null && (
+            <div className="fs-stat">
+              <span className="fs-stat-label">{t('fs.sector')}</span>
+              <span className="fs-stat-value">{sectorLabel(i.sector)}</span>
+            </div>
+          )}
+          {i.industry != null && (
+            <div className="fs-stat">
+              <span className="fs-stat-label">{t('fs.industry')}</span>
+              <span className="fs-stat-value">{i.industry}</span>
+            </div>
+          )}
+          {i.employees != null && (
+            <div className="fs-stat">
+              <span className="fs-stat-label">{t('fs.employees')}</span>
+              <span className="fs-stat-value">{i.employees.toLocaleString('tr-TR')}</span>
+            </div>
+          )}
+          {i.sharesOutstanding != null && (
+            <div className="fs-stat">
+              <span className="fs-stat-label">{t('fs.marketCap')}</span>
+              <span className="fs-stat-value">{fmtCompactTRY(i.sharesOutstanding * i.currentPrice)}</span>
+            </div>
+          )}
+          {i.city != null && (
+            <div className="fs-stat">
+              <span className="fs-stat-label">{t('fs.city')}</span>
+              <span className="fs-stat-value">{i.city}</span>
+            </div>
+          )}
           {pos && (
             <div className="fs-stat">
               <span className="fs-stat-label">
@@ -2027,6 +2090,15 @@ function InstrumentFullscreen({
         </div>
 
         <div className="instrument-fullscreen-body">
+          {i.description != null && (
+            <div className="fs-description">
+              <p>{i.description}</p>
+              {i.website != null && (
+                <a href={i.website} target="_blank" rel="noopener noreferrer">{i.website}</a>
+              )}
+            </div>
+          )}
+
           <div className="instrument-fullscreen-chart">
             <div className="fs-chart-toolbar">
               <button type="button" className="ghost-btn" aria-pressed={chartMode === 'area'}
@@ -2050,9 +2122,10 @@ function InstrumentFullscreen({
             )}
             {history.length < 2 && <div className="fs-chart-empty">{t('fs.loading')}</div>}
           </div>
-          <div className="ticket-in fullscreen-ticket">
-            {renderTicketFields('fullscreen-ticket')}
-          </div>
+        </div>
+
+        <div className="ticket-in fullscreen-ticket">
+          {renderTicketFields('fullscreen-ticket')}
         </div>
       </div>
     </div>

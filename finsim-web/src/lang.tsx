@@ -60,6 +60,11 @@ const tr = {
   'fs.loading': 'Geçmiş veriler yükleniyor…',
   'fs.areaView': 'Alan',
   'fs.candleView': 'Mum',
+  'fs.sector': 'Sektör',
+  'fs.industry': 'Sanayi',
+  'fs.employees': 'Çalışan',
+  'fs.marketCap': 'Piyasa Değeri',
+  'fs.city': 'Şehir',
   'board.shortLots': '{n} lot açık',
   'search.placeholder': 'Sembol veya isim ara',
   'search.noResults': 'Eşleşen hisse yok',
@@ -355,6 +360,11 @@ const en: typeof tr = {
   'fs.loading': 'Loading history…',
   'fs.areaView': 'Area',
   'fs.candleView': 'Candle',
+  'fs.sector': 'Sektör',
+  'fs.industry': 'Sanayi',
+  'fs.employees': 'Çalışan',
+  'fs.marketCap': 'Piyasa Değeri',
+  'fs.city': 'Şehir',
   'board.shortLots': '{n} lots short',
   'search.placeholder': 'Search symbol or name',
   'search.noResults': 'No matching stocks',
@@ -669,4 +679,24 @@ export function useLang(): LangValue {
   const ctx = useContext(LangContext)
   if (!ctx) throw new Error('useLang must be used inside <LangProvider>')
   return ctx
+}
+
+const SECTOR_LABELS_TR: Record<string, string> = {
+  'Industrials': 'Sanayi',
+  'Basic Materials': 'Temel Malzemeler',
+  'Financial Services': 'Finansal Hizmetler',
+  'Consumer Cyclical': 'Çevrimsel Tüketim',
+  'Consumer Defensive': 'Savunmacı Tüketim',
+  'Utilities': 'Kamu Hizmetleri',
+  'Technology': 'Teknoloji',
+  'Real Estate': 'Gayrimenkul',
+  'Communication Services': 'İletişim Hizmetleri',
+  'Healthcare': 'Sağlık',
+  'Energy': 'Enerji',
+}
+
+// Falls back to the raw Yahoo sector string when no Turkish label is mapped.
+export function sectorLabel(sector: string | null | undefined): string | null {
+  if (!sector) return null
+  return SECTOR_LABELS_TR[sector] ?? sector
 }

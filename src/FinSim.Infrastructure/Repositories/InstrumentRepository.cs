@@ -187,9 +187,31 @@ namespace FinSim.Infrastructure.Repositories
         {
             var total = await qry.CountAsync(ct);
 
+            // Description is a ~1.5KB paragraph per instrument; a page of rows has no
+            // use for it, so it's projected away here rather than shipped over the wire.
             var items = await ApplyBoardSort(qry, sort)
                 .Skip((page - 1) * pageSize)
                 .Take(pageSize)
+                .Select(i => new Instrument
+                {
+                    Id = i.Id,
+                    Type = i.Type,
+                    Symbol = i.Symbol,
+                    RealSymbol = i.RealSymbol,
+                    Name = i.Name,
+                    BasePrice = i.BasePrice,
+                    CurrentPrice = i.CurrentPrice,
+                    IsActive = i.IsActive,
+                    Divisor = i.Divisor,
+                    LastRealPrice = i.LastRealPrice,
+                    LastRealPriceAt = i.LastRealPriceAt,
+                    Sector = i.Sector,
+                    Industry = i.Industry,
+                    Employees = i.Employees,
+                    Website = i.Website,
+                    City = i.City,
+                    SharesOutstanding = i.SharesOutstanding,
+                })
                 .ToListAsync(ct);
 
             return new PagedRows<Instrument>(items, total);

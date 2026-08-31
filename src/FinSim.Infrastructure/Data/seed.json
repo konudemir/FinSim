@@ -3,600 +3,1298 @@
     "symbol": "AKBNK",
     "name": "Akbank",
     "fallbackPrice": 72.0,
-    "active": true
+    "active": true,
+    "sector": "Financial Services",
+    "industry": "Banks - Regional",
+    "description": "Akbank T.A.S., together with its subsidiaries, provides various banking products and services in Turkey and internationally. The company's consumer banking services comprise deposit accounts, retail loans, commercial installment loans, credit cards, insurance products, and asset management services, as well as bank cards, investment funds trading, automatic payment, foreign currency trading, safe deposit box rental, cheques, money transfer, investment banking, and telephone and internet banking services. It also offers services to large, medium, and small size corporate and commercial customers that include Turkish Lira (TL) and foreign currency denominated working capital loans financing for investments, foreign trade financing, derivative instruments for hedging purposes of foreign currency and interest risk, letters of credit, foreign currency trading, corporate finance, and deposit and cash management services, as well as project finance loans; and working capital management, delivering cash management services based on customers' requests, such as collection and payment, and liquidity and information management services. In addition, the company engages in TL and foreign currency spot, and forward transactions, treasury and government bonds, Eurobonds, and private sector bond transactions, as well as derivative trading activities; and marketing and pricing activities related to treasury products. Further, it provides foreign exchange, and TL clearing; financial leasing, investment and pension funds management, portfolio management, and payment services as well as issues electronic money. Akbank T.A.S. was incorporated in 1948 and is headquartered in Istanbul, Turkey.",
+    "employees": 12897,
+    "website": "https://www.akbank.com",
+    "city": "Istanbul",
+    "sharesOutstanding": 5200000000
   },
   {
     "symbol": "AKSA",
     "name": "Aksa Akrilik",
     "fallbackPrice": 11.09,
-    "active": true
+    "active": true,
+    "sector": "Consumer Cyclical",
+    "industry": "Textile Manufacturing",
+    "description": "Aksa Akrilik Kimya Sanayii A.S., together with its subsidiaries, manufactures and sells textiles, chemicals, and other industrial products in Turkey and internationally. It operates through Fibers, Energy, Advanced Material, and Other segments. The company offers acrylic fibers, textile fibers, outdoor fibers, industrial fibers, acrylic filament, modacrylic fibers, recycled fiber, aksafil yarn, acrybella, and polyethylene fiber. It also provides textile and technical textile raw materials for carpets, upholstery, sweaters, socks, velvet, rugs, blankets, tents, and industrial filters; carbon fiber and carbon fiber-reinforced composite solutions; artificial, synthetic, natural fibers, carbon fibers, filaments, yarns, and polymers. In addition, the company is involved in production, processing, storage, import, export, marketing, and trading of products, raw materials, auxiliary materials, and intermediates; production, supply, and trading of machinery, equipment, facilities, and spare parts; establishment, operation, and leasing of power generation facilities; production and sale of electricity, as well as production, supply, trading, import, export, and research and development activities related to aircraft, helicopters, display aircraft, gliders, motorized and non-motorized parachutes, and other equipment for the aviation and defense industries. Aksa Akrilik Kimya Sanayii A.S. was founded in 1968 and is headquartered in Yalova, Turkey.",
+    "employees": 2638,
+    "website": "https://www.aksa.com",
+    "city": "Yalova",
+    "sharesOutstanding": 3885000000
   },
   {
     "symbol": "AKSEN",
     "name": "Aksa Enerji",
     "fallbackPrice": 81.5,
-    "active": true
+    "active": true,
+    "sector": "Utilities",
+    "industry": "Utilities - Independent Power Producers",
+    "description": "Aksa Enerji Üretim A.S., an independent power producer, produces and sells electricity in Turkey, Asia, and Africa. The company produces energy from coal, fuel oil, biogas, natural gas, wind, sun, and hydroelectricity. It also engages in construction, leasing, and operation of electricity power plants. In addition, the company offers operational efficiency and energy transition; strategic focus areas and customer structure activities. The company was founded in 1997 and is headquartered in Istanbul, Turkey. Aksa Enerji Üretim A.S. operates as a subsidiary of Kazanci Holding AS.",
+    "employees": 1637,
+    "website": "https://www.aksaenerji.com.tr",
+    "city": "Istanbul",
+    "sharesOutstanding": 1226338236
   },
   {
     "symbol": "ALARK",
     "name": "Alarko Holding",
     "fallbackPrice": 104.7,
-    "active": true
+    "active": true,
+    "sector": "Industrials",
+    "industry": "Conglomerates",
+    "description": "Alarko Holding A.S., together with its subsidiaries, engages in contracting, energy, industry and trade, tourism, land development, investment, and agriculture businesses in Turkey. The company undertakes in the construction of refineries, chemical, petrochemical plants, power, industrial, and water and wastewater treatment plants, as well as pipelines, transportation, and housing projects. It also produces, distributes, sells, and trades energy; manufactures heating, ventilating, and air conditioning, as well as sells heating, RLC products, and provides marketing, repair, and maintenance services. In addition, the company operates hotels, sports center, spa centers, and movie theatres; residential land development activities; invest in public and private companies; and venture capital activities. Further, it is involved in greenhouse, fertilizer, seed, and food industry activities. The company was founded in 1954 and is based in Istanbul, Turkey.",
+    "employees": 5983,
+    "website": "https://www.alarko.com.tr",
+    "city": "Istanbul",
+    "sharesOutstanding": 434526825
   },
   {
     "symbol": "ALTNY",
     "name": "Altınay Savunma",
     "fallbackPrice": 18.63,
-    "active": true
+    "active": true,
+    "sector": "Industrials",
+    "industry": "Aerospace & Defense",
+    "description": "Altinay Savunma Teknolojileri Anonim Sirketi provides products and solutions in the fields of motion control, unmanned, stealth, weapon, ammunition destruction, and production systems. The company offers actuators, telescopic mast systems, weapon pedestals, electro-optic monitoring, test, unmanned, maritime, servo drivers, bomb disposal robot arm, and helicopter capture and transfer systems. It serves government and private sectors in Turkey and internationally. The company was founded in 2014 and is headquartered in Istanbul, Turkey.",
+    "employees": 742,
+    "website": "https://altinaysavunma.com/tr",
+    "city": "Istanbul",
+    "sharesOutstanding": 1000000000
   },
   {
     "symbol": "ANSGR",
     "name": "Anadolu Sigorta",
     "fallbackPrice": 27.86,
-    "active": true
+    "active": true,
+    "sector": "Financial Services",
+    "industry": "Insurance - Diversified",
+    "description": "Anadolu Anonim Türk Sigorta Sirketi engages in the insurance business in Turkey. It offers company, accident, illness-health, land vehicles, aircraft, water vehicles, transportation Watercraft, fire and natural disasters, general, land vehicles liability, damages, credit, aircraft liability, general liability, surety, and financial losses, as well as legal protection insurance products. The company was founded in 1925 and is headquartered in Istanbul, Turkey. Anadolu Anonim Türk Sigorta Sirketi operates as a subsidiary of Millî Reasürans Türk Anonim Sirketi.",
+    "employees": 1840,
+    "website": "https://www.anadolusigorta.com.tr",
+    "city": "Istanbul",
+    "sharesOutstanding": 2000000000
   },
   {
     "symbol": "AEFES",
     "name": "Anadolu Efes",
     "fallbackPrice": 18.76,
-    "active": true
+    "active": true,
+    "sector": "Consumer Defensive",
+    "industry": "Beverages - Non-Alcoholic",
+    "description": "Anadolu Efes Biracilik ve Malt Sanayii Anonim Sirketi, together with its subsidiaries, engages in the production, bottling, distribution, marketing, and sale of beer, malt, non-carbonated, and non-alcoholic beverages in Turkey and internationally. The company operates in two segments, Beer and Soft Drinks. It offers carbonated and low alcoholic drinks, water, fruit juice concentrates, purees and fresh fruit. The company also leases intellectual property and related products; and provides a range of sparkling and still beverages under the Coca-Cola Company trademark. Anadolu Efes Biracilik ve Malt Sanayii Anonim Sirketi was incorporated in 1966 and is based in Istanbul, Turkey.",
+    "employees": 16055,
+    "website": "https://www.anadoluefes.com",
+    "city": "Istanbul",
+    "sharesOutstanding": 5921052630
   },
   {
     "symbol": "ARCLK",
     "name": "Arçelik",
     "fallbackPrice": 92.35,
-    "active": true
+    "active": true,
+    "sector": "Consumer Cyclical",
+    "industry": "Furnishings, Fixtures & Appliances",
+    "description": "Arçelik Anonim Sirketi, together with its subsidiaries, produces, markets, sells, after sales services, imports, and exports consumer durable goods and electronics in Turkey, Europe, the Asia Pacific, Africa, and internationally. It operates through White Goods, Consumer Electronics, and Other segments. It offers refrigerators, freezers, washing machines, dryers, dishwashers, ovens, microwave ovens, furnaces, hoods, mini-midi ovens, waring drawers, water dispensers, water purifiers, air conditioners, combi boilers, kettles, room heaters, fans, solar panels, inverters, sun junior energy storage system, solar UPS, folding solar panel, solar backpacks, vehicle charging devices, heat pumps, televisions, smartphones, laptop and tablets, POS cash register, portable sound system, brooms, cooking utensils, irons, hygiene products, hermetic compressors, and motor pumps. The company provides its products under the Altus, Arctic, Blomberg, Hitachi, Dawlance, Arçelik, Singer, Bauknecht, Ignis, Polar, Privileg, Beko, Defy, Indesit, Elektrabregenz, Flavel, Grundig, Hotpoint, Ariston, Leisure, and VoltasBeko brand names. Arçelik Anonim Sirketi was incorporated in 1955 and is based in Istanbul, Turkey.",
+    "employees": 11611,
+    "website": "https://www.arcelikglobal.com",
+    "city": "Istanbul",
+    "sharesOutstanding": 675728205
   },
   {
     "symbol": "ASELS",
     "name": "Aselsan",
     "fallbackPrice": 405.25,
-    "active": true
+    "active": true,
+    "sector": "Industrials",
+    "industry": "Aerospace & Defense",
+    "description": "ASELSAN Elektronik Sanayi ve Ticaret Anonim Sirketi engages in research, development, engineering, production, testing, assembly, integration, sale, support, consultancy, and trading of software, equipment, systems, tools, materials, and platforms in turkey. It operates in six divisions: Communication and Information Technologies; Microelectronics, Guidance & Electro-Optics; Avionics and Guidance Systems Vice Presidency; Integrated Defence Systems Technologies; Radar and Electronic Warfare Systems; and Transportation, Security, Energy, Automation and Healthcare Systems. The company offers military communication and information, mission critical communication, avionics and navigation, electro-optic, guidance and seeker, land and weapon, naval and underwater, air and missile, transportation and energy, and security and health systems; satellite and space technologies; radar technologies; electronic warfare system technologies; and command, control, communication and computer systems. It also provides geographic information system; business development and repair services; and consultancy services, as well as operates in the fields of augmented reality, artificial intelligence, simulation software, research, development, and design and engineering. In addition, the company is involved in serial production, maintenance and repair activities of visible precision optical and electro optical devices; designing of electronic industry and integrated circuit; marketing and business development business; research, designing, development, and engineering activities of weapons and weapons systems; after-sales services of electronic components within the field of military power electronics; and commercial and industrial activities related to electromechanical industrial products and slip ring. The company was incorporated in 1975 and is headquartered in Ankara, Turkey. ASELSAN Elektronik Sanayi ve Ticaret Anonim Sirketi is a subsidiary of Turkish Armed Forces Foundation.",
+    "employees": 17024,
+    "website": "https://www.aselsan.com",
+    "city": "Ankara",
+    "sharesOutstanding": 4560000000
   },
   {
     "symbol": "ASTOR",
     "name": "Astor Enerji",
     "fallbackPrice": 336.75,
-    "active": true
+    "active": true,
+    "sector": "Industrials",
+    "industry": "Electrical Equipment & Parts",
+    "description": "Astor Enerji A.S. engages in the manufacturing of transformers, and medium and high voltage switching products for industrial facilities. The company offers power transformers and special type transformers; and distribution transformers, such as oil type distribution, dry type, special distribution, and grounding, as well as MT shunt reactors and magnetic control shunt reactors. It also provides H.V. equipment, including metal enclosed switchgears, RMU, metal clad switchgears, MV switches and disconnectors, concrete kiosk, mobile substation, and HV live-tank circuit breakers. In addition, the company serves energy generation, transmission, and distribution sectors. Astor Enerji A.S. was incorporated in 1983 and is based in Sincan, Turkey.",
+    "employees": 2828,
+    "website": "https://astoras.com.tr",
+    "city": "Sincan",
+    "sharesOutstanding": 998000000
   },
   {
     "symbol": "BALSU",
     "name": "Balsu Gıda",
     "fallbackPrice": 10.65,
-    "active": true
+    "active": true,
+    "sector": "Consumer Defensive",
+    "industry": "Packaged Foods",
+    "description": "Balsu Gida Sanayi Ve Ticaret Anonim Sirketi engages in production, processing, and logistics facilities in Turkey and internationally. The company supplies natural, roasted, blanched, and diced hazelnuts, as well as hazelnut pastes and meals. It exports its products to approximately 110 countries. The company was founded in 1978 and is headquartered in Istanbul, Turkey.",
+    "employees": 351,
+    "website": "https://www.balsugida.com",
+    "city": "Istanbul",
+    "sharesOutstanding": 1112000000
   },
   {
     "symbol": "BTCIM",
     "name": "Batıçim",
     "fallbackPrice": 4.64,
-    "active": true
+    "active": true,
+    "sector": "Basic Materials",
+    "industry": "Building Materials",
+    "description": "Batiçim Bati Anadolu Çimento Sanayii Anonim Sirketi operates in the cement industry in Turkey and internationally. It operates through Products based on Stone and Soil; Ready-mixed Concrete; Port Services; and Electricity Production segments. The company offers cement clinkers and potassium silicate cements; sulphate resistant, compound, and pozzolanic cements; and aggregate and cement bypass dust products. It is also involved in port operations; gravel and sand quarrying; and the production and sale of electricity. Batiçim Bati Anadolu Çimento Sanayii Anonim Sirketi was founded in 1966 and is headquartered in Izmir, Turkey.",
+    "employees": 1023,
+    "website": "https://www.baticim.com.tr",
+    "city": "Izmir",
+    "sharesOutstanding": 5580000000
   },
   {
     "symbol": "BSOKE",
     "name": "Batısöke Çimento",
     "fallbackPrice": 32.94,
-    "active": true
+    "active": true,
+    "sector": "Basic Materials",
+    "industry": "Building Materials",
+    "description": "Batisöke Söke Çimento Sanayii T.A.S. manufactures and sells clinker and cement products in Turkey and internationally. The company offers portland cement clinkers and potassium silicate cement; and aggregates and cement bypass dust. It also provides ecoBATI CEM II C/M (L-W) 42,5 N; CEM IV/B (P-W) 32.5 R Pozzolanic Cement; CEM II/B-M (L-W) 42.5 R Portland Compound Cement; CEM II/A-M (P-L) 42.5 R Portland Compound Cement; CEM I 42.5 R-SR5 sulphate resistant Portland Cement; and CEM I 42.5 R Portland Cement. The company also exports its products. The company was founded in 1955 and is headquartered in Izmir, Turkey. Batisöke Söke Çimento Sanayii T.A.S. is a subsidiary of Batiçim Bati Anadolu Çimento Sanayii Anonim Sirketi.",
+    "employees": 373,
+    "website": "https://www.batisoke.com.tr",
+    "city": "Izmir",
+    "sharesOutstanding": 1600000000
   },
   {
     "symbol": "BERA",
     "name": "Bera Holding",
     "fallbackPrice": 13.49,
-    "active": true
+    "active": true,
+    "sector": "Industrials",
+    "industry": "Conglomerates",
+    "description": "Bera Holding A.S. operates in the paper and cardboard, machinery, oil, construction and building materials, marble, textiles, tourism, and food sectors worldwide. It offers paper, printing, and packaging products under the KOMEKS OKUL DEFTERLERI, Konya Kagit Sanayi ve Ticaret A.S., MURATLI KARTON, Speed, Ultra copy, ekstra copy, Konya Kagit Günesli Isletmesi, and KONKA AMBALAJ brands; machinery products under the MPG, WAGNER, and SPARK brands; petroleum products under the KONGAZ and afrapetrol brands; food, livestock, and marketing products under the GOLDA, kardelen, MELDA, and ANATOLi brands; and construction and building materials under the DivaMDF, Bauplast, Divalam, FENSTERBAU, KOMPEN, KOMYAPI, komline, mialime, Laodica, and Divapan brands. The company also offers marble and minerals under the adaçal, Hisar, and KOMBASSAN MERMER brands; textile products under the KOVEKA brand; tourism and hotel management products under the Bera Alanya and Bera Konya brands; and rollers under the ART BEARINGS, URB, and mgm brands. The company was formerly known as Kombassan Holding A.S. and changed its name to Bera Holding A.S. in July 2017. The company was founded in 1988 and is based in Konya, Turkey.",
+    "employees": 2954,
+    "website": "https://www.beraholding.com.tr",
+    "city": "Konya",
+    "sharesOutstanding": 683200000
   },
   {
     "symbol": "BIMAS",
     "name": "BİM",
     "fallbackPrice": 410.25,
-    "active": true
+    "active": true,
+    "sector": "Consumer Defensive",
+    "industry": "Grocery Stores",
+    "description": "BIM Birlesik Magazalar A.S., together with its subsidiaries, operates retail stores in Turkey, Morocco, and Egypt. It sells meat, milk and milk products, beverages, legumes and bakery items, snacks and sweets, fruits and vegetables, frozen food, cleaning supplies, cosmetics and papers, and oils, as well as special buys and private label products. The company was incorporated in 1995 and is headquartered in Istanbul, Turkey.",
+    "employees": 106520,
+    "website": "https://www.bim.com.tr",
+    "city": "Istanbul",
+    "sharesOutstanding": 1185780000
   },
   {
     "symbol": "BRSAN",
     "name": "Borusan Boru",
     "fallbackPrice": 714.0,
-    "active": true
+    "active": true,
+    "sector": "Basic Materials",
+    "industry": "Steel",
+    "description": "Borusan Birlesik Boru Fabrikalari Sanayi ve Ticaret A.S. manufactures, produces, and sells steel pipes in Turkey. It offers spiral (helical) welded pipes, HSAW, SAWL and ERW line pipes, natural gas pipes, fire installation, special shaped, boiler tubes, industrial pipes and profiles, water pipes, construction pipes and profiles, SRM installation pipes, hydraulic cylinder tubes, cold drawn pipes, advanced processed pipes, precision pipes and profiles, and OCTG pipes. The company also exports its products. It serves water, construction, industrial, automotive, and energy applications. The company was formerly known as Borusan Mannesmann Boru Sanayi ve Ticaret A.S. and changed its name to Borusan Birlesik Boru Fabrikalari Sanayi ve Ticaret A.S. in November 2023. The company was incorporated in 1958 and is headquartered in Istanbul, Turkey. Borusan Birlesik Boru Fabrikalari Sanayi ve Ticaret A.S. is a subsidiary of BMB Holding A.S.",
+    "employees": 2311,
+    "website": "https://borusanboru.com",
+    "city": "Istanbul",
+    "sharesOutstanding": 141771582
   },
   {
     "symbol": "BRYAT",
     "name": "Borusan Yatırım",
     "fallbackPrice": 1722.0,
-    "active": true
+    "active": true,
+    "sector": "Basic Materials",
+    "industry": "Steel",
+    "description": "Borusan Yatirim ve Pazarlama A.S., together with its subsidiaries, engage in the commercial and service sectors in Turkey. The company is also involved in the production of pipe and cold rolled steel coil, as well as engine valves for various types of internal combustion engines; and operates in the construction, resource, energy and transportation industries, as well as automobile and motorcycle segments. In addition, it provides solutions for investment, financing, organization, and management. Borusan Yatirim ve Pazarlama A.S. was incorporated in 1977 and is headquartered in Istanbul, Turkey.",
+    "employees": 9,
+    "website": "https://www.borusanyatirim.com",
+    "city": "Istanbul",
+    "sharesOutstanding": 27537101
   },
   {
     "symbol": "CCOLA",
     "name": "Coca-Cola İçecek",
     "fallbackPrice": 77.55,
-    "active": true
+    "active": true,
+    "sector": "Consumer Defensive",
+    "industry": "Beverages - Non-Alcoholic",
+    "description": "Coca-Cola Içecek Anonim Sirketi, together with its subsidiaries, engages in the production, sale, and distribution of sparkling and still beverages in Turkey, Pakistan, Bangladesh, Central Asia, and the Middle East. It provides soft drinks, fruit juice, iced teas, water and sparkling water, sports and energy drinks, and coffee. The company sells its products under the Coca-Cola, Coca-Cola Zero Sugar, Coca-Cola Light, Diet Coke, Fanta, Sprite, Sprite Zero Sugar, Crush, Crystal Cola, Schweppes, Fusetea, Cappy, Piko, Damla, Damla Minera, Bon Aqua, Al Waha, Arwa, Dasani, Dasani Minera, Kinley, Kinley Soda, Power Ade, Monster Energy, Burn, Roar, Predator Energy, and Costa Coffee brands. Coca-Cola Içecek Anonim Sirketi was founded in 1964 and is headquartered in Istanbul, Turkey.",
+    "employees": 10834,
+    "website": "https://www.cci.com.tr",
+    "city": "Istanbul",
+    "sharesOutstanding": 2798078602
   },
   {
     "symbol": "CVKMD",
     "name": "CVK Maden",
     "fallbackPrice": 16.11,
-    "active": true
+    "active": true,
+    "sector": "Basic Materials",
+    "industry": "Other Industrial Metals & Mining",
+    "description": "CVK Maden Isletmeleri Sanayi ve Ticaret Anonim Sirketi engages in production, marketing and sale of chrome, marble, lead, zinc, copper, silver, gold, and magnesite ores. The company was incorporated in 2006 and is based in Istanbul, Turkey.",
+    "employees": 337,
+    "website": "https://www.cvkmadencilik.com",
+    "city": "Istanbul",
+    "sharesOutstanding": 3780000000
   },
   {
     "symbol": "CWENE",
     "name": "CW Enerji",
     "fallbackPrice": 36.02,
-    "active": true
+    "active": true,
+    "sector": "Technology",
+    "industry": "Solar",
+    "description": "CW Enerji Mühendislik Ticaret ve Sanayi Anonim Sirketi operates in the photovoltaic power generation sector in Turkey. It provides solar panels; solar packs; heating, cooling, and hot water products; inverters; solar equipment; electric vehicle chargers; charge controllers; energy storage solutions; and solar lighting solutions. The company also offers solar powered camera systems and signages, LED lighting systems, solar-powered irrigation systems, off-grid and on-grid solutions, technical service and maintenance agreement, and application and follow-up counseling services. CW Enerji Mühendislik Ticaret ve Sanayi Anonim Sirketi was incorporated in 2010 and is headquartered in Antalya, Turkey.",
+    "employees": 1859,
+    "website": "https://cw-enerji.com",
+    "city": "Antalya",
+    "sharesOutstanding": 1078290009
   },
   {
     "symbol": "CANTE",
     "name": "Çan2 Termik",
     "fallbackPrice": 1.22,
-    "active": true
+    "active": true,
+    "sector": "Utilities",
+    "industry": "Utilities - Independent Power Producers",
+    "description": "Çan2 Termik A.S., together with its subsidiaries, engages in the generation and sale of electricity in Turkey and Venezuela. The company operates a thermal power plant with an installed capacity of 340 MWm/330 MWe. It is also involved in the establishment, commissioning, and renting of coal-based electric energy production facility; purchase, sale, manufacturing, assembly, and import of natural stone and mineral ores in finished and semi-finished forms; oil extraction services; and investment activities. The company was founded in 2003 and is headquartered in Istanbul, Turkey.",
+    "employees": 803,
+    "website": "https://www.can2termik.com.tr",
+    "city": "Istanbul",
+    "sharesOutstanding": 10000000000
   },
   {
     "symbol": "CIMSA",
     "name": "Çimsa",
     "fallbackPrice": 46.02,
-    "active": true
+    "active": true,
+    "sector": "Basic Materials",
+    "industry": "Building Materials",
+    "description": "Çimsa Çimento Sanayi ve Ticaret A.S., together with its subsidiaries, engages in the production and sale of cement and building materials in Turkey and internationally. The company offers white, grey, and calcium aluminate cement; cement-based products; ready-mixed concrete; clinkers; aggregates; and insulation and recycled plastic packaging materials under the Çimsa brand name. It exports its products. The company was incorporated in 1972 and is headquartered in Istanbul, Turkey. Çimsa Çimento Sanayi ve Ticaret A.S. operates as a subsidiary of Haci Ömer Sabanci Holding A.S.",
+    "employees": 2084,
+    "website": "https://cimsa.com.tr",
+    "city": "Istanbul",
+    "sharesOutstanding": 945591094
   },
   {
     "symbol": "DAPGM",
     "name": "DAP Gayrimenkul",
     "fallbackPrice": 8.59,
-    "active": true
+    "active": true,
+    "sector": "Real Estate",
+    "industry": "Real Estate - Development",
+    "description": "DAP Gayrimenkul Gelistirme A.S. engages in the real estate business in Turkey. It is involved in the construction and development of residences, office, commercial, business centers, holiday villages, hotels, schools, and private hospital projects. The company was incorporated in 1981 and is headquartered in Istanbul, Turkey.",
+    "employees": 104,
+    "website": "https://www.dapgayrimenkulgelistirme.com.tr",
+    "city": "Istanbul",
+    "sharesOutstanding": 2650000000
   },
   {
     "symbol": "DSTKF",
     "name": "Destek Faktoring",
     "fallbackPrice": 2273.0,
-    "active": true
+    "active": true,
+    "sector": "Financial Services",
+    "industry": "Capital Markets",
+    "description": "Destek Finans Faktoring A.S. provides factoring services to corporate and commercial companies in Turkey. It offers domestic and export factoring, and import factoring services, as well as financial support to SMEs. It also provides domestic and international investment, and development and commercial banking transactions; and brokerage services. The company was founded in 1996 and is based in Istanbul, Turkey. Destek Finans Faktoring A.S. operates as a subsidiary of Destek Holding Anonim Sirketi.",
+    "employees": 287,
+    "website": "https://www.destekfaktoring.com/sirket-profili",
+    "city": "Istanbul",
+    "sharesOutstanding": 333333333
   },
   {
     "symbol": "DOHOL",
     "name": "Doğan Holding",
     "fallbackPrice": 21.0,
-    "active": true
+    "active": true,
+    "sector": "Industrials",
+    "industry": "Conglomerates",
+    "description": "Dogan Sirketler Grubu Holding A.S., together with its subsidiaries, engages in the electricity generation, industry and trade, automotive trade and marketing, finance and investment, internet and entertainment, and real estate investment businesses in Turkey. It generates electricity from hydroelectric, solar, and wind power plants; sells food and cosmetic packaging; sells vehicles; rents real estate properties; and sells books and magazines. The company is also involved in foreign trade, husbandry, and production; TV, radio, and magazine publishing; entertainment; mining and export; and vehicle rental, automotive electronics, and spare parts services. In addition, it offers technology and informatics, automotive electronics, telecommunications, automotive infotainment systems, investment banking, factoring, administrative consultancy, investment, insurance, planning, advertisement, real estate management, and internet services. Further, the company provides sea vehicles and store rent; digital call center; financial advisory; and project management, engineering, maintenance and repair, and technical service, as well as device, system, and software design, development, manufacturing, assembly, sales, marketing, import, export and after-sales technical support services in the fields of telecommunications, electronic communications, and information systems. Dogan Sirketler Grubu Holding A.S. was incorporated in 1980 and is based in Istanbul, Turkey.",
+    "employees": 7043,
+    "website": "https://www.doganholding.com.tr",
+    "city": "Istanbul",
+    "sharesOutstanding": 2572673138
   },
   {
     "symbol": "DOAS",
     "name": "Doğuş Otomotiv",
     "fallbackPrice": 166.8,
-    "active": true
+    "active": true,
+    "sector": "Consumer Cyclical",
+    "industry": "Auto & Truck Dealerships",
+    "description": "Dogus Otomotiv Servis ve Ticaret A.S., together with its subsidiaries, engages in automotive and real estate businesses in Turkey. The company operates through Automotive and Real Estate segments. The Automotive segments engages in the importing, marketing, and selling passenger and commercial vehicles, spare parts of Volkswagen Group brands VW, Audi, Seat, Cupra, Porsche, Bentley, Lamborghini, Meiller, Scania, Scania Power Solutions, Wielton semi-trailers, and Thermoking vehicle cooling systems; purchasing and selling used vehicles through dealers under the DOD brand; sales and service of Novamarine brand boats and speedboats, as well as after-sales services and spare parts field; and sales and service operations of Aerofoil brand e-foil products and Mate brand electric-assisted bicycles. The Real Estate segment operates a portfolio consisting of real estate-based assets and rights. It also offers installation and operation of charging units, charging stations, and charging network; and creates and manages a portfolio of real estate and real estate-based capital market instruments. The company was founded in 1994 and is headquartered in Istanbul, Turkey. Dogus Otomotiv Servis ve Ticaret A.S. operates as a subsidiary of Dogus Holding A.S.",
+    "employees": 2190,
+    "website": "https://www.dogusotomotiv.com.tr",
+    "city": "Istanbul",
+    "sharesOutstanding": 220000000
   },
   {
     "symbol": "EFOR",
     "name": "Efor Yatırım",
     "fallbackPrice": 18.2,
-    "active": true
+    "active": true,
+    "sector": "Consumer Defensive",
+    "industry": "Farm Products",
+    "description": "Efor Yatirim Sanayi Ticaret Anonim Sirketi produces and sells tea and tea-like substances in Turkey. Its products include bulk tea, teapot bag, cup bag tea, form fruit and herbal tea, O.P.A Ceylon tea, and out-of-home consumption tea products under the Efor Tea brand name. Efor Yatirim Sanayi Ticaret Anonim Sirketi was formerly known as Efor Cay Sanayi Ticaret Anonim Sirketi and changed its name to Efor Yatirim Sanayi Ticaret Anonim Sirketi in October 2025. The company was founded in 2005 and is based in Istanbul, Turkey.",
+    "employees": 377,
+    "website": "https://www.eforcay.com",
+    "city": "Istanbul",
+    "sharesOutstanding": 2178000000
   },
   {
     "symbol": "ECILC",
     "name": "Eczacıbaşı İlaç",
     "fallbackPrice": 77.5,
-    "active": true
+    "active": true,
+    "sector": "Healthcare",
+    "industry": "Drug Manufacturers - Specialty & Generic",
+    "description": "EIS Eczacibasi Ilaç, Sinai ve Finansal Yatirimlar Sanayi ve Ticaret A.S., together with subsidiaries, engages in health and real estate development businesses in Turkey and internationally. The Health segment is involved in the production, marketing, and sale of medicines related to human health and veterinary medicines. The Real Estate Development segment engages in development of real estate properties; rental activities for serum facilities; and providing consulting services on land development and project management. The company was incorporated in 1951 and is based in Istanbul, Turkey. EIS Eczacibasi Ilaç, Sinai ve Finansal Yatirimlar Sanayi ve Ticaret A.S. is a subsidiary of Eczacibasi Holding A.S.",
+    "employees": 904,
+    "website": "https://www.eis.com.tr",
+    "city": "Istanbul",
+    "sharesOutstanding": 685260100
   },
   {
     "symbol": "EKGYO",
     "name": "Emlak Konut GYO",
     "fallbackPrice": 20.1,
-    "active": true
+    "active": true,
+    "sector": "Real Estate",
+    "industry": "REIT - Residential",
+    "description": "Emlak Konut Gayrimenkul Yatirim Ortakligi A.S., a long-established brand in the construction sector, began. Establishing environmentally friendly, modern cities that would add comfort to human life was determined as a corporate vision. With this basic purpose, Emlak Konut became the architect of many innovative applications in its sector. Emlak Konut carried out projects that set an example and left a mark in the planned urbanization of our country. It built the most innovative cities of its time, large enough to give its name to the district it was located in. This stable growth brought with it a serious turning point and in 2002, Emlak Konut became a real estate investment partnership. This transformation was the harbinger of giant projects, groundbreaking initiatives and becoming a bigger company. With becoming a Real Estate Investment Partnership, Emlak Konut was behind projects that resonated around the world in the field of design, included environmentally friendly technologies and added value to the city. Since 2003, it has tendered a total of 388 projects of various sizes, and because of the completion of these projects, it will have ensured the construction of 251,000 independent units. Emlak Konut went public twice with a breakthrough that would crown its rapid growth and carry its goals to broader horizons. The first offering in 2010 became one of the 5 largest public offerings in the history of the Republic. The secondary offering in 2013 was the largest public offering in the real estate sector in Europe in the last 5 years. Growing with the public offerings, Emlak Konut has further consolidated its place among the strongest companies in Turkey with its paid-in capital of 3.8 billion liras and total assets of 205 billion liras as of the end of 2024. Emlak Konut Gayrimenkul Yatirim Ortakligi A.S. was incorporated in 1953 in Turkey.",
+    "employees": 1499,
+    "website": "https://www.emlakkonut.com.tr",
+    "city": "Atasehir",
+    "sharesOutstanding": 3661120138
   },
   {
     "symbol": "ENJSA",
     "name": "Enerjisa",
     "fallbackPrice": 108.8,
-    "active": true
+    "active": true,
+    "sector": "Utilities",
+    "industry": "Utilities - Regulated Electric",
+    "description": "Enerjisa Enerji A.S., together with its subsidiaries, engages in the electricity business in Turkey. It operates through three segments: Electricity Distribution, Retail, and Customer Solutions. The company engages in the transmission of electricity over lines to the end users through distribution networks; retail sale of electricity; and provision of renewable energy and energy efficiency solutions. It is also involved in the operation of charging network for electric vehicles; supply of charging station equipment; and vehicle leasing and fleet services. The company was incorporated in 2011 and is headquartered in Istanbul, Turkey.",
+    "employees": 10671,
+    "website": "https://www.enerjisa.com.tr",
+    "city": "Istanbul",
+    "sharesOutstanding": 1181068970
   },
   {
     "symbol": "ENERY",
     "name": "Enerya",
     "fallbackPrice": 9.04,
-    "active": true
+    "active": true,
+    "sector": "Utilities",
+    "industry": "Utilities - Regulated Gas",
+    "description": "Enerya Enerji Anonim Sirketi, together with its subsidiaries, engages in the wholesale and retail distribution of natural gas in Turkey. The company also provides operational and consultancy services and is involved in the precious metals mining business. It serves residential and industrial customers. The company was founded in 2003 and is headquartered in Istanbul, Turkey. Enerya Enerji Anonim Sirketi is a subsidiary of Ahlatci Dogal Gaz Dagitim Enerji ve Yatirim A.S.",
+    "employees": 1221,
+    "website": "https://www.enerya.com.tr",
+    "city": "Istanbul",
+    "sharesOutstanding": 9000000000
   },
   {
     "symbol": "ENKAI",
     "name": "Enka İnşaat",
     "fallbackPrice": 83.55,
-    "active": true
+    "active": true,
+    "sector": "Industrials",
+    "industry": "Engineering & Construction",
+    "description": "Enka Insaat ve Sanayi A.S., together with its subsidiaries, engages in construction activities. The company operates through four segments: Construction; Real Estate Leasing; Energy; and Trading. It is involved in thermal power plants and industrial construction projects that produce natural gas-fired electrical energy, and highway construction; trading activities; and investment and development of real estate properties, as well as construction and operation of shopping centers; and marketing and after-sales service of construction machinery, trucks, industrial products, and spare parts. The company also engages in manufacturing structural steel works and equipment installation; excavation activities, sliding formwork, drilling and soil investigations, and isolation works; and pile dwelling work, base and superstructure construction, organizing domestic and international congresses and seminars, and tour reservation and ticket sales. In addition, it is involved in material handling and storage systems, auxiliary facilities, water treatment and environmental engineering, infrastructure and construction, and control systems and instrumentation engineering business; ready-mixed concrete production; air transportation; production and selling of electricity; and rental activities. It operates in Turkey, Georgia, Turkmenistan, Kazakhstan, Kenya, Libya, Saudi Arabia, Sri Lanka, India, Iraq, Mongolia, Mexico, Brazil, Argentina, the Bahamas, the Puerto Rico, Netherlands, Switzerland, Greece, Germany, Serbia, Kosovo, the United Kingdom, Italy, North Macedonia, Bulgaria, and Europe. The company was founded in 1957 and is headquartered in Istanbul, Turkey.",
+    "employees": 24587,
+    "website": "https://www.enka.com",
+    "city": "Istanbul",
+    "sharesOutstanding": 5862743582
   },
   {
     "symbol": "EREGL",
     "name": "Erdemir",
     "fallbackPrice": 38.0,
-    "active": true
+    "active": true,
+    "sector": "Basic Materials",
+    "industry": "Steel",
+    "description": "Eregli Demir ve Çelik Fabrikalari T.A.S., together with its subsidiaries, produces and sells iron and steel rolled products, alloyed and non-alloyed iron, cast and pressed steel, coke, and by-products in Turkey and internationally. The company offers flat steel products, including hot and cold rolled flat steel, plate, tin, chrome, and galvanized coated sheets. It also engages in the production of integrated and electrical steel; renewable energy generation; industrial gas production and sale; pellets; iron and magnesite ores; refractory; trading; recycling; and special purpose business. In addition, the company offers after-sales, laboratory and calibration, steel service center, and port services; and management and consulting services. Further, it exports its products. The company serves the automotive, white goods, tube mills, rolling mills, general manufacturing, electric&electronics, machinery, energy, heating equipment, shipbuilding, defense, packaging, and renewable energy industries. Eregli Demir ve Çelik Fabrikalari T.A.S. was founded in 1960 and is headquartered in Istanbul, Turkey.",
+    "employees": 12772,
+    "website": "https://www.erdemir.com.tr",
+    "city": "Istanbul",
+    "sharesOutstanding": 6721875999
   },
   {
     "symbol": "ESEN",
     "name": "Esenboğa Elektrik",
     "fallbackPrice": 3.57,
-    "active": true
+    "active": true,
+    "sector": "Utilities",
+    "industry": "Utilities - Renewable",
+    "description": "Esenboga Elektrik Üretim A.S. engages in the establishment, commissioning, production, and sale of electricity in Turkey. The company owns solar power plants; and is involved in solar power plant contracting business. It also provides operation and maintenance solutions; and project development and turnkey engineering, procurement and installation for solar energy projects. Esenboga Elektrik Üretim A.S. was incorporated in 2015 and is headquartered in Ankara, Turkey. Esenboga Elektrik Üretim A.S. is a subsidiary of Naturel Yenilenebilir Enerji Ticaret A.S.",
+    "website": "https://www.esenbogaelektrik.com.tr",
+    "city": "Ankara",
+    "sharesOutstanding": 1820000000
   },
   {
     "symbol": "EUREN",
     "name": "Europen Endüstri",
     "fallbackPrice": 3.91,
-    "active": true
+    "active": true,
+    "sector": "Industrials",
+    "industry": "Building Products & Equipment",
+    "description": "Europen Endustri Insaat Sanayi ve Ticaret A.S. provides PVC profiles, door and window, and glass products in Turkey. It offers profile, sheet, panel, PVC window, PVC door, refrigerator glass, oven glasses, furniture glass, and solar panel glass products. The company was founded in 1965 and is headquartered in Eskisehir, Turkey.",
+    "employees": 1552,
+    "website": "https://europen.com.tr",
+    "city": "Eskisehir",
+    "sharesOutstanding": 2100000000
   },
   {
     "symbol": "EUPWR",
     "name": "Europower Enerji",
     "fallbackPrice": 95.2,
-    "active": true
+    "active": true,
+    "sector": "Industrials",
+    "industry": "Electrical Equipment & Parts",
+    "description": "Europower Enerji ve Otomasyon Teknolojileri Sanayi Ticaret Anonim Sirketi designs, develops, manufactures, and sells electrical system products in Turkey. The company offers medium and low voltage products, compact substations, PFC systems, railway products, silicone insulators, as well as oil type distribution, medium power, and special type transformers. It also provides various services, such as project design, project management, automation and scada, supervision, and training services. In addition, the company offers laboratory and field tests, measurement, analysis and reporting of electrical power, as well as engineering and commissioning services. Further, it undertakes electrical and electromechanical EPC projects in Turkey and internationally. Europower Enerji ve Otomasyon Teknolojileri Sanayi Ticaret Anonim Sirketi was founded in 2008 and is based in Ankara, Turkey.",
+    "employees": 1637,
+    "website": "https://www.europowerenerji.com.tr",
+    "city": "Ankara",
+    "sharesOutstanding": 555000000
   },
   {
     "symbol": "FENER",
     "name": "Fenerbahçe Futbol",
     "fallbackPrice": 3.13,
-    "active": true
+    "active": true,
+    "sector": "Communication Services",
+    "industry": "Entertainment",
+    "description": "Fenerbahçe Futbol A.S. operates football club in Turkey. The company operates in Football Activity and Retailing segments. It distributes, markets, and sells Fenerbahce licensed products through stores, corners, and website. The company was founded in 1907 and is based in Istanbul, Turkey. Fenerbahçe Futbol A.S. is a subsidiary of Fenerbahçe Spor Kulübü.",
+    "employees": 653,
+    "website": "https://www.fenerbahce.org/fbfutbol",
+    "city": "Istanbul",
+    "sharesOutstanding": 6250000000
   },
   {
     "symbol": "FROTO",
     "name": "Ford Otosan",
     "fallbackPrice": 78.25,
-    "active": true
+    "active": true,
+    "sector": "Consumer Cyclical",
+    "industry": "Auto Manufacturers",
+    "description": "Ford Otomotiv Sanayi A.S., together with its subsidiaries, engages in the manufacturing, assembly, production, import, and sale of motor vehicles and spare parts in Turkey and internationally. The company offers passenger car models, light commercial vehicles, and heavy commercial vehicles, as well as diesel engines and powertrains under the Ford brand name. It exports its products. The company was founded in 1926 and is based in Istanbul, Turkey.",
+    "employees": 24436,
+    "website": "https://www.fordotosan.com.tr",
+    "city": "Istanbul",
+    "sharesOutstanding": 3509100000
   },
   {
     "symbol": "GSRAY",
     "name": "Galatasaray Sportif",
     "fallbackPrice": 1.13,
-    "active": true
+    "active": true,
+    "sector": "Communication Services",
+    "industry": "Entertainment",
+    "description": "Galatasaray Sportif Sinai ve Ticari Yatirimlar A.S. engages in the commercial, industrial, and investment activities for various sports. The company invests in and develops real estate properties. In addition, it engages in the sale and merchandising of products with the GS logo; and communication activities. The company was incorporated in 1997 and is headquartered in Istanbul, Turkey. Galatasaray Sportif Sinai ve Ticari Yatirimlar A.S. is a subsidiary of Galatasaray Spor Kulubu Derbegi.",
+    "employees": 869,
+    "website": "https://sportif.galatasaray.org",
+    "city": "Istanbul",
+    "sharesOutstanding": 13500000000
   },
   {
     "symbol": "GENIL",
     "name": "Gen İlaç",
     "fallbackPrice": 12.06,
-    "active": true
+    "active": true,
+    "sector": "Healthcare",
+    "industry": "Drug Manufacturers - Specialty & Generic",
+    "description": "Gen Ilac Ve Saglik Urunleri Sanayi Ve Ticaret Anonim Sirketi, a pharmaceutical company, manufactures and supplies products to treat rare diseases and disorders worldwide. The company offers its products in various areas, such as neurology, endocrinology, nephrology, oncology, hematology, and pediatric. Gen Ilac Ve Saglik Urunleri Sanayi Ve Ticaret Anonim Sirketi has collaboration with Sulfateq BV for the development of molecule SUL-238 as a treatment for Alzheimer's disease and other neurodegenerative diseases. In addition, it manufactures, trades, imports and exports of all kinds of human medicines and health products. The company was incorporated in 1997 and is headquartered in Çankaya, Turkey.",
+    "employees": 682,
+    "website": "https://www.genilac.com.tr",
+    "city": "Çankaya",
+    "sharesOutstanding": 4490272095
   },
   {
     "symbol": "GESAN",
     "name": "Girişim Elektrik",
     "fallbackPrice": 89.3,
-    "active": true
+    "active": true,
+    "sector": "Industrials",
+    "industry": "Engineering & Construction",
+    "description": "Girisim Elektrik Sanayi Taahhüt ve Ticaret A.S. operates as an EPC company in Turkey and internationally. The company operates through Enterprise, Europower, Peak PV, EP World, Euromek, and Peakesco segments. It offers EPC services for HV and MV substations, electric distribution networks, transmission lines, thermal and hydroelectrical power plants, hydroelectric and wind power plants, geothermal and biomass power plants, combined cycle natural gas power plants, cogeneration, railways and industrial facility electrification, infrastructure and super structure projects, power factor correction, and automation and SCADA projects. The company also provides engineering services, such as project design and management, supervision, and testing and commissioning, as well as training services. In addition, it offers LV switch gears, LV-MV power factor correction devices and reactors, automation and SCADA equipment, data recorders, power protection and control equipment, LV panels, MV cells, concrete and metallic kiosks, compact and packaged substations, testing and measurement equipment, power and distribution transformers and accessories, LV-MV-HV measurement and protection transformers, MV-HV circuit breakers, disconnectors, gas insulated switch gears, UPS, voltage regulators, cables and cable accessories, MV-fuses, insulators, power transmission and distribution equipment, neutral earthing resistors, conductors, motor and drives, surge arresters, lightning and over-voltage protection equipment, cable trays and busbar systems, grounding equipment, steel and concrete poles, power generation systems and products, lighting equipment, electrical installation equipment, electrical products, transformer oils, railway catenary and electrification equipment, solar panels, inverters, solar energy mounting systems and structures, and battery systems; and health, safety, and environmental equipment. The company was incorporated in 1999 and is headquartered in Ankara, Turkey.",
+    "employees": 2029,
+    "website": "https://www.girisimelk.com.tr",
+    "city": "Ankara",
+    "sharesOutstanding": 460000000
   },
   {
     "symbol": "GRTHO",
     "name": "GrainTurk Holding",
     "fallbackPrice": 221.1,
-    "active": true
+    "active": true,
+    "sector": "Consumer Defensive",
+    "industry": "Farm Products",
+    "description": "GRAINTURK Holding A.S. operates in the field of agricultural commodity trade on national and international platforms. It is involved in the trading of wheat, corn, cotton, barely, sunflower seeds, soybeans, wheat bran, sunflower meals, soybean meals, cotton meals, sunflower oils, and soybean oils. The company was founded in 2014 and is based in Besiktas, Turkey.",
+    "employees": 86,
+    "website": "https://www.grainturk.com",
+    "city": "Besiktas",
+    "sharesOutstanding": 125000000
   },
   {
     "symbol": "GUBRF",
     "name": "Gübre Fabrikaları",
     "fallbackPrice": 477.25,
-    "active": true
+    "active": true,
+    "sector": "Basic Materials",
+    "industry": "Agricultural Inputs",
+    "description": "Gübre Fabrikalari Türk Anonim Sirketi, together with its subsidiaries, produces and sells chemical fertilizers in Turkey and internationally. The company offers solid chemical fertilizers; micro granular, crystal and powder form, liquid form, and organic and organomineral liquid fertilizers, as well as biostimulants, auxiliary products, and plant nutrition packages; slow-release fertilizers, such as phosphorus protectant and nitrogen inhibitor fertilizers; organomineral fertilizers; and organic and hobby agriculture fertilizers under the GÜBRETAS brand. It also produces and trades in fertilizer raw materials; and operates and develops gold mines. In addition, the company provides logistics, laboratory, and port services; and technical and general services to the oil, gas and petrochemical industries. It exports its products. The company was founded in 1952 and is headquartered in Istanbul, Turkey. Gübre Fabrikalari Türk Anonim Sirketi is a subsidiary of Agricultural Credit Cooperatives of Turkey.",
+    "employees": 1931,
+    "website": "https://www.gubretas.com.tr",
+    "city": "Istanbul",
+    "sharesOutstanding": 334000000
   },
   {
     "symbol": "GLRMK",
     "name": "Gülermak",
     "fallbackPrice": 177.2,
-    "active": true
+    "active": true,
+    "sector": "Industrials",
+    "industry": "Engineering & Construction",
+    "description": "Gulermak Aglr Sanayi Insaat ve Taahhut A.S. provides civil infrastructure and industrial construction services in Turkey, Poland, Romania, Sweden, Switzerland, the Philippines, North Macedonia, the United Arab Emirates, and India. The company offers engineering, procurement, and construction services for the transportation sector, including railways, metro and light rail systems, trams, highways, tunnels, roads, and bridges; industrial sector, such as cement and sugar factories, glass factories, dams, and irrigation systems; energy sector comprising hydroelectric, thermal, and natural gas combined cycle power plants; and environmental sector consisting of water and wastewater treatment plants and pipelines, as well as sea, lake, and river dredging services. It is also involved in the provision of steel construction structures. The company serves official public and private institutions. The company was founded in 1958 and is headquartered in Ankara, Turkey. Gulermak Aglr Sanayi Insaat ve Taahhut A.S. operates as a subsidiary of Gulermak Emlak Yapi Insaat Yatirim Anonim Sirketi.",
+    "employees": 3492,
+    "website": "https://www.gulermak.com.tr",
+    "city": "Ankara",
+    "sharesOutstanding": 322600000
   },
   {
     "symbol": "GRSEL",
     "name": "Gür-Sel Turizm",
     "fallbackPrice": 321.0,
-    "active": true
+    "active": true,
+    "sector": "Industrials",
+    "industry": "Railroads",
+    "description": "Gür-Sel Turizm Tasimacilik ve Servis Ticaret A.S. provides transportation services in Turkey. It provides personnel transportation; student transportation; passenger car, minibus, bus rental services; urban public transport; and intercity transportation services. The company was founded in 1993 and is headquartered in Istanbul, Turkey.",
+    "employees": 1659,
+    "website": "https://www.gurseltur.com.tr",
+    "city": "Istanbul",
+    "sharesOutstanding": 102000000
   },
   {
     "symbol": "SAHOL",
     "name": "Sabancı Holding",
     "fallbackPrice": 93.2,
-    "active": true
+    "active": true,
+    "sector": "Financial Services",
+    "industry": "Banks - Regional",
+    "description": "Haci Ömer Sabanci Holding A.S., together with its subsidiaries, engages in the management and coordination of companies in the finance, manufacturing, and trade sectors in Turkey and internationally. The company operates through six segments: Banking, Financial Services, Energy, Material Technologies, Digital, and Others. It offers corporate, retail, investment, private, and digital banking services, as well as payment systems, insurance products, and private pension plans; and generates, distributes, and digitalizes electricity from wind, solar, hydroelectric, and other renewable energy sources. The company also provides alternative fuels, building materials, and white cement, as well as mobility solutions and tire reinforcement services; and engages in digital marketing technologies and services, cloud and technology services, and digital transformation products. In addition, it is involved in the trading of various products; after-sales, service, and spare parts activities for passenger and commercial vehicles; retailing of consumer electronics, imaging, information technology, telecommunications products, and home appliances; and operation of hotel chains. The company was incorporated in 1967 and is headquartered in Istanbul, Turkey.",
+    "employees": 58567,
+    "website": "https://www.sabanci.com",
+    "city": "Istanbul",
+    "sharesOutstanding": 2067834969
   },
   {
     "symbol": "HEKTS",
     "name": "Hektaş",
     "fallbackPrice": 2.82,
-    "active": true
+    "active": true,
+    "sector": "Basic Materials",
+    "industry": "Agricultural Inputs",
+    "description": "Hektas Ticaret T.A.S. manufactures, imports, and markets agricultural products, fertilizers and veterinary medicines in Turkey. The company's crop protection products include fungicides, herbicides, insecticides, acaricides, fumigants and nemathists, harvesting aids and plant growth regulators, winter struggle medicines and summer oils, spreads-adhesives, biological products, and feromons. It also offers smart base, leaf, pure, and fertilizers; organominerals; drip irrigation; biological preparation; and other plant nutrition products. In addition, the company provides ruminant, poultry, and pet products, as well as environmental health and seeds products. Hektas Ticaret T.A.S. was incorporated in 1956 and is headquartered in Gebze, Turkey.",
+    "employees": 559,
+    "website": "https://hektas.com.tr",
+    "city": "Gebze",
+    "sharesOutstanding": 8430000000
   },
   {
     "symbol": "IEYHO",
     "name": "Işıklar Enerji",
     "fallbackPrice": 190.4,
-    "active": true
+    "active": true,
+    "sector": "Consumer Cyclical",
+    "industry": "Textile Manufacturing",
+    "description": "Isiklar Enerji ve Yapi Holding A.S., together with its subsidiaries, engages in the production of yarn and home textiles in Turkey and internationally. The company operates in service, construction, casting, packaging, contracting and energy works. The company operates three river type hydroelectric power plants. It manufactures and sells industrial type paper bags; constructs water structures, irrigation and drainage system, bridges, tunnels, roads, factories, treatment plants, infra-structure facilities, pipelines, houses, and commercial buildings; and alloyed grinding products to cement and mining companies. In addition, the company manufactures pressed, coating, and floor bricks; and facade systems. It exports its products. The company was formerly known as Metem Enerji ve Tekstil Sanayi Ticaret Anonim Sirketi and changed its name Isiklar Enerji ve Yapi Holding A.S. in February 2012. The company was incorporated in 1982 and is headquartered in Istanbul, Turkey.",
+    "employees": 334,
+    "website": "https://www.isiklarenerjiyapiholding.com.tr",
+    "city": "Istanbul",
+    "sharesOutstanding": 543595733
   },
   {
     "symbol": "ISMEN",
     "name": "İş Yatırım",
     "fallbackPrice": 32.34,
-    "active": true
+    "active": true,
+    "sector": "Financial Services",
+    "industry": "Capital Markets",
+    "description": "Is Yatirim Menkul Degerler Anonim Sirketi provides capital market services to individual and corporate investors in Turkey and internationally. The company offers corporate finance services, including equity capital markets, mergers and acquisitions, and private sector advisory consisting of public equity offerings, private sector debt securities issuances, restructuring and strategic planning, project financing advisory and venture capital advisory. It provides fixed income securities; repo products; investment funds; foreign exchange products; warrants; and structured products, as well as services in stocks, derivatives, and international markets. In addition, the company offers public offerings; portfolio management; investment advisory; and institutional sales, market making, and liquidity. It serves FMCG and retail; energy, construction and mining; basic industries and manufacturing; technology, media and telecommunication; financial services, transportation and logistics; and healthcare and services sectors. The company was incorporated in 1996 and is headquartered in Istanbul, Turkey. Is Yatirim Menkul Degerler Anonim Sirketi operates as a subsidiary of Türkiye Is Bankasi A.S.",
+    "employees": 608,
+    "website": "https://www.isyatirim.com.tr",
+    "city": "Istanbul",
+    "sharesOutstanding": 1500000000
   },
   {
     "symbol": "IZENR",
     "name": "İzdemir Enerji",
     "fallbackPrice": 8.37,
-    "active": true
+    "active": true,
+    "sector": "Utilities",
+    "industry": "Utilities - Independent Power Producers",
+    "description": "IZDEMIR Enerji Elektrik Uretim A.S. produces and sells electricity through coal. It is also involved in the iron-steel and port and power plant, solar energy plant businesses. The company was incorporated in 2007 and is headquartered in Izmir, Turkey. IZDEMIR Enerji Elektrik Uretim A.S. is a subsidiary of Izmir Demir Çelik Sanayi Anonim Sirketi.",
+    "employees": 285,
+    "website": "https://www.izdemirenerji.com",
+    "city": "Izmir",
+    "sharesOutstanding": 2443750000
   },
   {
     "symbol": "KRDMD",
     "name": "Kardemir (D)",
     "fallbackPrice": 44.54,
-    "active": true
+    "active": true,
+    "sector": "Basic Materials",
+    "industry": "Steel",
+    "description": "Kardemir Karabük Demir Çelik Sanayi Ve Ticaret A.S. manufactures and sells iron and steel, coke, and coke-by products in Turkey. The company also engages in steel structure manufacturing and assembly; casting and machining; energy business; and intra-city and intercity freight transportation activities. Kardemir Karabük Demir Çelik Sanayi Ve Ticaret A.S. was incorporated in 1995 and is headquartered in Karabük, Turkey.",
+    "employees": 4537,
+    "website": "https://www.kardemir.com",
+    "city": "Karabük",
+    "sharesOutstanding": 780226002
   },
   {
     "symbol": "KTLEV",
     "name": "Katılımevim",
     "fallbackPrice": 57.85,
-    "active": true
+    "active": true,
+    "sector": "Financial Services",
+    "industry": "Credit Services",
+    "description": "Katilimevim Tasarruf Finansman Anonim Sirketi provides interest-free and maturity-free car financing in Türkiye. It also engages in the rental and management of shopping malls and commercial properties. The company was incorporated in 2018 and is based in Istanbul, Türkiye.",
+    "employees": 1713,
+    "website": "https://www.katilimevim.com.tr",
+    "city": "Istanbul",
+    "sharesOutstanding": 7000000000
   },
   {
     "symbol": "KLRHO",
     "name": "Kiler Holding",
     "fallbackPrice": 68.15,
-    "active": true
+    "active": true,
+    "sector": "Industrials",
+    "industry": "Conglomerates",
+    "description": "Kiler Holding Anonim Sirketi engages in the construction, energy, transportation, industry, and textile businesses in Turkey. The company plans, develops, and realizes the projects; and carries out infrastructure and superstructure contracting projects. It is also involved in the retail sale and wholesale of electrical energy directly to the consumers; provision of personnel transportation services to corporate customers; and open-end and ring-yarn production. In addition, the company packs and distributes sugar products, such as crystal granulated sugar, cube sugar, pulps, and molasses. Kiler Holding Anonim Sirketi was founded in 1983 and is based in Istanbul, Turkey.",
+    "employees": 1685,
+    "website": "https://www.kilerholding.com.tr",
+    "city": "Istanbul",
+    "sharesOutstanding": 1625000000
   },
   {
     "symbol": "KCHOL",
     "name": "Koç Holding",
     "fallbackPrice": 212.7,
-    "active": true
+    "active": true,
+    "sector": "Industrials",
+    "industry": "Conglomerates",
+    "description": "Koç Holding A.S., through its subsidiaries, engages in the energy, automotive, consumer durables, finance, and other businesses in Turkey and internationally. The company's energy business produces and trades in petroleum products; operates petroleum refineries; cylinder gas, auto gas, and distributes fuel and liquefied petroleum gases, as well as water products; ships petroleum; generates electricity through hydroelectric, natural gas, coal, wind, thermal, solar power and other renewable plants; air, sea, road, and railway transportation; mooring and tug services; and technology and venture investments. Its automotive business provides light commercial vehicles, passenger cars, tractors, buses, and trucks, as well as automotive retailing, car rental and trading, and insurance services. The company's consumer durables business offers white goods, televisions, and air conditioners; and distributes information and communication technologies, as well as treasury services. Its finance business provides various banking and financial products and services that include private banking, leasing, factoring, investment, asset and portfolio management, corporate and commercial loans, and credit cards; and consumer finance, custody, special purpose, brokerage, and financial consulting services. The company's other business offers fast moving consumer goods, purchasing and supply chain management services, technology integrated solutions and services, home improvement retailing, electric vehicle charging station solutions, food, retail, tourism, ship construction, healthcare, trading, technology, marina operation, digital marketing, duty free store management, payment services, and information technologies, as well as operates hotels, restaurants, pubs, cafeterias, patisseries, banquet units, bakeries, stadiums, residences, and production facilities; and manufactures and exports electric motors. Koç Holding A.S. was founded in 1926 and is headquartered in Istanbul, Turkey.",
+    "employees": 122178,
+    "website": "https://www.koc.com.tr",
+    "city": "Istanbul",
+    "sharesOutstanding": 2535007575
   },
   {
     "symbol": "KUYAS",
     "name": "Kuyaş Yatırım",
     "fallbackPrice": 63.85,
-    "active": true
+    "active": true,
+    "sector": "Real Estate",
+    "industry": "Real Estate Services",
+    "description": "Kuyas Yatirim A.S. engages in the real estate business in Turkey. Its portfolio includes hotel, additional workshop units, exhibition and conference areas, gold exchange building, and parking area, as well as providing human resource support to jewelry sector through training facilities. The company was incorporated in 2005 and is headquartered in Istanbul, Turkey.",
+    "employees": 17,
+    "website": "https://www.kuyas.com.tr",
+    "city": "Istanbul",
+    "sharesOutstanding": 400000000
   },
   {
     "symbol": "MAGEN",
     "name": "Margün Enerji",
     "fallbackPrice": 33.1,
-    "active": true
+    "active": true,
+    "sector": "Utilities",
+    "industry": "Utilities - Renewable",
+    "description": "Margün Enerji Üretim Sanayi ve Ticaret A.S. engages in the generation of electricity from solar resources in Turkey and internationally. It also provides project development services; engineering, procurement, and construction services; and operating and maintenance services. The company operates a solar power plant with an installed capacity of 118.03 MWp. In addition, it develops software and climate technologies. The company was incorporated in 2014 and is headquartered in Ankara, Turkey. Margün Enerji Üretim Sanayi ve Ticaret Anonim Sirketi is a subsidiary of Esenboga Elektrik Üretim A.S.",
+    "employees": 203,
+    "website": "https://www.margunenerji.com.tr",
+    "city": "Ankara",
+    "sharesOutstanding": 2950000000
   },
   {
     "symbol": "MAVI",
     "name": "Mavi Giyim",
     "fallbackPrice": 38.16,
-    "active": true
+    "active": true,
+    "sector": "Consumer Cyclical",
+    "industry": "Apparel Retail",
+    "description": "Mavi Giyim Sanayi ve Ticaret A.S. engages in the wholesale and retail sale of ready-to-wear denim apparel in Turkey and internationally. The company offers knit and woven shirts, t-shirts, sweaters, jackets, skirts, dresses, accessories, and denim bottoms for men, women, and children through the wholesale, retail, and e-commerce business under the Mavi brand. Mavi Giyim Sanayi ve Ticaret A.S. was incorporated in 1991 and is headquartered in Istanbul, Turkey.",
+    "employees": 5957,
+    "website": "https://www.mavicompany.com",
+    "city": "Istanbul",
+    "sharesOutstanding": 783604542
   },
   {
     "symbol": "MIATK",
     "name": "MİA Teknoloji",
     "fallbackPrice": 29.76,
-    "active": true
+    "active": true,
+    "sector": "Technology",
+    "industry": "Information Technology Services",
+    "description": "MIA Teknoloji Anonim Sirketi provides software development services to public and private organizations in Turkey. The company offers Pizzy, an integrated facility management software; BIO-ID, a biometric data management software; MIA-SOFT, a multimodal biometric authentication and identification software; MBIS, a multi biometric identification system; Surveillance, an environmental surveillance and face recognition system; MIA-MED, a hospital information management system software; traffic monitoring; WorkARia Zero Carbon, a carbon emission reporting technologies; and ID-100B, a multi biometric identification unit. It also provides identification and authentication; environmental surveillance; facility security and management; critical facility security and management; city, cyber, and border securities; defense, mining,  and immersive technologies; health informatics technologies; intelligent traffic inspection; public transportation safety; and e-vehicle charging network solutions. In addition, the company offers sustainable and zero carbon; sustainable agriculture and food safety; and renewable energy solutions. Further, it developed kiosk, a user interface with sensor that detects hand movements; and control videos, images, and texts available in the system regarding the subject. The company was incorporated in 2006 and is headquartered in Ankara, Turkey.",
+    "employees": 85,
+    "website": "https://www.miateknoloji.com",
+    "city": "Ankara",
+    "sharesOutstanding": 494000000
   },
   {
     "symbol": "MGROS",
     "name": "Migros",
     "fallbackPrice": 554.5,
-    "active": true
+    "active": true,
+    "sector": "Consumer Defensive",
+    "industry": "Grocery Stores",
+    "description": "Migros Ticaret A.S., together with its subsidiaries, engages in the retail sale of food and beverages, and consumer goods in Turkey. It is also involved in online food retailing; takeout food business; provision of payment and e-money, motorcycle courier, electric vehicle charging, and corporate payment services, as well as shopping mall management. In addition, the company engages in media, logistics, and fintech businesses; and production of packaged food production. The company was founded in 1954 and is headquartered in Istanbul, Turkey.",
+    "employees": 64708,
+    "website": "https://www.migroskurumsal.com",
+    "city": "Istanbul",
+    "sharesOutstanding": 178092117
   },
   {
     "symbol": "MPARK",
     "name": "MLP Sağlık",
     "fallbackPrice": 436.0,
-    "active": true
+    "active": true,
+    "sector": "Healthcare",
+    "industry": "Medical Care Facilities",
+    "description": "MLP Saglik Hizmetleri A.S. provides healthcare services in Turkey and internationally. It provides treatment, laboratory, and hospital services, as well as trades in medical products. The company was formerly known as Medical Park. MLP Saglik Hizmetleri A.S. was founded in 1993 and is based in Istanbul, Turkey.",
+    "employees": 14635,
+    "website": "https://www.mlpcare.com",
+    "city": "Istanbul",
+    "sharesOutstanding": 102122233
   },
   {
     "symbol": "OBAMS",
     "name": "Oba Makarna",
     "fallbackPrice": 5.62,
-    "active": true
+    "active": true,
+    "sector": "Consumer Defensive",
+    "industry": "Packaged Foods",
+    "description": "Oba Makarnacilik Sanayi ve Ticaret A.S. produces and sells pasta in Turkey and internationally. The company offers children pasta, mac and cheese, noodles, flour, and semolina products. It sells its products under the OBA Makarna, OBA Mie, OBA Gold, Obalino, Nido, Eva, Omelia, Pasta Layla, Pasta Savana, Vera, Rosa Linda, and Nido brands. The company was formerly known as Türsan Kollektif Sirketi Selahattin Öztahtaci, Abdullah Incetahtaci, Adil Ceydeli and changed its name to Oba Makarnacilik Sanayi ve Ticaret A.S. in December 1988. The company was incorporated in 1966 and is headquartered in Gaziantep, Turkey. Oba Makarnacilik Sanayi ve Ticaret A.S. operates as a subsidiary of Alpinvest Yatirim Gida Sanayi ve Ticaret AS.",
+    "employees": 763,
+    "website": "https://www.obamakarna.com.tr",
+    "city": "Gaziantep",
+    "sharesOutstanding": 2876530554
   },
   {
     "symbol": "ODAS",
     "name": "Odaş Elektrik",
     "fallbackPrice": 7.06,
-    "active": true
+    "active": true,
+    "sector": "Utilities",
+    "industry": "Utilities - Regulated Electric",
+    "description": "Odas Elektrik Üretim Sanayi Ticaret A.S., together with its subsidiaries, produces and sells electricity by natural gas combined cycles in Turkey and internationally. The company operates a thermal power plant with an installed capacity of 340 MW. It also produces, imports, and wholesales natural gas, liquefied natural gas (LNG), and compressed natural gas (CNG) to exporters, LNG and CNG clients, wholesale companies, and consumers. In addition, the company extracts, purchases, manufactures, imports, exports, sells, and installs various natural stone and mineral ores that primarily include gold, silver, antimony, and coal. The company was founded in 2010 and is headquartered in Istanbul, Turkey.",
+    "employees": 1126,
+    "website": "https://www.odas.com.tr",
+    "city": "Istanbul",
+    "sharesOutstanding": 1400000000
   },
   {
     "symbol": "ODINE",
     "name": "Odine Solutions",
     "fallbackPrice": 1723.0,
-    "active": true
+    "active": true,
+    "sector": "Technology",
+    "industry": "Software - Infrastructure",
+    "description": "Odine Solutions Teknoloji Ticaret ve Sanayi A.S. operates as a technology partner in Turkey and internationally. The company offers strategic consulting and advisory; systems integration and managed services; AI-driven product development; and cloud transformation, artificial intelligence, automation, infrastructure, 5G, cybersecurity, enterprise solutions, and wholesale OSS/BSS services. It also engages in software product development, marketing, and distribution; software-based networks, virtualization, and cloud solutions; engineering, consulting, and technical support activities; telecommunications consulting services; telecommunications and communications network; development of patents and solutions for technologies; value-added services; and software solutions. In addition, the company provides AI-driven policy orchestration systems and AI-powered semantic communication technologies; AI-driven zero-touch networking, agentic multi-cloud management, network orchestration and automation, AI-powered network orchestration platforms, AI-driven prediction and optimization, AI-based telco cloud assurance, intelligent RAN steering, network digital twin, and AI-based document analyzer and conversational Gen-AI platforms; Odine Orion, a voice management solution; Odine Nebula, a voice cloud management platform and Odine Nebula+, a flexible hybrid voice platform; Odine Gatekeeper, a voice fraud management solution; and Odine Pathfinder, a centralized routing server solution. It serves the energy and utilities, finance and banking, healthcare, telecommunications, insurance, retail and e-commerce, government and public institutions, and education industries. The company was formerly known as Verscom Bilgisayar Teknoloji Ticaret ve Sanayi A.S. and changed its name to Odine Solutions Teknoloji Ticaret ve Sanayi A.S. in March 2018. Odine Solutions Teknoloji Ticaret ve Sanayi A.S. was incorporated in 1999 and is headquartered in Istanbul, Turkey.",
+    "employees": 259,
+    "website": "https://odine.com",
+    "city": "Istanbul",
+    "sharesOutstanding": 110500000
   },
   {
     "symbol": "OTKAR",
     "name": "Otokar",
     "fallbackPrice": 333.5,
-    "active": true
+    "active": true,
+    "sector": "Consumer Cyclical",
+    "industry": "Auto Manufacturers",
+    "description": "Otokar Otomotiv ve Savunma Sanayi A.S., together with its subsidiaries, manufactures and sells commercial and defense industry vehicles in Turkey. It offers light trucks, wheeled and tracked armored vehicles, and turrets for the defense industry. The company also provides pick-up type vehicles; minibuses, small buses, and regular buses for public transportation; wheeled and tracked armored vehicles; shuttle transportation; tactical wheeled vehicles, and turrets. The company was incorporated in 1963 and is headquartered in Istanbul, Turkey.",
+    "employees": 3852,
+    "website": "https://www.otokar.com.tr",
+    "city": "Istanbul",
+    "sharesOutstanding": 120000000
   },
   {
     "symbol": "OYAKC",
     "name": "Oyak Çimento",
     "fallbackPrice": 22.7,
-    "active": true
+    "active": true,
+    "sector": "Basic Materials",
+    "industry": "Building Materials",
+    "description": "OYAK Çimento Fabrikalari A.S., together with its subsidiaries, engages in the production and sale of clinker and cement in Turkey. The company offers white, gray, CEM I, CEM V, and SLAG cement; ready-mixed concrete; and hydrated and quick calcium lime. It is also involved in mining; information technology; and manufacturing and trading of construction and building materials. The company exports its products. OYAK Çimento Fabrikalari A.S. was founded in 1969 and is headquartered in Çankaya, Turkey. As of March 6, 2024, OYAK Çimento Fabrikalari A.S. operates as a subsidiary of TCC OYAK Amsterdam Holdings B.V.",
+    "employees": 3266,
+    "website": "https://www.oyakcimento.com",
+    "city": "Çankaya",
+    "sharesOutstanding": 4861655783
   },
   {
     "symbol": "PASEU",
     "name": "Pasifik Eurasia",
     "fallbackPrice": 226.0,
-    "active": true
+    "active": true,
+    "sector": "Industrials",
+    "industry": "Integrated Freight & Logistics",
+    "description": "Pasifik Eurasia Lojistik Dis Ticaret A.S. provides international rail, air, land and sea freight transportation, and international water transportation services in Europe, Asia, and Russia. It operates as a logistics company. The company operates in the fields of cargo loading and unloading services, railway freight transportation agency, intercity cargo by road, foreign trade, and customs. It also provides solutions to international transportation, intermodal transportation, multimodal transport, logistics, and terminal services. Pasifik Eurasia Lojistik Dis Ticaret A.S. was founded in 2013 and is headquartered in Ankara, Turkey.",
+    "employees": 50,
+    "website": "https://www.pasifikeurasia.com.tr",
+    "city": "Ankara",
+    "sharesOutstanding": 672000000
   },
   {
     "symbol": "PSGYO",
     "name": "Pasifik GYO",
     "fallbackPrice": 3.41,
-    "active": true
+    "active": true,
+    "sector": "Real Estate",
+    "industry": "REIT - Diversified",
+    "description": "Pasifik Gayrimenkul Yatirim Ortakligi A.S. focuses on operating as a REIT company in Turkey. It has various mixed projects. The company is based in Ankara, Turkey.",
+    "employees": 204,
+    "website": "https://www.pasifikgyo.com.tr",
+    "city": "Ankara",
+    "sharesOutstanding": 6900847276
   },
   {
     "symbol": "PAHOL",
     "name": "Pasifik Holding",
     "fallbackPrice": 1.32,
-    "active": true
+    "active": true,
+    "sector": "Industrials",
+    "industry": "Conglomerates",
+    "description": "Pasifik Holding A.S., through its subsidiaries, engages in providing diversified range of services in various sectors. The company operates in multiple sectors, such as real estate and construction, international logistics, technology, and energy and mining. Its real estate services include real estate investment and development. It offers railway transportation and solutions in international transportation, logistics, and terminal services. The company also offers defense industry technologies through its military and civilian use unmanned aerial vehicle (UAV) systems, such as ALPIN-2, a domestically produced unmanned helicopter that features a fully localized hardware and software; the SEYYAH Visual Navigation System, which is compatible with any platform and featuring positioning technology; and the PARS VTOL, an advanced unmanned aerial vehicle with vertical takeoff and landing capabilities. It also offers DUMRUL, an armed unmanned helicopter equipped with electric motor-powered munitions; DELI 2 Kamikaze UAV; the Deli Mini UAV, the PARS Surveillance UAV, for security and defense; the MERKÜT drone, a First Person View system and entirely domestic and national; and the KORGAN, a drone-in-a-box product. Additionally, it provides cyber security, software, system integration, R&D activities, IT and hardware, and infrastructure services for electrical and automation projects for businesses. The company also engages in renewable energy production. Pasifik Holding A.S. was founded in 1986 and is based in Çankaya, Turkey.",
+    "employees": 24,
+    "website": "https://pasifik.com/en",
+    "city": "Çankaya",
+    "sharesOutstanding": 20000000000
   },
   {
     "symbol": "PATEK",
     "name": "Pasifik Teknoloji",
     "fallbackPrice": 22.5,
-    "active": true
+    "active": true,
+    "sector": "Technology",
+    "industry": "Information Technology Services",
+    "description": "Pasifik Teknoloji A.S. provides computer hardware, electronic products, and software products to corporate companies in Turkey. It offers cybersecurity and IT/hardware/infrastructure services, as well as offers defense technologies. The company was formerly known as Pasifik Donanim ve Yazilim Bilgi Teknolojileri A.S. and changed its name to Pasifik Teknoloji A.S. in August 2024. Pasifik Teknoloji A.S. was founded in 2015 and is based in Sariyer, Turkey.",
+    "employees": 483,
+    "website": "https://pasifikteknoloji.com",
+    "city": "Sariyer",
+    "sharesOutstanding": 674934433
   },
   {
     "symbol": "PGSUS",
     "name": "Pegasus",
     "fallbackPrice": 150.0,
-    "active": true
+    "active": true,
+    "sector": "Industrials",
+    "industry": "Airlines",
+    "description": "Pegasus Hava Tasimaciligi Anonim Sirketi, together with its subsidiaries, operates as an airline company. It offers services on short- and medium-haul and point-to-point routes on its domestic and international transit network. The company also provides cargo and training services, as well as operates scheduled flights on international and domestic routes. As of December 31, 2025, it operated 127 aircraft. The company was incorporated in 1990 and is headquartered in Istanbul, Turkey. Pegasus Hava Tasimaciligi Anonim Sirketi is a subsidiary of Esas Holding A.S.",
+    "employees": 9863,
+    "website": "https://www.flypgs.com",
+    "city": "Istanbul",
+    "sharesOutstanding": 500000000
   },
   {
     "symbol": "PETKM",
     "name": "Petkim",
     "fallbackPrice": 19.65,
-    "active": true
+    "active": true,
+    "sector": "Basic Materials",
+    "industry": "Chemicals",
+    "description": "Petkim Petrokimya Holding Anonim Sirketi operates as a petrochemical company in Turkey. It operates through the Petrochemical and Port segments. The company offers thermoplastics, such as low density polyethylene, high density polyethylene, polypropylene, masterbatches, and polyvinyl chloride; fiber raw materials, including acrylonitrile, mono-ethylene glycol, and pure terephthalic acid; aromatics, such as benzene, paraxylene, orthoxylene, and toluene; olefins comprising polymer and chemical purity propylene, and ethylene; and ACN, aromatic, LDPE, EO/EG, ethylene, chlor alkali, plastic processing, PA, PP, PTA, PVC, VCM, and HDPE plants products. Its products are used in plastics, chemicals, packaging, pipes, paints, construction, agriculture, automotive, electronics, textiles, pharmaceuticals, detergents, and cosmetics industries. The company was founded in 1965 and is based in Istanbul, Türkiye. Petkim Petrokimya Holding Anonim Sirketi is a subsidiary of Socar Turkey Petrokimya AS.",
+    "employees": 2299,
+    "website": "https://www.petkim.com.tr",
+    "city": "Istanbul",
+    "sharesOutstanding": 2534400000
   },
   {
     "symbol": "QUAGR",
     "name": "Qua Granite",
     "fallbackPrice": 3.39,
-    "active": true
+    "active": true,
+    "sector": "Industrials",
+    "industry": "Building Products & Equipment",
+    "description": "QUA Granite Hayal Yapi ve Ürünleri Sanayi Ticaret A.S. manufactures, exports, and sells ceramics, floor tiles, tile materials, and granite in Turkey, Europe, the United States, and internationally. It also offers bathroom, kitchen, garden, interior, and exterior tiles. The company was incorporated in 2015 and is based in Aydin, Turkey.",
+    "employees": 1169,
+    "website": "https://qua.com.tr",
+    "city": "Aydin",
+    "sharesOutstanding": 2640000000
   },
   {
     "symbol": "RALYH",
     "name": "RAL Yatırım",
     "fallbackPrice": 268.5,
-    "active": true
+    "active": true,
+    "sector": "Industrials",
+    "industry": "Engineering & Construction",
+    "description": "Ral Yatirim Holding A.S. engages in the construction, energy, properties, and education activities. It carries contracting works for residential projects, as well as large public projects. The company is also involved in the production and sale of renewable and clean energy; and produces calcites. Ral Yatirim Holding A.S. was incorporated in 1976 and is headquartered in Ankara, Turkey.",
+    "employees": 401,
+    "website": "https://www.ralyatirim.com",
+    "city": "Ankara",
+    "sharesOutstanding": 333000000
   },
   {
     "symbol": "REEDR",
     "name": "Reeder",
     "fallbackPrice": 5.97,
-    "active": true
+    "active": true,
+    "sector": "Technology",
+    "industry": "Consumer Electronics",
+    "description": "Reeder Teknoloji Sanayi ve Ticaret Anonim Sirketi produces and sells e-book readers, smart mobile phones and accessories, smart watches, and tablets in Turkey. The company also offers robot vacuum cleaners and smart televisions. Further, it manufactures and trades of computer peripherals and electric vehicles. In addition, it sells its products through online. The company was founded in 2010 and is based in Samsun, Turkey.",
+    "employees": 694,
+    "website": "https://reeder.com.tr",
+    "city": "Samsun",
+    "sharesOutstanding": 950000000
   },
   {
     "symbol": "SARKY",
     "name": "Sarkuysan",
     "fallbackPrice": 25.52,
-    "active": true
+    "active": true,
+    "sector": "Basic Materials",
+    "industry": "Copper",
+    "description": "Sarkuysan Elektrolitik Bakir Sanayi ve Ticaret A.S., together with its subsidiaries, produces and trades in electrolytic copper wires, copper pipes, coppering, and copper alloys in Turkey. It offers electrolytic copper cathode products; oxygen free and ETP wire rods; DHP and ETP copper billets; bare, tin plated, and nickel-plated copper single wires; bare and tin plated, and nickel plated multi wires, as well as bare and tin plated multi wires on braider bobbins; and bare, tin plated, and nickel plated bunched conductors. The company also provides flat wires and profiles, and PV ribbon wires; copper and copper alloy contact wires, and stranded copper and copper alloy conductors; copper tubes and busbars; and copper nuggets. In addition, it offers electrolytic copper conductors; packaging materials and manufacturing machinery; and hermetic compressor parts, scroll compressor parts, nodular and gray iron parts, brake and vented brake discs, hub drums, flywheels, exhaust manifolds, rings, brake cylinders, and brackets and brake security parts. Further, the company is involved in marketing and distribution and real estate rental activities. Its products are used in various industries, including electro techniques, electronic, motor, communication, power generation and distribution, solar and renewable energy, home appliances, measurement instruments, defense, automotive, chemical, construction, heating ventilation, air-conditioning, and sanitary plumbing. The company also exports its products to approximately 80 countries worldwide. Sarkuysan Elektrolitik Bakir Sanayi ve Ticaret A.S. was incorporated in 1972 and is headquartered in Darica, Turkey.",
+    "employees": 1359,
+    "website": "https://www.sarkuysan.com",
+    "city": "Darica",
+    "sharesOutstanding": 1000000000
   },
   {
     "symbol": "SASA",
     "name": "Sasa Polyester",
     "fallbackPrice": 2.3,
-    "active": true
+    "active": true,
+    "sector": "Consumer Cyclical",
+    "industry": "Textile Manufacturing",
+    "description": "Sasa Polyester Sanayi A.S. engages in the production and marketing of polyester fibers and chips, yarns, and related products in Turkey and internationally. The company offers fiberfill, nonwoven, and textile fibers. It also provides texturized yarns, partially oriented yarns, polyethylene terephthalate resin and chips, and purified terephthalic acid. The company was incorporated in 1966 and is headquartered in Adana, Turkey. Sasa Polyester Sanayi A.S. operates as a subsidiary of Erdemoglu Holding Anonim Sirketi.",
+    "employees": 3514,
+    "website": "https://www.sasa.com.tr",
+    "city": "Adana",
+    "sharesOutstanding": 52501931146
   },
   {
     "symbol": "SKBNK",
     "name": "Şekerbank",
     "fallbackPrice": 6.19,
-    "active": true
+    "active": true,
+    "sector": "Financial Services",
+    "industry": "Banks - Regional",
+    "description": "Sekerbank T.A.S. provides agricultural, business, SME, corporate, and retail banking services in Turkey and internationally. It operates through Corporate/Commercial, SME, Retail, Treasury/Investment, and Other segments. The company offers personal loans, ECOcredit, vehicle and home loans, and completing accounts; and credit and individual bank cards, and cash advance. It also provides deposit products, including term and demand deposits; investment products, such as investment accounts, FX trading platforms, repo transactions, treasury bill/government bonds, Eurobonds, gold transactions, stocks, private sector debt instruments, foreign stock exchanges, investment funds, derivative products, and electronic product certificates; gold deposit products; retirement and private banking; home, business, vehicle, health and personal accident, liability, cargo, engineering, agricultural, credit and refundable life, and other insurance products; and card and diamond card campaigns. In addition, the company offers agricultural business and investment loans, as well as family farming; TMO and harvest cards; Harvest POS; small business, enterprise, and SME loans; member merchant/POS; and cash management services. In addition, the company offers financial inclusion and women's banking; corporate loans, including cash and non-cash loans, project financing, financing production, and e-invoice financing; foreign trade and financing; business, commercial debit, visa business, and bonus business cards; and sectoral support and collaboration products. Further, it provides digital banking services, including internet, mobile, open, ATM, and telephone banking; money transfer; digital POS slips; and buying and selling transactions, brokerage, custody, and consultancy services. The company was formerly known as Pancar Kooperatifleri Bankasi A.S. and changed its name to Sekerbank T.A.S. in 1956. Sekerbank T.A.S. was incorporated in 1953 and is headquartered in Istanbul, Turkey.",
+    "employees": 3277,
+    "website": "https://www.sekerbank.com.tr",
+    "city": "Istanbul",
+    "sharesOutstanding": 2500000000
   },
   {
     "symbol": "SOKM",
     "name": "ŞOK Marketler",
     "fallbackPrice": 56.95,
-    "active": true
+    "active": true,
+    "sector": "Consumer Cyclical",
+    "industry": "Department Stores",
+    "description": "Sok Marketler Ticaret A.S., together with its subsidiaries, operates in retail sector in Turkey. Its products portfolio includes ice creams, dairy products, and fruit juices under the MIS brand; spices and dry foods under the Anadolu Mutfagi brand; pasta, soups, cooking aids, flour, semolina, starch, cooking bases, and bouillons under the Piyale brand; sunflower, canola, and corn oil, as well as margarine under the Evin brand; and laundry conditioners, washing powders, general cleaning products, and washing liquids under the Mintax brand. The company also provides tea products under the Deren brand; olives and olive oils under the lio brand; canned foods, gravies, and sauces under the Bizim Vatan brand; chips and dried fruits under the Amigo brand; coffee and coffee whitener under the LEZZCAFE brand; shaving foam and cologne under the adam brand; tissue and toilet paper, and napkin under the Beyaz Güvercin brand; and wet towel, lemon cologne, and liquid soap under the Ebru brand. In addition, the company offers parmak potatoes, potato croquettes, mixed pizza, peas, hamburger Kofte, kayseri ravioli, puff pastry, and grain corn under the inci brand; tahini, tahini halva with a.pistachio, tahini halva with cocoa, tahini halva, and grape molasses under the Taskale brand; kakaolu gofret, kakolu kek, mosaic cake, fruit cake, cocoa cake, fruit cake, and cube wafer under the Peki brand; tuzlu çubuk kraker, pötibor bisküvi, finger bisküvi, susamli çubuk kraker, creamy cocoa, with vanilla cream, and pötibor bisküvi under the TEMPO brand; ice tea peach and limon, cola, lemonade, portakal, kutu gazoz, gazoz, mandalina, and cola light under the Crown brand; and sandwich biscuits, cocoa hazelnut cream, pistachio chocolate, hazelnut chocolate, milk chocolate, chocolate wafer, chocolate wafer, coconut bar, hazelnut chocolate, sandwich biscuits, cocoa hazelnut cream, draje, and gofret findikli under the Karmen brand. The company was founded in 1995 and is based in Istanbul, Turkey.",
+    "employees": 52790,
+    "website": "https://kurumsal.sokmarket.com.tr",
+    "city": "Istanbul",
+    "sharesOutstanding": 593290008
   },
   {
     "symbol": "TAVHL",
     "name": "TAV Havalimanları",
     "fallbackPrice": 281.0,
-    "active": true
+    "active": true,
+    "sector": "Industrials",
+    "industry": "Airports & Air Services",
+    "description": "TAV Havalimanlari Holding A.S., together with its subsidiaries, constructs terminal buildings, and manages and operates terminals or airports in Turkey, Georgia, Kazakhstan, Macedonia, Tunisia, Croatia, Oman, Latvia, Spain, Qatar, Saudi Arabia, and internationally. It operates through Terminal Operations, Catering Operations, Duty Free Operations, Ground Handling and Bus Operations, and Other segments. The Terminal Operations segment engages in the operation of terminal buildings, car parks, general aviation terminals, and parking-apron-taxi way, as well as ground handling operations. Its Catering Operations segment manages food and beverage operations of the terminal for passengers and the terminal personnel. The Duty Free Operations segment sells duty free goods for the international arriving and departing passengers. Its Ground Handling and Bus Operations segment is involved in the provision of traffic, ramp, flight operations, cargo, and other ground handling services for domestic and international flights, as well as the operation of buses. The Other segment provides lounge, IT, security and education, and airline taxi services, as well as software and system services. The company was formerly known as Tepe Akfen Vie Yatirim Yapim ve Isletme A.S. and changed its name to TAV Havalimanlari Holding A.S. in August 2006. TAV Havalimanlari Holding A.S. was founded in 1997 and is based in Istanbul, Turkey.",
+    "employees": 24163,
+    "website": "https://www.tavhavalimanlari.com.tr",
+    "city": "Istanbul",
+    "sharesOutstanding": 363281250
   },
   {
     "symbol": "TKFEN",
     "name": "Tekfen Holding",
     "fallbackPrice": 212.8,
-    "active": true
+    "active": true,
+    "sector": "Basic Materials",
+    "industry": "Agricultural Inputs",
+    "description": "Tekfen Holding Anonim Sirketi, together with its subsidiaries, engages in engineering and contracting, agriculture, and investment businesses in Turkey, CIS, the Middle Eastern countries, and internationally. The company provides turnkey solutions for various facilities, including pipelines, oil and gas terminals, tank farms, oil refineries, offshore oil rigs, pump and compressor stations, power plants, industrial plants, petrochemical plants, highway and metro projects, sports complexes, steel structures, and superstructure and infrastructure projects. It is also involved in the agricultural input production of seeds and saplings, as well as the production of fertilizers. In addition, the company engages in trading, agriculture shipping agent, fruit manufacturing, fertilizer trade, and energy activities. Further, it provides insurance and management services. Tekfen Holding Anonim Sirketi was founded in 1956 and is based in Istanbul, Turkey.",
+    "employees": 10031,
+    "website": "https://www.tekfen.com.tr",
+    "city": "Istanbul",
+    "sharesOutstanding": 356570000
   },
   {
     "symbol": "TOASO",
     "name": "Tofaş",
     "fallbackPrice": 270.75,
-    "active": true
+    "active": true,
+    "sector": "Consumer Cyclical",
+    "industry": "Auto Manufacturers",
+    "description": "Tofas Türk Otomobil Fabrikasi Anonim Sirketi engages in manufacturing, exporting, and selling passenger cars\nand light commercial vehicles in Turkey. It also produces various automotive spare parts, as well as trades in automobile and spare parts; and provides consumer financing and insurance services. The company offers its products under the Peugeout, Citroen, Opel, Fiat, Jeep, Alfa Romeo, DS, Maserati, Ferrari, and Transit brands. It also exports its products. The company was incorporated in 1968 and is headquartered in Istanbul, Turkey.",
+    "employees": 4603,
+    "website": "https://www.tofas.com.tr",
+    "city": "Istanbul",
+    "sharesOutstanding": 500000000
   },
   {
     "symbol": "TRMET",
     "name": "TR Anadolu Metal",
     "fallbackPrice": 140.3,
-    "active": true
+    "active": true,
+    "sector": "Basic Materials",
+    "industry": "Other Industrial Metals & Mining",
+    "description": "TR Anadolu Metal Madencilik Isletmeleri A.S., together with its subsidiaries, engages in the mining activities in Turkey. It explores, develops, and produces copper, lead-zinc, iron, and other mineral deposits. The company provides air transportation, tourism and hotel management, and food and livestock services. The company was founded in 1985 and is headquartered in Ankara, Turkey. The company was formerly known as Koza Anadolu Metal Madencilik Isletmeleri A.S. and change its name to TR Anadolu Metal Madencilik Isletmeleri A.S. in November 2025. TR Anadolu Metal Madencilik Isletmeleri A.S. is a subsidiary of Ipek Dogal Enerji Kaynaklari Arastirma ve Uretim A.S.",
+    "employees": 2687,
+    "website": "https://tranadolumetal.com",
+    "city": "Ankara",
+    "sharesOutstanding": 388080000
   },
   {
     "symbol": "TRENJ",
     "name": "TR Doğal Enerji",
     "fallbackPrice": 105.3,
-    "active": true
+    "active": true,
+    "sector": "Basic Materials",
+    "industry": "Gold",
+    "description": "Ipek Dogal Enerji Kaynaklari Arastirma ve Üretim A.S., together with its subsidiaries, engages in the research, development, and production of oil, natural gas, and energy and energy resources in Turkey. It is involved in construction; air transportation; tourism and hotel management; and food and livestock businesses. Ipek Dogal Enerji Kaynaklari Arastirma ve Üretim A.S. was formerly known as Ipek Matbaacilik Sanayi ve Ticaret Anonim Sirketi and changed its name to Ipek Dogal Enerji Kaynaklari Arastirma ve Üretim A.S. in June 2011. The company was incorporated in 1968 and is based in Ankara, Turkey. Ipek Dogal Enerji Kaynaklari Arastirma ve Üretim A.S. operates as a subsidiary of Koza Holding A.S.",
+    "employees": 2688,
+    "website": "https://trdogalenerji.com",
+    "city": "Ankara",
+    "sharesOutstanding": 259785561
   },
   {
     "symbol": "TUKAS",
     "name": "Tukaş",
     "fallbackPrice": 2.01,
-    "active": true
+    "active": true,
+    "sector": "Consumer Defensive",
+    "industry": "Packaged Foods",
+    "description": "Tukas Gida Sanayi ve Ticaret A.S., together with its subsidiaries, manufactures and sells food products in Turkey and internationally. The company offers tomato and pepper pastes, grated tomatoes, pasta sauces, spreads, and condiments; roasted and canned products; boiled products; and pickles, ready to serve foods, jams, and olives, as well as catering products. It sells its products under the Tukas brand name. Tukas Gida Sanayi ve Ticaret A.S. was founded in 1962 and is headquartered in Izmir, Turkey.",
+    "employees": 733,
+    "website": "https://www.tukas.com.tr",
+    "city": "Izmir",
+    "sharesOutstanding": 4500000000
   },
   {
     "symbol": "TCELL",
     "name": "Turkcell",
     "fallbackPrice": 103.1,
-    "active": true
+    "active": true,
+    "sector": "Communication Services",
+    "industry": "Telecom Services",
+    "description": "Turkcell Iletisim Hizmetleri A.S., together with its subsidiaries, engages in establishing and operating a global system for mobile communications (GSM) network in Turkey, Belarus, Turkish Republic of Northern Cyprus, Germany, and the Netherlands. It operates through the Turkcell Turkiye, Turkcell International, and Techfin segments. The company is involved in information technology, value added GSM, and entertainment investment, as well as research and development, digital and insurance agency, property investments, electricity energy trade, and wholesale and retail electricity sales activities. It also provides telecommunications, television, and content; digitalization; sales, delivery, and digital sales; consumer financing; cloud solutions; online radio, television, and on-demand streaming; telecommunications infrastructure; electronic payment; and develop software products and services. In addition, the company offers customer relations and human resources management; directory assistance; payment services and e-money; internet search engine and browser; venture capital investment fund; meal coupons and cards; data processing; data center and cloud; programming and technical support; and digital education services. Further, it provides training software developers. Turkcell Iletisim Hizmetleri A.S. was incorporated in 1993 and is headquartered in Istanbul, Turkey.",
+    "website": "https://www.turkcell.com.tr",
+    "city": "Istanbul",
+    "sharesOutstanding": 2176442555
   },
   {
     "symbol": "TUPRS",
     "name": "Tüpraş",
     "fallbackPrice": 378.0,
-    "active": true
+    "active": true,
+    "sector": "Energy",
+    "industry": "Oil & Gas Refining & Marketing",
+    "description": "Türkiye Petrol Rafinerileri A.S., together with its subsidiaries, engages in the procurement and refining of crude oil, petroleum, and chemical products in Turkey and internationally. It operates through Refining and Electricity segments. The company is involved in purchasing, selling, importing, exporting, storing, and marketing petroleum products, liquid petroleum gas, and natural gas. Its products include liquid petroleum gases, fuel oils, gasoline, diesel, base oils, waxes, extracts, and bitumen and bitumen binders, as well as, white spirits, clarified oils, petroleum coke, and sulphur products. The company also engages in the transportation of crude oil and petroleum products; operation of factories and facilities in petrochemical and related industries; trading of crude oil and petroleum products; electricity and steam production and trade; air, sea, land, and rail transportation; mooring and tug services; ship chartering and freight trading activities; electric vehicle charging stations; real estate; and technology and venture investments. Türkiye Petrol Rafinerileri A.S. was incorporated in 1983 and is headquartered in Istanbul, Turkey.",
+    "employees": 6378,
+    "website": "https://www.tupras.com.tr",
+    "city": "Istanbul",
+    "sharesOutstanding": 1926795598
   },
   {
     "symbol": "TRALT",
     "name": "Türk Altın",
     "fallbackPrice": 53.65,
-    "active": true
+    "active": true,
+    "sector": "Basic Materials",
+    "industry": "Gold",
+    "description": "Turk Altin Isletmeleri A.S. engages in the gold mining operations in Turkey. It owns and operates seven mines in the regions of Ovacik-Bergama-Izmir, Çukuralan-Izmir, Kaymaz-Eskisehir, Mastra-Gümüshane, and Himmetdede-Kayseri. The company was formerly known as Koza Altin Isletmeleri A.S. and changed its name to Turk Altin Isletmeleri A.S. in November 2025. Turk Altin Isletmeleri A.S. was incorporated in 1989 and is headquartered in Ankara, Turkey.",
+    "employees": 2550,
+    "website": "https://www.turkaltinisletmeleri.com",
+    "city": "Ankara",
+    "sharesOutstanding": 3202500000
   },
   {
     "symbol": "THYAO",
     "name": "Türk Hava Yolları",
     "fallbackPrice": 301.5,
-    "active": true
+    "active": true,
+    "sector": "Industrials",
+    "industry": "Airlines",
+    "description": "Türk Hava Yollari Anonim Ortakligi provides air transport and aircraft technical maintenance services in Turkey and internationally. The company offers domestic and international passenger and cargo air transportation services; repair and maintenance; technical and infrastructure support services related to aviation sector; informatics and technology; cargo and courier transportation; support services; security services; payment systems; health services; management of various investment projects; cabin interior production; catering services; aviation ground handling services; aviation fuel services; It is also involved engine maintenance; and reverse thrust and engine nacelle services, as well as sports activities. The company was incorporated in 1933 and is headquartered in Istanbul, Turkey.",
+    "employees": 66758,
+    "website": "https://www.turkishairlines.com",
+    "city": "Istanbul",
+    "sharesOutstanding": 1372283353
   },
   {
     "symbol": "GARAN",
     "name": "Garanti BBVA",
     "fallbackPrice": 132.9,
-    "active": true
+    "active": true,
+    "sector": "Financial Services",
+    "industry": "Banks - Regional",
+    "description": "Turkiye Garanti Bankasi A.S. provides various banking products and services in Turkey. It offers current, savings, time deposit, e-savings, YUVAM, NET, ELMA, overdraft, and gold accounts; SME general purpose, auto, mortgage, commercial, foreign currency spot, installment loans, and project loans, as well as IBOR reforms and foreign trade financing; investment funds, stocks, derivatives, Garanti BBVA e-trader platform, time barred deposit and investment lists, and derivative instruments; credit and debit cards, BonusFlas, and POS and e-commerce products; and insurance and pension products. The company also provides payment systems and services; private banking services; banking services for salary payments/entrepreneurship and women entrepreneurs; leasing fleet factoring services; investment banking and financing services; mobile and internet banking services; and ATM and cash management services. The company was founded in 1946 and is headquartered in Istanbul, Turkey. Turkiye Garanti Bankasi A.S. is a subsidiary of Banco Bilbao Vizcaya Argentaria, S.A.",
+    "employees": 23288,
+    "website": "https://www.garantibbva.com.tr",
+    "city": "Istanbul",
+    "sharesOutstanding": 4200000000
   },
   {
     "symbol": "HALKB",
     "name": "Halkbank",
     "fallbackPrice": 34.64,
-    "active": true
+    "active": true,
+    "sector": "Financial Services",
+    "industry": "Banks - Regional",
+    "description": "Türkiye Halk Bankasi A.S., together with its subsidiaries, offers various banking products and services. The company provides deposit products, including e-deposits, deposit accounts with investment funds, child accounts, accumulated deposit accounts, producing deposit accounts, current TL accounts, time deposit TL/FX accounts, current FX accounts, gold deposit accounts, and safety deposit boxes. It also offers personal, auto, mortgage, and overdraft loans; letter of credit, commercial, and cash and non-cash loans; medium and long-term, and investment and project loans; loans from international financial institutions; and foreign trade loans. In addition, the company provides various cards and payment services; insurance products; derivative products; and investment products comprising investment funds, Fon24, domestic government bonds, bank bills and bonds, eurobonds, repos, forwards, options, swaps, and secured options, as well as cash management services. Further, it offers Internet, mobile, and SMS banking services. Additionally, the company is involved in investment in capital market instruments based on real estate, real estate projects, and rights based on real estate; financial leasing; factoring; financing; savings; financing and asset management; and capital markets activities. Türkiye Halk Bankasi A.S. operates domestic and foreign branches in Cyprus and Bahrain and representative offices in England and Iran. Türkiye Halk Bankasi A.S. was founded in 1933 and is headquartered in Istanbul, Turkey. Türkiye Halk Bankasi A.S. operates as a subsidiary of Turkey Wealth Fund.",
+    "employees": 22000,
+    "website": "https://www.halkbank.com.tr",
+    "city": "Istanbul",
+    "sharesOutstanding": 7184778041
   },
   {
     "symbol": "ISCTR",
     "name": "İş Bankası",
     "fallbackPrice": 12.58,
-    "active": true
+    "active": true,
+    "sector": "Financial Services",
+    "industry": "Banks - Regional",
+    "description": "Türkiye Is Bankasi A.S., together with its subsidiaries, provides various banking products and services to individuals and businesses in Turkey. It operates through Corporate/Commercial Banking; Retail/Private Banking; Treasury Operations and Investment Activities; Insurance and Reinsurance Activities; and Other segments. The company offers personal loans comprising land, education, overdraft, and yacht loans; car and home loans; credit and debit cards; deposit and investment products, such as term deposits, term TL, term FX, term gold, non-term deposits, gold, equities, futures and options markets, mutual funds, Eurobonds, and debt instruments; digital banking; compulsory earthquake, motor vehicle compulsory third party liability, comprehensive motor, health, personal accident, workplace, life, critical illness, credit card payment protecting, and loan payment protection insurance products; pension funds; and expat, private, and startup banking services. It also provides cash and non-cash loans; letters of guarantee and credit; agricultural banking; and foreign trade transactions, trading, and financing services. In addition, the company offers project financing, working capital and investment loans, cash management, checks and promissory notes, bill collection, payroll payments, investment accounts, tax collection, and other banking products; overdraft accounts, money transfer, and safe deposit boxes; individual retirement plans, life and non-life insurance services, and reinsurance services; securities trading, spot and forward trading, syndication, and securitization services; derivative transactions, such as forwards, swaps, futures and options; brokerage, venture capital, and real estate investment trust services; investment banking; and financial leasing, factoring, asset management, portfolio management, and payment services. Türkiye Is Bankasi A.S. was founded in 1924 and is headquartered in Istanbul, Turkey.",
+    "employees": 20719,
+    "website": "https://www.isbank.com.tr",
+    "city": "Istanbul",
+    "sharesOutstanding": 24999970000
   },
   {
     "symbol": "TSKB",
     "name": "TSKB",
     "fallbackPrice": 11.01,
-    "active": true
+    "active": true,
+    "sector": "Financial Services",
+    "industry": "Banks - Regional",
+    "description": "Türkiye Sinai Kalkinma Bankasi A.S. operates as a development and investment bank in Turkey. The company offers corporate loans for renewable energy, industrial investments, energy and resource efficiency, women's employment and equal opportunity, environmental investments, investments in developing regions, research and development and innovation, occupational health and safety, education and health investments, and working capital financing. It also provides project finance for energy generation and power plants, including hydroelectric, geothermal, wind, solar, biomass, and combined cycle natural gas plants; electricity and natural gas distribution projects; mergers and acquisitions; logistics, transportation, and telecommunications; and public - private partnership projects. In addition, the company offers other loan products, such as financial leasing, foreign trade finance, letter of guarantees/external guarantees/letter of credits, export credits / Eximbank aval credits, and country loans. Further, the company provides corporate finance products and services consisting of public offering preparation and brokerage, debt instrument issues, and mergers and acquisitions advisory; derivatives products comprising forward contracts, options, caps and floors, swap transactions, and swaptions; derivative transactions; brokerage for stock and bonds trading; currency exchange, repo, warrant, and foreign derivative transactions; securities loans; and portfolio management and investment consulting services. Additionally, it provides financial planning and strategy, feasibility, valuation, and restructuring services, as well as sectoral analysis studies; engineering and technical consultancy services; and financial technical advisory, real estate appraisal, economic research, and sustainability consultancy services. Türkiye Sinai Kalkinma Bankasi A.S. was incorporated in 1950 and is headquartered in Istanbul, Turkey.",
+    "employees": 689,
+    "website": "https://www.tskb.com.tr",
+    "city": "Istanbul",
+    "sharesOutstanding": 2800000000
   },
   {
     "symbol": "TURSG",
     "name": "Türkiye Sigorta",
     "fallbackPrice": 6.13,
-    "active": true
+    "active": true,
+    "sector": "Financial Services",
+    "industry": "Insurance - Property & Casualty",
+    "description": "Türkiye Sigorta A.S. operates as a non-life insurance company in Turkey. It offers auto and non-auto accident, fire, transportation, engineering, health, agriculture, liability, financial losses, credit, and legal protection insurance products. Türkiye Sigorta A.S. was formerly known as Günes Sigorta Anonim Sirketi and changed its name to Türkiye Sigorta A.S. in August 2020. The company was incorporated in 1957 and is based in Istanbul, Turkey. Türkiye Sigorta A.S. operates as a subsidiary of TVF Finansal Yatirimlar AS.",
+    "employees": 1545,
+    "website": "https://www.turkiyesigorta.com.tr",
+    "city": "Istanbul",
+    "sharesOutstanding": 20000000000
   },
   {
     "symbol": "SISE",
     "name": "Şişecam",
     "fallbackPrice": 39.52,
-    "active": true
+    "active": true,
+    "sector": "Industrials",
+    "industry": "Conglomerates",
+    "description": "Türkiye Sise Ve Cam Fabrikalari A.S. manufactures and sells glass products. The company operates through six segments: Architectural Glass, Industrial Glass, Glass Packaging, Glassware, Chemicals, and Energy and Others. The company offers architectural glass products, such as flat, patterned, mirror, laminated, coated, solar power, and home appliance glass products; automotive glass products; and energy glass products. It also produces and sells glassware, as well as glass packaging products for various industries, including food, beverages, pharmaceuticals, and cosmetics; and retails glass, ceramics, porcelain, and wood and steel tableware and kitchenware, and home decoration items under the Life and Boutique concepts through Pasabahçe stores located in Turkey and international markets, as well as through online sales channels. In addition, the company produces and sells soda ash and chromium chemicals, vitamin K3 derivatives, and sodium metabisulfite to food, textiles, mining, water treatment, construction chemicals, and leather industries; glass fibers; and manufactures glass for automobiles, and light and heavy commercial vehicles. Further, it is involved in the mining of silica sand, feldspar, limestone, dolomite, kaolin, and quartzite; generation and sale of electricity; wholesale and trading of natural gas; glass recycling and waste collection activities; and production and trading of soda goods, as well as offers finance and investment, and insurance agency services. The company operates in Turkey, Germany, Italy, Bulgaria, Romania, Slovakia, Hungary, Bosnia and Herzegovina, Russia, Georgia, Ukraine, Egypt, India, the United States. The company was founded in 1935 and is headquartered in Istanbul, Turkey. Türkiye Sise Ve Cam Fabrikalari A.S. operates as a subsidiary of Türkiye Is Bankasi A.S.",
+    "employees": 21801,
+    "website": "https://www.sisecam.com",
+    "city": "Istanbul",
+    "sharesOutstanding": 2992436056
   },
   {
     "symbol": "VAKBN",
     "name": "VakıfBank",
     "fallbackPrice": 31.52,
-    "active": true
+    "active": true,
+    "sector": "Financial Services",
+    "industry": "Banks - Regional",
+    "description": "Türkiye Vakiflar Bankasi Türk Anonim Ortakligi, together with its subsidiaries, provides corporate, commercial, SME, agricultural, and modern banking products and services in Turkey and internationally. It offers time, demand, and term deposits accounts; mortgage, car, personal, and private banking yacht loans; housing, comprehensive, motor, compulsory traffic, travel and complementary health, and compulsory earthquake insurance; and individual pension contract, private pension agreement, and life insurance products. The company also provides investment products, such as investment funds, Government Bonds and treasury bills, eurobond, bank bonds, gold trading, VakifBank Gold, stocks, VIOP, safe deposit boxes, options, dual currency deposit, contingent option, currency swap, and forward agreements. In addition, it offers export / import transactions, foreign currency transfer, Eximbank Loans, and foreign trade solutions; money transfer services; and factoring and leasing services, as well as digital banking services. The company was incorporated in 1954 and is headquartered in Istanbul, Turkey.",
+    "employees": 19040,
+    "website": "https://www.vakifbank.com.tr",
+    "city": "Istanbul",
+    "sharesOutstanding": 9915921523
   },
   {
     "symbol": "TTKOM",
     "name": "Türk Telekom",
     "fallbackPrice": 53.35,
-    "active": true
+    "active": true,
+    "sector": "Communication Services",
+    "industry": "Telecom Services",
+    "description": "Türk Telekomünikasyon Anonim Sirketi, together with its subsidiaries, operates as an integrated telecommunication company in Turkey. The company operates in two segments, Fixed Line and Mobile. The company offers mobile, Internet, phone and TV products and services under the Türk Telekom brand. It also provides PSTN and wholesale broadband services; retail internet services, IPTV, satellite TV, Web TV, mobile TV, and smart TV services; convergence technologies; IT solutions; online education software; call center services; project development and corporate venture capital services; electric supply and sales services; combined facilities support services; wholesale data and capacity services; and financial technology services. In addition, the company offers TV broadcasting and VOD services; telecommunications devices; payment and e-money services; and web portal and computer programming services. The company was founded in 1840 and is headquartered in Ankara, Turkey. Türk Telekomünikasyon Anonim Sirketi is a subsidiary of LYY Telekomünikasyon A.S.",
+    "employees": 31756,
+    "website": "https://www.turktelekom.com.tr",
+    "city": "Ankara",
+    "sharesOutstanding": 3500000000
   },
   {
     "symbol": "ULKER",
     "name": "Ülker",
     "fallbackPrice": 89.95,
-    "active": true
+    "active": true,
+    "sector": "Consumer Defensive",
+    "industry": "Confectioners",
+    "description": "Ülker Bisküvi Sanayi A.S., together with its subsidiaries, manufactures, markets, and sells biscuits, chocolates, chocolate coated biscuits, wafers, and cakes in Turkey and internationally. The company also offers spread chocolate, crackers, Bebe biscuits, light snacks, gum, gift chocolates and candies, kid's snacks, and food supplements. It is also involved in trading and investment services. The company was founded in 1944 and is headquartered in Istanbul, Turkey.",
+    "employees": 7333,
+    "website": "https://www.ulker.com.tr",
+    "city": "Istanbul",
+    "sharesOutstanding": 369275855
   },
   {
     "symbol": "VESTL",
     "name": "Vestel",
     "fallbackPrice": 21.8,
-    "active": true
+    "active": true,
+    "sector": "Consumer Cyclical",
+    "industry": "Furnishings, Fixtures & Appliances",
+    "description": "Vestel Elektronik Sanayi ve Ticaret Anonim Sirketi, together with its subsidiaries, produces and sells brown and white goods in Turkey, Europe, and internationally. It operates in two segments, Consumer, Mobility Electronics, and Other Income; and Household Appliances. The company offers television, headphones, speakers, and gaming monitors; white goods, including refrigerators, deep freezers, washing and drying machines, dishwashers, freestanding ovens, stovetops, mini ovens, microwave ovens, aspirators, water dispensers, and wine coolers; and built-in products, such as built-in sets, ovens, cooktops, hoods, microwave ovens, dishwashers, and refrigerators. It also provides brooms, coffee machines, beverage preparation, mix and go, mixer and chopper, electric cookers, vacuum machines, irons, personal care, and retro small home appliances; air conditioners, water heaters, heaters, and air purifiers; smart products comprising smart watch, scale, light, plug, camera, bulb, doorbell, and tracking band, as well as air purifiers; electric vehicle charging stations and Vestel mobility ecosystem; and Vestel & Asli Filinta retro series, cleaning and care products, spare parts and accessories, product families, and additional assurance and maintenance services. The company sells its products through online and its stores. The company was incorporated in 1983 and is headquartered in Istanbul, Turkey. Vestel Elektronik Sanayi ve Ticaret Anonim Sirketi is a subsidiary of Zorlu Holding A.S.",
+    "employees": 11822,
+    "website": "https://www.vestel.com.tr",
+    "city": "Istanbul",
+    "sharesOutstanding": 335456275
   },
   {
     "symbol": "YKBNK",
     "name": "Yapı Kredi",
     "fallbackPrice": 36.66,
-    "active": true
+    "active": true,
+    "sector": "Financial Services",
+    "industry": "Banks - Regional",
+    "description": "Yapi ve Kredi Bankasi A.S., together with its subsidiaries, provides commercial banking and financial products and services in Turkey and internationally. It operates through three segments: Retail Banking; Corporate Banking; and Commercial and SME Banking. The Retail Banking segment offers banking products and services, such as card payment systems; individual portfolio; blue class; private and gold banking; general purpose, commercial installments, and auto loans; mortgages; time and demand deposits; investment accounts; life and non-life insurance products; wealth management activities; and payroll services. This segment also provides time deposit products, mutual funds, foreign exchange, and gold and equity trading services; and personal art, inheritance, real estate, tax, education, and philanthropic advisory services. The Corporate, Commercial, and SME Banking segment offers corporate banking for large-scale, international, and multinational companies; commercial banking for medium-sized enterprises; and SME banking, such as SME loans and banking packages products for SME companies. This segment also provides working capital, trade, and project finance, as well as domestic and international non-cash loans comprising letters of credit and guarantee, cash management, and internet banking services; and financial and equity management advisory services. It offers custody, leasing, investment and portfolio management, and factoring services. The company also provides money transfer; debit, world, business cards; home loan; checks and promissory notes services; and SME loans. It serves customers through ATMs; and telephone, Internet, and mobile banking services. The was incorporated in 1944 and is headquartered in Istanbul, Turkey. Yapi ve Kredi Bankasi A.S. operates as a subsidiary of Koç Holding A.S.",
+    "employees": 15660,
+    "website": "https://www.yapikredi.com.tr",
+    "city": "Istanbul",
+    "sharesOutstanding": 8447051000
   },
   {
     "symbol": "ZOREN",
     "name": "Zorlu Enerji",
     "fallbackPrice": 2.28,
-    "active": true
+    "active": true,
+    "sector": "Utilities",
+    "industry": "Utilities - Renewable",
+    "description": "Zorlu Enerji Elektrik Üretim A.S., together with its subsidiaries, engages in the trading, distribution, retailing, and sales of electricity in Turkey and internationally. It is also involved in wholesale purchase of electrical energy and capacity and sales activities; engineering and consultancy activities for energy projects; operation and maintenance activities for energy projects and other; maintenance, repair, installation, and sale of charging stations; rental, leasing and other services of motorized light land vehicles and cars without adrives; aggregation, balancing service and other services; solar panel production and inverter sales; carbon selling; and panel production. Zorlu Enerji Elektrik Üretim A.S. was founded in 1993 and is based in Istanbul, Turkey.",
+    "employees": 1797,
+    "website": "https://www.zorluenerji.com.tr",
+    "city": "Istanbul",
+    "sharesOutstanding": 5000000000
   }
 ]
