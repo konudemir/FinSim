@@ -1,11 +1,11 @@
 # FinSim
 - FinSim is a financial stock simulator that lets the user act as a trader on a live order book against other users and market maker bots.
 - FinSim does not mirror real life stock prices. Stocks follow the *shape* of real world moves taken from a price feed, but the price levels are FinSim's own and drift away from the real ones on purpose.
-- FinSim has two different language settings easily configurable: English and Turkish. Just click on the EN / TUR button to switch.
+- FinSim has two different language settings easily configurable: English and Turkish. Just click on the EN / TR button to switch.
 
 ## Tech Stack
 * .NET 10.0 for backend
-* React and Vite for Frontend
+* React, TypeScript and Vite for Frontend
 * Tailwind CSS for the styling
 * .NET BackgroundService for price movements, order matching and calculations done in intervals
 * PostgreSQL for database
@@ -155,7 +155,8 @@ valid for an hour. **Admin** means the same token, but the account also needs th
 | Method | Path | Description | Auth |
 |---|---|---|---|
 | GET | `/api/instruments` | List every instrument (stocks and funds) | No |
-| GET | `/api/instruments/board` | The stock board, one page at a time. Takes `sort` (`symbol_asc`, `symbol_desc`, `price_asc`, `price_desc`), an optional `q` that matches symbol or name, and `cursor` / `limit` | No |
+| GET | `/api/instruments/board` | The stock board, one page at a time. Takes `sort` (`symbol_asc`, `symbol_desc`, `price_asc`, `price_desc`), an optional `q` that matches symbol or name, and `page` / `limit` | No |
+| GET | `/api/instruments/admin-board` | The same board without the filters, so inactive instruments and funds show up too | Admin |
 | GET | `/api/instruments/by-id/{id}` | The instrument of the specified id| No |
 | GET | `/api/instruments/{symbol}` | Gives the stock who has that symbol, for example `THYAO`. Returns 404 if no stock has it | No |
 | GET | `/api/instruments/{id}/history` | Price history of one instrument, `from` and `to` are optional | No |
@@ -169,10 +170,10 @@ valid for an hour. **Admin** means the same token, but the account also needs th
 | Method | Path | Description | Auth |
 |---|---|---|---|
 | GET | `/api/users/balance` | Returns free cash balance, locked cash balance and the total of the two | Yes |
-| GET | `/api/transactions` | The trades the user was on either side of, newest first, one page at a time. Takes `cursor` and `limit` | Yes |
+| GET | `/api/transactions` | The trades the user was on either side of, newest first, one page at a time. Takes `page` and `limit` | Yes |
 | GET | `/api/users/portfolio` | The stocks that the user holds, includes an average cost for each different stock. A negative quantity is a short position. | Yes |
+| GET | `/api/users/portfolio/board` | The same holdings as a board, one page at a time. Takes the same `sort`, `q`, `page` and `limit` as the stock board | Yes |
 | GET | `/api/users/pnl-history` | One account value point per day for the last `days` days, 90 if you don't say | Yes |
-| GET | `/api/transactions` | The 50 most recent trades the user was on either side of | Yes |
 
 ### Orders
 
@@ -182,14 +183,14 @@ valid for an hour. **Admin** means the same token, but the account also needs th
 | POST | `/api/order/limit` | Places a limit order. Stays pending until something on the other side crosses it, checked on each tick. Takes an optional stop price and an optional expiry | Yes |
 | POST | `/api/order/{id}/cancel` | Cancels a pending order and release the reserved cash (buy) or shares (sell) | Yes |
 | POST | `/api/order/{id}/replace` | Places an expired order again as a brand new one, validated from scratch | Yes |
-| GET | `/api/order` | The 50 most recent orders | Yes |
-| GET | `/api/order` | The user's orders, newest first, one page at a time. `open=true` gives the resting ones, `open=false` the settled ones, omitted gives both. Takes `cursor` and `limit` | Yes |
+| GET | `/api/order` | The user's orders, newest first, one page at a time. `open=true` gives the resting ones, `open=false` the settled ones, omitted gives both. Takes `page` and `limit` | Yes |
 
 ### Favorites
 
 | Method | Path | Description | Auth |
 |---|---|---|---|
 | GET | `/api/favorites` | The instruments the user starred | Yes |
+| GET | `/api/favorites/board` | The starred instruments as a board, one page at a time. Takes `sort`, `page` and `limit` | Yes |
 | POST | `/api/favorites/{instrumentId}` | Star an instrument | Yes |
 | DELETE | `/api/favorites/{instrumentId}` | Unstar it | Yes |
 
@@ -207,6 +208,7 @@ valid for an hour. **Admin** means the same token, but the account also needs th
 | Method | Path | Description | Auth |
 |---|---|---|---|
 | GET | `/api/admin/users` | Every user with their cash, position value and net deposits | Admin |
+| GET | `/api/admin/users/board` | The same list one page at a time. `bots=true` gives the bot accounts instead of the real ones. Takes `sort` (`name_asc`, `name_desc`), an optional `q`, `page` and `limit` | Admin |
 | GET | `/api/admin/book/{instrumentId}` | The open order book of one instrument, both sides | Admin |
 | POST | `/api/admin/users/{id}/cash` | Adds or removes free cash. Counted as a deposit, not as profit | Admin |
 | POST | `/api/admin/users/{id}/shares` | Adds or removes shares as an inventory correction, no cash moves | Admin |
@@ -245,7 +247,8 @@ be counted twice. This result is shown on the frontend to show the user how the 
 There is a real order book. Every order, from a user or from a bot, rests on it until something on
 the other side crosses it. On each tick the matcher walks each instrument's book with the bids sorted
 highest price first and the asks lowest price first, FIFO inside the same price. The fill happens at
-the *resting* order's price, so whoever was there first gets their price.
+the *resting* order's price, so whoever was there first gets their price. When neither side is
+resting, two market orders meeting on the same tick, it fills at the price the tick started from.
 
 An order can fill in pieces. A big order eats several smaller ones on the other side and sits at
 `PartiallyFilled` until the rest of it goes.
@@ -277,15 +280,30 @@ what their shorts are worth, all of their short positions are bought back at the
 their pending orders on those instruments are cancelled. There is no warning and no partial call.
 
 ### Bots
-25 market maker bots run in the background so a new user isn't staring at an empty book. Each one
+50 market maker bots run in the background so a new user isn't staring at an empty book. Each one
 quotes near the current price on whichever side it can afford, in small sizes on purpose so that a
-user's order fills across several of them. Their spread and size come from their own id, so a bot
-behaves the same way across restarts without storing anything.
+user's order fills across several of them. Their spread, size and role come from their own id, so a
+bot behaves the same way across restarts without storing anything.
+
+A bot can't see the book, so aggression is a pricing choice and not a reaction. Most quotes sit off
+the current price and rest, and a minority are priced through it, which is the only way a bot ever
+crosses. Most bots coin-flip their direction when both sides are open. A small fixed slice of them
+are contrarians who lean the other way on purpose, buying into a falling market and selling into a
+rising one, and they cross far more often, because leaning against a move only counts if the order
+actually trades. A bot that holds nothing in a name would otherwise have to buy every time, so a
+bounded share of that flow opens a small short instead. Without it the whole crowd is a one-way bid
+on nearly every instrument.
+
+Real markets concentrate volume in a handful of names, so a hot list picked from the instrument ids
+takes most of the random picks. That alone would starve the rest purely by chance, so a few
+guaranteed actions round-robin through the cold ones every tick and every instrument gets touched
+regardless of luck.
 
 They go through the exact same OrderService a user does, with no shortcuts, which is also the point:
-if a bot can do it, the path is tested. Quotes that the price has drifted away from get cancelled and
-rewritten instead of resting forever. Everything about them is in the `Bots` block of appsettings,
-including `Enabled` if you want the book to yourself.
+if a bot can do it, the path is tested. A resting quote only frees up by filling, so a bot close to
+its open order cap cancels its own quotes furthest from the current price to make room instead of
+filling up and going silent. Everything about them is in the `Bots` block of appsettings, including
+`Enabled` if you want the book to yourself.
 
 ### Funds
 A fund is an instrument whose price comes from a basket of stocks rather than from a feed. Its price
@@ -310,19 +328,24 @@ a separate net deposits figure so that free money doesn't show up on the chart a
 
 ### Paging
 
-The list endpoints don't take a page number. They take a cursor: a short base64 string holding the
-sort it came from, the sort key of the last row on the page, and that row's id. The next page is
-"everything after this row" rather than "skip the first N", so inserting an order while you're on
-page 3 doesn't push a row you already saw down onto page 4.
+The list endpoints take a `page` and a `limit`. `page` is 1-based and `limit` is clamped, 25 if you
+don't say and 100 at most, so a client can't ask for the whole table in one request. Anything below
+1 falls back to the default rather than erroring, because a bad page number isn't worth failing a
+board over.
 
-The id is in there because the sort key alone isn't unique — two orders can share a timestamp, and
-plenty of stocks share a price. Without it the boundary between two pages would be ambiguous and a
-row could be repeated or skipped. The sort discriminator is in there so a cursor from one query
-can't be used against another; a cursor that doesn't match is ignored and you get page one back.
+Every response comes back in the same shape: the rows, the page and page size they were drawn with,
+and the total row count for the same filter. The client works out the page count, and whether there
+is a next or previous page, from those.
 
-Each query asks the database for one row more than the page size. If that extra row comes back
-there's another page, and it's dropped before the response goes out — which is how `nextCursor`
-gets decided without a `COUNT` over the whole table. A null `nextCursor` means the end.
+Each query runs twice against the same filter: once to count and once to fetch the page. The count
+deliberately runs against the unsorted query, since there's no reason for Postgres to sort rows it
+is only going to count, and both see the same filters so the total always describes the set the
+page came from.
+
+Every sort ends in the row's id. Without that tiebreak the ordering isn't total — two orders can
+share a timestamp and plenty of stocks share a price — and a row that compares equal to another can
+land on two different pages, or on none. Symbol sorts collate as Turkish explicitly, so the order
+the database returns matches the order the frontend renders.
 
 ### Colliding
 
@@ -338,9 +361,10 @@ collides, the entire tick rolls back and the same orders get matched again on th
 
 ### Unit Testing
 
-You can run the tests with `dotnet test tests/FinSim.Tests`. There are 111 tests covering the cash
+You can run the tests with `dotnet test tests/FinSim.Tests`. There are 163 tests covering the cash
 checks, the cash and share reservations, the average cost calculation, the matching engine and its
-book scenarios, short positions and their margin, forced liquidation and the P&L history.
+book scenarios, taker pricing, short positions and their margin, forced liquidation, the P&L history
+and the paging of every board.
 
 The test project references only Application and Domain.
 ### Exception Handling

@@ -208,7 +208,7 @@ public class BotEngine
         if (canSell) return (OrderDirection.Sell, false);
         if (canBuy)
         {
-            var shortChance = _config.GetValue("Bots:ShortChance", 0.35);
+            var shortChance = _config.GetValue("Bots:ShortChance", 0.4);
             if (Rng.NextDouble() < shortChance) return (OrderDirection.Sell, true);
             return (OrderDirection.Buy, false);
         }
