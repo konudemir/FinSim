@@ -64,11 +64,18 @@ namespace FinSim.Application.Services
 
                 foreach (var o in book)
                 {
-                    if (o.StopPrice is null || o.ImmediateOrCancel) continue;
-                    if (reference > o.StopPrice.Value) continue;
+                    if (o.StopPrice is null) continue;
 
-                    o.Price = Math.Round(reference * (1m - MarketRules.CollarBand), 2, MidpointRounding.AwayFromZero);
-                    o.ImmediateOrCancel = true;
+                    if (!o.Triggered)
+                    {
+                        if (reference > o.StopPrice.Value) continue;
+                        o.Triggered = true;
+                    }
+
+                    var next = Math.Round(reference * (1m - MarketRules.CollarBand), 2, MidpointRounding.AwayFromZero);
+                    if (next == o.Price) continue;
+
+                    o.Price = next;
                     o.UpdatedAt = DateTimeOffset.UtcNow;
                     touched.Add(new OrderOutcome(o.UserId, ToDto(o, instrument, null)));
                 }
@@ -77,11 +84,11 @@ namespace FinSim.Application.Services
 
                 // Bids: highest price first, then FIFO. Asks: lowest first, then FIFO.
                 var bids = book.Where(o => o.Direction == OrderDirection.Buy  && o.Price is not null
-                                        && (o.StopPrice is null || o.ImmediateOrCancel))
-                               .OrderByDescending(o => o.Price!.Value).ThenBy(o => o.CreatedAt).ToList();
+                                        && (o.StopPrice is null || o.Triggered))
+                            .OrderByDescending(o => o.Price!.Value).ThenBy(o => o.CreatedAt).ToList();
                 var asks = book.Where(o => o.Direction == OrderDirection.Sell && o.Price is not null
-                                        && (o.StopPrice is null || o.ImmediateOrCancel))
-                               .OrderBy(o => o.Price!.Value).ThenBy(o => o.CreatedAt).ToList();
+                                        && (o.StopPrice is null || o.Triggered))
+                            .OrderBy(o => o.Price!.Value).ThenBy(o => o.CreatedAt).ToList();
 
                 int bi = 0, ai = 0;
 
@@ -105,10 +112,12 @@ namespace FinSim.Application.Services
                     // Cross? highest bid must meet lowest ask.
                     if (bid.Price!.Value < ask.Price!.Value) break;
 
+                    static bool IsTaker(Order o) => o.ImmediateOrCancel || (o.StopPrice is not null && o.Triggered);
+
                     Order? maker =
-                        bid.ImmediateOrCancel && ask.ImmediateOrCancel ? null
-                        : bid.ImmediateOrCancel ? ask
-                        : ask.ImmediateOrCancel ? bid
+                        IsTaker(bid) && IsTaker(ask) ? null
+                        : IsTaker(bid) ? ask
+                        : IsTaker(ask) ? bid
                         : (bid.CreatedAt <= ask.CreatedAt ? bid : ask);
 
                     var fillPrice = maker?.Price!.Value ?? reference;   // both takers → frozen reference

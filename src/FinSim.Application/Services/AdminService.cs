@@ -231,7 +231,7 @@ public class AdminService
         }
 
         bool InBook(Order o) => o.Price is not null
-                            && (o.StopPrice is null || o.ImmediateOrCancel);
+                            && (o.StopPrice is null || o.Triggered);
 
         return new OrderBookDto(
             instrument.Id, instrument.Symbol!, instrument.CurrentPrice,
