@@ -10,6 +10,8 @@ namespace FinSim.Application.Interfaces
         Task<List<Order>> GetPendingByUserAsync(Guid userId, CancellationToken ct);
         Task<List<Order>> GetPendingByInstrumentAsync(Guid instrumentId, CancellationToken ct);
         Task<List<Order>> GetOpenBookAsync(Guid instrumentId, CancellationToken ct);
+        Task<PagedRows<Order>> GetOpenBookPagedAsync(
+            Guid instrumentId, OrderDirection direction, int page, int pageSize, CancellationToken ct);
         Task<Order?> GetByIdAsync(Guid id, CancellationToken ct);
         Task<List<Order>> GetExpiredPendingAsync(DateTimeOffset now, CancellationToken ct);
         void Add(Order order);

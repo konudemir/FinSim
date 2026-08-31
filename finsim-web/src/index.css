@@ -2395,6 +2395,37 @@ input  { font-family: var(--mono); }
     linear-gradient(180deg, transparent, color-mix(in srgb, var(--panel) 40%, transparent) 100%),
     repeating-linear-gradient(180deg, transparent, transparent 24px, color-mix(in srgb, var(--edge) 35%, transparent) 25px);
 }
+.instrument-fullscreen-body:has(.admin-book-panel) .instrument-fullscreen-chart {
+  flex: 0 0 auto;
+  height: 380px;
+}
+
+.admin-book-panels {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  gap: 12px;
+  margin: 16px 10px 0;
+}
+.admin-book-panel {
+  flex: 1 1 0;
+  min-width: 0;
+  padding: 14px 16px;
+  border-radius: 10px;
+  border: var(--rail);
+}
+.admin-book-panel h3 {
+  margin: 0 0 10px;
+  font-size: 13px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.admin-book-panel h3.up { color: var(--rise); }
+.admin-book-panel h3.down { color: var(--fall); }
+
+@media (max-width: 860px) {
+  .admin-book-panels { flex-direction: column; }
+}
 
 .fullscreen-spark {
   position: absolute;

@@ -119,6 +119,17 @@ type OrderUpdate = {
 
 export type Paged<T> = { items: T[]; page: number; pageSize: number; totalCount: number }
 
+type BookOrder = {
+  id: string
+  username: string
+  direction: string
+  price: number | null
+  quantity: number
+  filledQuantity: number
+  status: string
+  createdAt: string
+}
+
 // "42,5" -> 42.5 ; "" / "42." / "abc" -> NaN
 const parseDecimal = (s: string) => parseFloat(s.replace(',', '.'))
 
@@ -237,6 +248,10 @@ function useOrderPage(open: boolean) {
   return usePagedList<Order>('/api/order', { open }, PAGE_SIZE)
 }
 
+function useAdminBookPage(instrumentId: string, direction: 'Buy' | 'Sell') {
+  return usePagedList<BookOrder>(`/api/admin/book/${instrumentId}/orders`, { direction }, PAGE_SIZE)
+}
+
 function useBoardPage(sort: string, q: string) {
   return usePagedList<Instrument>('/api/instruments/board', { sort, q }, MARKET_PAGE_SIZE)
 }
@@ -247,6 +262,53 @@ function usePortfolioBoardPage(sort: string, q: string) {
 
 function useFavoritesBoardPage(sort: string) {
   return usePagedList<Instrument>('/api/favorites/board', { sort }, PAGE_SIZE)
+}
+
+function AdminBookSide({ title, side, book }: {
+  title: string
+  side: 'up' | 'down'
+  book: ReturnType<typeof usePagedList<BookOrder>>
+}) {
+  const { t } = useLang()
+  return (
+    <div className="admin-book-panel">
+      <h3 className={side}>{title}</h3>
+      <div className="panel-scroll">
+        <table className="ledger">
+          <thead>
+            <tr>
+              <th>{t('admin.book.user')}</th>
+              <th className="num">{t('admin.book.price')}</th>
+              <th className="num">{t('ledger.qty')}</th>
+              <th>{t('ledger.status')}</th>
+            </tr>
+          </thead>
+          <tbody>
+            {book.items.map(o => (
+              <tr key={o.id}>
+                <td>{o.username}</td>
+                <td className="num">{o.price != null ? fmt(o.price) : '—'}</td>
+                <td className="num">
+                  {o.filledQuantity > 0
+                    ? <>{o.filledQuantity}<span style={{ opacity: .5 }}> / {o.quantity}</span></>
+                    : o.quantity}
+                </td>
+                <td>
+                  <span className={`pill ${o.status.toLowerCase()}`}>
+                    {o.status === 'PartiallyFilled' ? t('status.partiallyFilled') : t('status.pending')}
+                  </span>
+                </td>
+              </tr>
+            ))}
+            {book.items.length === 0 && (
+              <tr><td colSpan={4}>{t('admin.book.empty')}</td></tr>
+            )}
+          </tbody>
+        </table>
+      </div>
+      <PageNav page={book.page} totalPages={book.totalPages} hasNext={book.hasNext} hasPrevious={book.hasPrevious} goTo={book.goTo} />
+    </div>
+  )
 }
 
 function OrderTable({ orders, pending, now, onCancel, onReplace, replacing, minRows = PAGE_SIZE }: {
@@ -1492,6 +1554,7 @@ const loadHistory = (i: Instrument) => {
           onToggleFavorite={() => toggleFavorite(fullscreenInstrument)}
           onClose={() => navigate(bgPathRef.current)}
           renderTicketFields={renderTicketFields}
+          isAdmin={!!balance?.isAdmin}
         />
       )}
     </div>
@@ -1957,7 +2020,7 @@ function fmtCompactTRY(n: number): string {
 }
 
 function InstrumentFullscreen({
-  i, pos, tick, history, isFavorite, onToggleFavorite, onClose, renderTicketFields,
+  i, pos, tick, history, isFavorite, onToggleFavorite, onClose, renderTicketFields, isAdmin,
 }: {
   i: Instrument
   pos: PortfolioItem | undefined
@@ -1967,9 +2030,17 @@ function InstrumentFullscreen({
   onToggleFavorite: () => void
   onClose: () => void
   renderTicketFields: (idPrefix: string) => React.ReactNode
+  isAdmin: boolean
 }) {
   const { t, lang } = useLang()
   const [chartMode, setChartMode] = useState<'area' | 'candle'>('area')
+  const buyBook = useAdminBookPage(i.id, 'Buy')
+  const sellBook = useAdminBookPage(i.id, 'Sell')
+
+  useEffect(() => {
+    if (isAdmin) { buyBook.goTo(1); sellBook.goTo(1) }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isAdmin, i.id])
 
   // The panel is its own scroll surface — the board underneath must not
   // move while it's open, even if a wheel scroll spills past the panel edge.
@@ -2122,6 +2193,13 @@ function InstrumentFullscreen({
             )}
             {history.length < 2 && <div className="fs-chart-empty">{t('fs.loading')}</div>}
           </div>
+
+          {isAdmin && (
+            <div className="admin-book-panels">
+              <AdminBookSide title={t('admin.book.bids')} side="up" book={buyBook} />
+              <AdminBookSide title={t('admin.book.asks')} side="down" book={sellBook} />
+            </div>
+          )}
         </div>
 
         <div className="ticket-in fullscreen-ticket">

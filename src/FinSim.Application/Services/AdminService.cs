@@ -239,6 +239,24 @@ public class AdminService
             Levels(book.Where(o => o.Direction == OrderDirection.Sell && InBook(o)), descending: false));
     }
 
+    public async Task<PagedResult<BookOrderDto>?> GetOrderBookOrdersAsync(
+        Guid instrumentId, OrderDirection direction, int? page, int? limit, CancellationToken ct)
+    {
+        var instrument = await _instruments.GetByIdAsync(instrumentId, ct);
+        if (instrument is null) return null;
+
+        var pageSize = Paging.ClampLimit(limit);
+        var p = Paging.ClampPage(page);
+
+        var result = await _orders.GetOpenBookPagedAsync(instrumentId, direction, p, pageSize, ct);
+
+        var dtos = result.Items.Select(o => new BookOrderDto(
+            o.Id, o.User.UserName!, o.Direction.ToString(),
+            o.Price, o.Quantity, o.FilledQuantity, o.Status.ToString(), o.CreatedAt)).ToList();
+
+        return new PagedResult<BookOrderDto>(dtos, p, pageSize, result.Total);
+    }
+
     public async Task<PriceReloadResult?> ReloadPriceAsync(Guid instrumentId, CancellationToken ct)
     {
         var inst = await _instruments.GetByIdAsync(instrumentId, ct);

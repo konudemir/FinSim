@@ -1,6 +1,7 @@
 using System.Security.Claims;
 using FinSim.Application.Dtos;
 using FinSim.Application.Services;
+using FinSim.Domain.Models.Enums;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -23,6 +24,21 @@ namespace FinSim.Controllers
         {
             var book = await _admin.GetOrderBookAsync(instrumentId, ct);
             return book is null ? NotFound("InstrumentNotFound") : Ok(book);
+        }
+
+        [HttpGet("book/{instrumentId:guid}/orders")]
+        public async Task<IActionResult> GetOrderBookOrders(
+            Guid instrumentId,
+            [FromQuery] string direction,
+            [FromQuery] int? page,
+            [FromQuery] int? limit,
+            CancellationToken ct)
+        {
+            if (!Enum.TryParse<OrderDirection>(direction, true, out var dir))
+                return BadRequest("InvalidDirection");
+
+            var result = await _admin.GetOrderBookOrdersAsync(instrumentId, dir, page, limit, ct);
+            return result is null ? NotFound("InstrumentNotFound") : Ok(result);
         }
 
         [HttpGet("users")]

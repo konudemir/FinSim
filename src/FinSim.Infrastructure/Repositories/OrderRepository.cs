@@ -20,6 +20,28 @@ namespace FinSim.Infrastructure.Repositories
                .OrderBy(o => o.CreatedAt)
                .ToListAsync(ct);
 
+        public async Task<PagedRows<Order>> GetOpenBookPagedAsync(
+            Guid instrumentId, OrderDirection direction, int page, int pageSize, CancellationToken ct)
+        {
+            var q = _db.Orders
+                .Where(o => o.InstrumentId == instrumentId
+                         && o.Direction == direction
+                         && (o.Status == OrderStatus.Pending
+                          || o.Status == OrderStatus.PartiallyFilled));
+
+            var total = await q.CountAsync(ct);
+
+            var items = await q
+                .Include(o => o.User)
+                .OrderByDescending(o => o.CreatedAt)
+                .ThenByDescending(o => o.Id)
+                .Skip((page - 1) * pageSize)
+                .Take(pageSize)
+                .ToListAsync(ct);
+
+            return new PagedRows<Order>(items, total);
+        }
+
         public Task<List<Order>> GetPendingByUserAsync(Guid userId, CancellationToken ct) =>
             _db.Orders
             .Where(o => o.UserId == userId

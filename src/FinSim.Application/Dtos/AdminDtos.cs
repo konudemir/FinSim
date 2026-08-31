@@ -19,6 +19,16 @@ public record OrderBookDto(
     List<BookLevelDto> Bids,
     List<BookLevelDto> Asks);
 
+public record BookOrderDto(
+    Guid Id,
+    string Username,
+    string Direction,
+    decimal? Price,
+    int Quantity,
+    int FilledQuantity,
+    string Status,
+    DateTimeOffset CreatedAt);
+
 public class AdjustCashRequest
 {
     public decimal Delta { get; set; }

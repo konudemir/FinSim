@@ -283,6 +283,11 @@ const tr = {
   'admin.applyShares': 'Payları güncelle',
   'admin.cashApplied': 'Bakiye güncellendi.',
   'admin.sharesApplied': 'Paylar güncellendi.',
+  'admin.book.bids': 'Alış Emirleri',
+  'admin.book.asks': 'Satış Emirleri',
+  'admin.book.user': 'Kullanıcı',
+  'admin.book.price': 'Fiyat',
+  'admin.book.empty': 'Açık emir yok.',
 
   'alert.liquidatedTitle': 'POZİSYON ZORUNLU KAPATILDI',
   'alert.liquidatedBody': '{symbol}: marj çağrısı nedeniyle {qty} lotluk açığa satış {amount} karşılığında zorla kapatıldı.',
@@ -584,6 +589,11 @@ const en: typeof tr = {
   'admin.applyShares': 'Update shares',
   'admin.cashApplied': 'Balance updated.',
   'admin.sharesApplied': 'Shares updated.',
+  'admin.book.bids': 'Bids',
+  'admin.book.asks': 'Asks',
+  'admin.book.user': 'User',
+  'admin.book.price': 'Price',
+  'admin.book.empty': 'No open orders.',
 
   'alert.liquidatedTitle': 'POSITION FORCE-CLOSED',
   'alert.liquidatedBody': '{symbol}: your {qty}-lot short was force-covered for {amount} on a margin call.',
