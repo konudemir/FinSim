@@ -168,8 +168,15 @@ namespace FinSim.Application.Services
             var owner = await _users.GetByIdAsync(o.UserId, ct);
             var pos   = await GetPositionAsync(positionCache, o.UserId, o.InstrumentId, ct);
 
-            if (o.LockedAmount > 0 && owner is not null)
+            if (o.LockedAmount > 0)
             {
+                if (owner is null)
+                {
+                    _logger.LogError(
+                        "Cannot cancel order {OrderId}: user {UserId} not found, {Amount} left locked",
+                        o.Id, o.UserId, o.LockedAmount);
+                    return;
+                }
                 owner.LockedCashBalance -= o.LockedAmount;
                 owner.FreeCashBalance   += o.LockedAmount;
                 if (o.Direction == OrderDirection.Sell)
