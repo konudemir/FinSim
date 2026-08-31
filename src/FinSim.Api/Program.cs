@@ -147,4 +147,7 @@ app.UseCors();
 app.UseAuthorization();
 app.MapControllers();
 app.MapHub<PriceHub>("/hubs/prices");
+app.UseDefaultFiles();
+app.UseStaticFiles();
+app.MapFallbackToFile("index.html");
 app.Run();
