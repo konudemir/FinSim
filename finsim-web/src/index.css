@@ -17,7 +17,7 @@
 :root, [data-theme="night"] {
   --ink:    #000000;   /* page — true black */
   --sunk:   #050708;
-  --panel:  #141B24;   /* tiles sit clearly above the page */
+  --panel:  #06090c;   /* tiles sit clearly above the page */
   --raise:  #202B37;
   --edge:   #35434F;   /* hairlines you can actually see */
   --bone:   #EFE9DC;
@@ -26,7 +26,7 @@
   --rise:   #45E09A;
   --fall:   #FF7878;
   --flat:   #8B98A5;
-  --amber:  #FFC04D;
+  --amber:  #ffde4d;
 
   --lift:   inset 0 1px 0 rgba(255, 255, 255, 0.08);
   --glow:   rgba(255, 192, 77, 0.09);

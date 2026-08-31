@@ -177,8 +177,23 @@ public class MatchingEngineTests
 
         Assert.Empty(touched);
         Assert.Equal(OrderStatus.Pending, stopOrder.Status);
-        Assert.False(stopOrder.ImmediateOrCancel);
+        Assert.False(stopOrder.Triggered);
         Assert.Equal(OrderStatus.Pending, bid.Status);
+    }
+    [Fact]
+    public async Task TriggeredStop_WithNoCounterparty_RestsInsteadOfCancelling()
+    {
+        _ctx.GivenUser();
+        _ctx.GivenPosition(_ctx.UserId, quantity: 10, averageCost: 90m, locked: 10);
+
+        var stopOrder = _ctx.GivenPendingInQueue(
+            OrderDirection.Sell, 10, 95m, ownerId: _ctx.UserId, stopPrice: 90m);
+
+        await _ctx.Engine.MatchAsync(InstrumentAt(89m), _ct);
+
+        Assert.Equal(OrderStatus.Pending, stopOrder.Status);
+        Assert.True(stopOrder.Triggered);
+        Assert.False(stopOrder.ImmediateOrCancel);
     }
 
     [Fact]

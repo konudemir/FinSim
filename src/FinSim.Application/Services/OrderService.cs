@@ -89,6 +89,8 @@ public class OrderService
             if (direction != OrderDirection.Sell) return (OrderResult.InvalidStopPrice, null);
 
             stop = Money(raw);
+            if (expiryDuration <= TimeSpan.Zero)
+                expiryDuration = TimeSpan.FromDays(30);
             if (stop <= 0 || stop >= price || stop >= instrument.CurrentPrice)
                 return (OrderResult.InvalidStopPrice, null);
         }

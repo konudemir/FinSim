@@ -28,6 +28,7 @@ namespace FinSim.Domain.Models
         public int FilledQuantity { get; set; }
         public decimal AvgPrice { get; set; }
         public bool ImmediateOrCancel { get; set; }
+        public bool Triggered { get; set; }
 
     }
 }
