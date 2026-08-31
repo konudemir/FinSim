@@ -1958,12 +1958,13 @@ input  { font-family: var(--mono); }
 }
 
 .gate-submit {
+  position: relative;
   display: flex;
   align-items: center;
   justify-content: center;
   gap: 8px;
   border: none;
-  border-radius: 2px;
+  border-radius: 4px;
   background: var(--amber);
   color: var(--on-trade);
   font-family: var(--mono);
@@ -1971,13 +1972,30 @@ input  { font-family: var(--mono); }
   font-weight: 700;
   letter-spacing: 0.14em;
   text-transform: uppercase;
-  padding: 12px;
+  padding: 13px;
   margin-top: 4px;
-  transition: filter 0.15s, transform 0.15s;
+  overflow: hidden;
+  box-shadow: 0 10px 24px -10px color-mix(in srgb, var(--amber) 60%, transparent);
+  transition: filter 0.15s, transform 0.15s, box-shadow 0.2s;
 }
 
-.gate-submit:hover:not(:disabled) { filter: brightness(1.08); }
-.gate-submit:active:not(:disabled) { transform: translateY(1px); }
+.gate-submit::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(115deg, transparent 20%, rgba(255, 255, 255, 0.45) 42%, transparent 60%);
+  transform: translateX(-120%);
+  transition: transform 0.6s ease;
+}
+
+.gate-submit:hover:not(:disabled)::after { transform: translateX(120%); }
+
+.gate-submit:hover:not(:disabled) {
+  filter: brightness(1.08);
+  transform: translateY(-1px);
+  box-shadow: 0 14px 30px -10px color-mix(in srgb, var(--amber) 70%, transparent);
+}
+.gate-submit:active:not(:disabled) { transform: translateY(1px); box-shadow: 0 6px 14px -8px color-mix(in srgb, var(--amber) 60%, transparent); }
 
 .gate-submit .arrow { transition: transform 0.15s; }
 .gate-submit:hover:not(:disabled) .arrow { transform: translateX(2px); }
@@ -2454,3 +2472,30 @@ input  { font-family: var(--mono); }
   font-family: var(--mono); font-size: 11px; color: var(--mute);
 }
 .pnl-foot strong { color: var(--bone); font-weight: 500; }
+
+/* ── global polish ───────────────────────────────────────── */
+
+/* a very faint sheen drifting across the FinSim wordmark's accent */
+.mark em, .gate-wordmark em {
+  --shine-opacity: 0.3; /* 0 = no shine, 1 = full white-gold flare */
+  background: linear-gradient(
+    100deg,
+    var(--amber) 42%,
+    color-mix(in srgb, #fff3d0 calc(var(--shine-opacity) * 100%), var(--amber)) 50%,
+    var(--amber) 58%
+  );
+  background-size: 320% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  animation: wordmark-sheen 9s ease-in-out infinite;
+}
+
+@keyframes wordmark-sheen {
+  0%, 100% { background-position: 0% 0; }
+  50%      { background-position: 100% 0; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mark em, .gate-wordmark em { animation: none; }
+}
