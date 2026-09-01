@@ -2,6 +2,7 @@
 - FinSim is a financial stock simulator that lets the user act as a trader on a live order book against other users and market maker bots.
 - FinSim does not mirror real life stock prices. Stocks follow the *shape* of real world moves taken from a price feed, but the price levels are FinSim's own and drift away from the real ones on purpose.
 - FinSim has two different language settings easily configurable: English and Turkish. Just click on the EN / TR button to switch.
+- There is also a night and a day theme next to it. The choice is remembered in the browser, and the first visit follows whatever the operating system asks for.
 
 ## Tech Stack
 * .NET 10.0 for backend
@@ -20,7 +21,7 @@ This project consists of 5 different folders.
 finsim-web which contains all of the frontend software.
 and 4 different .NET projects inside /src:
 #### FinSim.Api:
-This is the project that runs the whole thing. It includes program.cs, the background workers and the controllers.
+This is the project that runs the whole thing. It includes program.cs, the background workers, the controllers and the error middleware.
 It can reference the Application and Infrastructure projects and also it can reference Domain through Application too.
 #### FinSim.Application:
 This is the project that has Dto's, interfaces for repositories inside Infrastructure and Services.
@@ -31,7 +32,7 @@ This project has the classes inside the Models folder. It has the declarations a
 It also contains some enums inside Models/Enums.
 Domain cannot reference any other projects than itself.
 #### FinSim.Infrastructure
-This project contains the DBContext for FinSim, data migrations, the repository implementations and some Services like EmailSender, JwtTokenService and the Yahoo price source.
+This project contains the DBContext for FinSim, data migrations, the repository implementations, the instrument seed data and some Services like EmailSender, JwtTokenService and the Yahoo price source.
 It can reference Application and Domain.
 
 The tests live in a separate /tests folder, outside of /src.
@@ -157,7 +158,7 @@ valid for an hour. **Admin** means the same token, but the account also needs th
 | GET | `/api/instruments` | List every instrument (stocks and funds) | No |
 | GET | `/api/instruments/board` | The stock board, one page at a time. Takes `sort` (`symbol_asc`, `symbol_desc`, `price_asc`, `price_desc`), an optional `q` that matches symbol or name, and `page` / `limit` | No |
 | GET | `/api/instruments/admin-board` | The same board without the filters, so inactive instruments and funds show up too | Admin |
-| GET | `/api/instruments/by-id/{id}` | The instrument of the specified id| No |
+| GET | `/api/instruments/by-id/{id}` | The instrument of the specified id, company profile included | No |
 | GET | `/api/instruments/{symbol}` | Gives the stock who has that symbol, for example `THYAO`. Returns 404 if no stock has it | No |
 | GET | `/api/instruments/{id}/history` | Price history of one instrument, `from` and `to` are optional | No |
 | GET | `/api/instruments/index-history` | The last `points` values of the FinSim index, 120 if you don't say | No |
@@ -209,7 +210,8 @@ valid for an hour. **Admin** means the same token, but the account also needs th
 |---|---|---|---|
 | GET | `/api/admin/users` | Every user with their cash, position value and net deposits | Admin |
 | GET | `/api/admin/users/board` | The same list one page at a time. `bots=true` gives the bot accounts instead of the real ones. Takes `sort` (`name_asc`, `name_desc`), an optional `q`, `page` and `limit` | Admin |
-| GET | `/api/admin/book/{instrumentId}` | The open order book of one instrument, both sides | Admin |
+| GET | `/api/admin/book/{instrumentId}` | The open order book of one instrument, both sides, summed into price levels | Admin |
+| GET | `/api/admin/book/{instrumentId}/orders` | The individual orders behind one side of that book, newest first, one page at a time. Takes `direction` (`Buy` or `Sell`), `page` and `limit` | Admin |
 | POST | `/api/admin/users/{id}/cash` | Adds or removes free cash. Counted as a deposit, not as profit | Admin |
 | POST | `/api/admin/users/{id}/shares` | Adds or removes shares as an inventory correction, no cash moves | Admin |
 | POST | `/api/admin/instruments/{id}/reload-price` | Pulls the real price for that instrument right now instead of waiting for the poll | Admin |
@@ -223,6 +225,21 @@ tick gets an `OrderUpdate` event with those orders, their new balance and their 
 the screen doesn't have to poll for a fill.
 
 ## How It Works
+
+### The instrument list
+The instruments aren't typed into the code, they come from `seed.json` next to the DbSeeder, which
+holds 100 BIST symbols. On startup the seeder inserts whatever is missing, asking the feed for a
+real opening price per symbol and falling back to the price written in the file when Yahoo doesn't
+answer, so an outage can't fill the database with made up levels. Symbols that are already there are
+left alone, which is what makes the seeder safe to run on every boot.
+
+Each row also carries a company profile — sector, industry, city, employees, website, shares
+outstanding and a paragraph of description — shown on the instrument page. Only static descriptors
+are stored. Anything derived from a price is deliberately left out, because our prices drift from the
+real ones and the number would be wrong the moment the sim runs. Shares outstanding is a count and
+not a price, so the market cap on the page is computed against FinSim's own price. Rows that predate
+these columns get backfilled once, and only where the field is still empty, so an admin's edit
+survives the next deploy.
 
 ### Price movements
 Prices do not move randomly. A background service runs every 15 seconds and two things push a price:
@@ -262,8 +279,10 @@ whatever was reserved and marks it `Cancelled`. You can give it an expiry, and o
 you can re-place it with `replace` — which builds a brand new order and runs every check again,
 because between placement and expiry the cash may be gone or the instrument may be closed.
 
-A sell can also carry a stop price. Once the market falls to it, the order turns into a market sell
-on that same tick.
+A sell can also carry a stop price. It sits out of the book until the market falls to it, and the
+tick that trips it flips the order's `Triggered` flag and turns it into a market sell right there.
+The flag is stored rather than recomputed, so a stop that has already fired stays fired and the
+book views know not to show an untriggered stop as resting depth.
 
 Two things the walk refuses to do: fill outside a ±5% collar around the price at the start of the
 tick, so a single silly quote can't drag a stock anywhere, and match a user against themselves.
@@ -324,7 +343,9 @@ A second background worker writes one account valuation per user per day, which 
 reads. It's kept away from the price tick on purpose: it's a full scan over every user and it must not
 be able to roll a price tick back. Writing is idempotent, it asks who is missing today's row rather
 than remembering when it last ran, so restarts are harmless. Admin cash and share grants are added to
-a separate net deposits figure so that free money doesn't show up on the chart as profit.
+a separate net deposits figure so that free money doesn't show up on the chart as profit. Those grants
+are also written to their own audit table, kept away from orders and transactions because a cash
+top-up has no instrument and a share grant has no cash leg.
 
 ### Paging
 
@@ -347,6 +368,10 @@ share a timestamp and plenty of stocks share a price — and a row that compares
 land on two different pages, or on none. Symbol sorts collate as Turkish explicitly, so the order
 the database returns matches the order the frontend renders.
 
+The board pages leave the description paragraph out of the projection. It's around 1.5KB per
+instrument and a list of rows has no use for it, so it only goes over the wire when a single
+instrument is asked for.
+
 ### Colliding
 
 A user can hit cancel at the exact moment the worker decides their limit order matches. Both read
@@ -361,10 +386,10 @@ collides, the entire tick rolls back and the same orders get matched again on th
 
 ### Unit Testing
 
-You can run the tests with `dotnet test tests/FinSim.Tests`. There are 163 tests covering the cash
+You can run the tests with `dotnet test tests/FinSim.Tests`. There are 164 tests covering the cash
 checks, the cash and share reservations, the average cost calculation, the matching engine and its
-book scenarios, taker pricing, short positions and their margin, forced liquidation, the P&L history
-and the paging of every board.
+book scenarios, taker pricing, short positions and their margin, forced liquidation, the P&L history,
+net deposits and the paging of every board.
 
 The test project references only Application and Domain.
 ### Exception Handling
@@ -372,3 +397,9 @@ The test project references only Application and Domain.
 Expected failures come back from the services as result enums, and the controllers turn them into
 short codes like `InsufficientFunds` rather than sentences. The frontend maps those codes to text. This leads to
 the user getting the error in their own selected language without the API knowing about it.
+
+Anything the services didn't expect — a null reference, a database timeout — is caught by a
+middleware instead of reaching the client as a stack trace. The real exception goes to the log and
+the caller gets `ServerError` with a trace id it can quote back, plus the actual detail while in
+development. A request the browser abandoned mid-flight isn't treated as an error, and a response
+that already started writing is left alone, because the headers are gone by then.
