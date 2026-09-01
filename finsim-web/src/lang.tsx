@@ -74,7 +74,7 @@ const tr = {
   'sort.priceAsc': 'Fiyat düşük→yüksek',
 
   'ledger.title': 'Emir Defteri',
-  'ledger.note': 'son 50 kayıt',
+  'ledger.note': ' Tümü',
   'ledger.empty': 'Henüz emir yok. Tahtadan bir hisse seç, aşağıdan adet gir.',
   'ledger.symbol': 'Hisse',
   'ledger.type': 'Tip',
@@ -159,7 +159,7 @@ const tr = {
   'srv.OrderTypeNotSupported': 'Bu emir tipi bu işlemi desteklemiyor.',
   'srv.InvalidExpiry': 'Geçerlilik süresi negatif olamaz.',
 
-  'gate.tag': 'Financial Terminal',
+  'gate.tag': 'Stock Market Simulator',
   'gate.username': 'Kullanıcı adı',
   'gate.password': 'Parola',
   'gate.email': 'E-posta',
@@ -206,7 +206,7 @@ const tr = {
   'ledger.spent': 'Tutar',
 
   'tx.title': 'İşlem Geçmişi',
-  'tx.note': 'son 50 kayıt',
+  'tx.note': 'Tümü',
   'tx.empty': 'Henüz gerçekleşmiş işlem yok.',
   'tx.symbol': 'Hisse',
   'tx.side': 'Yön',
@@ -292,9 +292,9 @@ const tr = {
   'alert.liquidatedTitle': 'POZİSYON ZORUNLU KAPATILDI',
   'alert.liquidatedBody': '{symbol}: marj çağrısı nedeniyle {qty} lotluk açığa satış {amount} karşılığında zorla kapatıldı.',
   'alert.marginCall': 'Marj çağrısı riski: açığa satış pozisyonun(un) bakım marjına yaklaşıyor. Zamanında karşılanmazsa otomatik olarak kapatılır.',
-  'pending.title': 'Open Orders',
-  'pending.note': 'all',
-  'pending.empty': 'No open orders.',
+  'pending.title': 'Açık Emirler',
+  'pending.note': 'Tümü',
+  'pending.empty': 'Açık Emir Yok.',
   
   'pnl.title': 'Kâr/Zarar Geçmişi',
   'pnl.live': 'canlı',
@@ -379,7 +379,7 @@ const en: typeof tr = {
   'sort.priceAsc': 'Price low→high',
 
   'ledger.title': 'Order Book',
-  'ledger.note': 'last 50 records',
+  'ledger.note': 'All',
   'ledger.empty': 'No orders yet. Pick a stock from the board and enter a quantity below.',
   'ledger.symbol': 'Symbol',
   'ledger.type': 'Type',
@@ -465,7 +465,7 @@ const en: typeof tr = {
   'srv.InvalidExpiry': 'Expiry cannot be negative.',
 
 
-  'gate.tag': 'Financial Terminal',
+  'gate.tag': 'Stock Market Simulator',
   'gate.username': 'Username',
   'gate.password': 'Password',
   'gate.email': 'Email',
@@ -511,7 +511,7 @@ const en: typeof tr = {
   'ledger.spent': 'Amount',
 
   'tx.title': 'Transaction History',
-  'tx.note': 'last 50 records',
+  'tx.note': 'All',
   'tx.empty': 'No transactions yet.',
   'tx.symbol': 'Symbol',
   'tx.side': 'Side',
