@@ -1673,8 +1673,8 @@ input  { font-family: var(--mono); }
   stroke-width: 2.25;
   stroke-linecap: round;
   stroke-linejoin: round;
-  stroke-dasharray: 1600;
-  stroke-dashoffset: 1600;
+  stroke-dasharray: 1;
+  stroke-dashoffset: 1;
   animation: hero-draw 2.4s cubic-bezier(0.16, 0.84, 0.44, 1) 0.15s forwards;
 }
 
