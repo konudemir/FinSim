@@ -1525,14 +1525,6 @@ const loadHistory = (i: Instrument) => {
         goTo={favoritesBoard.goTo}
       />
 
-      {(view === 'portfolio' || view === 'market') && (
-      <div className="ticket">
-        <div className="wrap ticket-in">
-          {renderTicketFields('ticket')}
-        </div>
-      </div>
-      )}
-
       {stockSymbol && !instrumentsLoaded && (
         <div className="market-page">{t('fs.loading')}</div>
       )}
