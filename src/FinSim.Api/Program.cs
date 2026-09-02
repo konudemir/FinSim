@@ -41,6 +41,7 @@ builder.Services.AddIdentityCore<User>()
     .AddDefaultTokenProviders();
 
 builder.Services.AddHostedService<MarketTickWorker>();
+builder.Services.AddHostedService<OrderCleanupWorker>();
 builder.Services.AddScoped<BotEngine>();
 builder.Services.AddScoped<IEmailSender, EmailSender>();
 builder.Services.AddScoped<ExternalPriceEngine>();
