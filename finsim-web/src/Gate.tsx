@@ -19,7 +19,6 @@ const fmt = (n: number) =>
 function useLiveMarket() {
   const [instruments, setInstruments] = useState<LiveInstrument[] | null>(null)
   const [indexValue, setIndexValue] = useState<number | null>(null)
-  const [marketMove, setMarketMove] = useState(0)
   const [indexHistory, setIndexHistory] = useState<number[]>([])
   const baseline = useRef<Record<string, number>>({})
 
@@ -32,10 +31,13 @@ function useLiveMarket() {
         for (const i of res.data) baseline.current[i.symbol] ??= i.currentPrice
       })
       .catch(() => {})
-    api.get<number[]>('/api/instruments/index-history?points=120')
+    api.get<number[]>('/api/instruments/index-history?points=30')
       .then(res => {
         if (cancelled) return
-        setIndexHistory(prev => [...res.data, ...prev])
+        setIndexHistory(prev => [...res.data, ...prev].slice(-30))
+        if (res.data.length > 0) {
+          setIndexValue(prev => prev ?? res.data[res.data.length - 1])
+        }
       })
       .catch(() => {})
     return () => { cancelled = true }
@@ -49,7 +51,6 @@ function useLiveMarket() {
 
     conn.on('PriceUpdate', (payload: PriceUpdate) => {
       setIndexValue(payload.indexValue)
-      setMarketMove(payload.marketMove)
       setIndexHistory(prev => [...prev, payload.indexValue].slice(-30))
       setInstruments(prev => {
         if (!prev) return prev
@@ -64,7 +65,7 @@ function useLiveMarket() {
     return () => { conn.stop() }
   }, [])
 
-  return { instruments, indexValue, marketMove, indexHistory, baseline }
+  return { instruments, indexValue, indexHistory, baseline }
 }
 
 function HeroChart({ data, rising }: { data: number[]; rising: boolean }) {
@@ -99,6 +100,7 @@ function HeroChart({ data, rising }: { data: number[]; rising: boolean }) {
       <polygon points={`${pad},${h - pad} ${line} ${w - pad},${h - pad}`} fill="url(#heroFill)" />
       <polyline
         points={line}
+        pathLength={1}
         className="hero-line"
         fill="none"
         stroke={stroke}
@@ -144,9 +146,12 @@ function GateTape({ instruments, baseline }: { instruments: LiveInstrument[] | n
 export default function GateLayout({ children }: { children: ReactNode }) {
   const { lang, toggle: toggleLang, t } = useLang()
   const { theme, toggle: toggleTheme } = useTheme()
-  const { instruments, indexValue, marketMove, indexHistory, baseline } = useLiveMarket()
+  const { instruments, indexValue, indexHistory, baseline } = useLiveMarket()
 
   const features: LangKey[] = ['landing.f1', 'landing.f2', 'landing.f3', 'landing.f4']
+
+  const first = indexHistory[0]
+  const marketMove = indexHistory.length >= 2 && first ? indexHistory[indexHistory.length - 1] / first - 1 : 0
 
   return (
     <div className="gate-shell">
