@@ -81,13 +81,13 @@ public class InstrumentService
     }
 
     public async Task<PagedResult<Instrument>> GetFavoritesBoardAsync(
-        Guid userId, string? sort, int? page, int? limit, CancellationToken ct)
+        Guid userId, string? sort, string? q, int? page, int? limit, CancellationToken ct)
     {
         var pageSize = Paging.ClampLimit(limit);
         var p = Paging.ClampPage(page);
 
         var result = await _instruments.GetFavoritesBoardPagedAsync(
-            userId, NormaliseSort(sort), p, pageSize, ct);
+            userId, NormaliseSort(sort), q, p, pageSize, ct);
 
         return new PagedResult<Instrument>(result.Items, p, pageSize, result.Total);
     }

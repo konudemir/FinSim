@@ -28,10 +28,10 @@ public class FavoritesBoardPagingTests
     {
         var ctx = new InstrumentTestContext();
 
-        await ctx.Service.GetFavoritesBoardAsync(UserId, sort, null, null, CancellationToken.None);
+        await ctx.Service.GetFavoritesBoardAsync(UserId, sort, null, null, null, CancellationToken.None);
 
         await ctx.Instruments.Received().GetFavoritesBoardPagedAsync(
-            UserId, sort, Arg.Any<int>(), Arg.Any<int>(), Arg.Any<CancellationToken>());
+            UserId, sort, null, Arg.Any<int>(), Arg.Any<int>(), Arg.Any<CancellationToken>());
     }
 
     // ── full multi-page walk: no duplicates, no skipped rows ────────────
@@ -47,7 +47,7 @@ public class FavoritesBoardPagingTests
         {
             var thisPage = page;
             ctx.Instruments.GetFavoritesBoardPagedAsync(
-                    UserId, "symbol_asc", thisPage, limit, Arg.Any<CancellationToken>())
+                    UserId, "symbol_asc", null, thisPage, limit, Arg.Any<CancellationToken>())
                 .Returns(new PagedRows<Instrument>(
                     all.Skip((thisPage - 1) * limit).Take(limit).ToList(), all.Count));
         }
@@ -55,7 +55,7 @@ public class FavoritesBoardPagingTests
         var seen = new List<Guid>();
         for (var page = 1; page <= 3; page++)
         {
-            var result = await ctx.Service.GetFavoritesBoardAsync(UserId, "symbol_asc", page, limit, CancellationToken.None);
+            var result = await ctx.Service.GetFavoritesBoardAsync(UserId, "symbol_asc", null, page, limit, CancellationToken.None);
             seen.AddRange(result.Items.Select(i => i.Id));
         }
 
@@ -70,10 +70,10 @@ public class FavoritesBoardPagingTests
         const int limit = 2;
         var all = GivenInstruments(5).OrderBy(i => i.Symbol).ToList(); // 3 pages, page 3 has 1 row
 
-        ctx.Instruments.GetFavoritesBoardPagedAsync(UserId, "symbol_asc", 3, limit, Arg.Any<CancellationToken>())
+        ctx.Instruments.GetFavoritesBoardPagedAsync(UserId, "symbol_asc", null, 3, limit, Arg.Any<CancellationToken>())
             .Returns(new PagedRows<Instrument>(all.Skip(4).Take(limit).ToList(), all.Count));
 
-        var result = await ctx.Service.GetFavoritesBoardAsync(UserId, "symbol_asc", 3, limit, CancellationToken.None);
+        var result = await ctx.Service.GetFavoritesBoardAsync(UserId, "symbol_asc", null, 3, limit, CancellationToken.None);
 
         Assert.Single(result.Items);
         Assert.Equal(all.Count, result.TotalCount);
@@ -86,10 +86,10 @@ public class FavoritesBoardPagingTests
         const int limit = 2;
         var all = GivenInstruments(5); // totalPages = 3
 
-        ctx.Instruments.GetFavoritesBoardPagedAsync(UserId, "symbol_asc", 4, limit, Arg.Any<CancellationToken>())
+        ctx.Instruments.GetFavoritesBoardPagedAsync(UserId, "symbol_asc", null, 4, limit, Arg.Any<CancellationToken>())
             .Returns(new PagedRows<Instrument>(new List<Instrument>(), all.Count));
 
-        var result = await ctx.Service.GetFavoritesBoardAsync(UserId, "symbol_asc", 4, limit, CancellationToken.None);
+        var result = await ctx.Service.GetFavoritesBoardAsync(UserId, "symbol_asc", null, 4, limit, CancellationToken.None);
 
         Assert.Empty(result.Items);
         Assert.Equal(all.Count, result.TotalCount);
@@ -107,10 +107,10 @@ public class FavoritesBoardPagingTests
     {
         var ctx = new InstrumentTestContext();
 
-        await ctx.Service.GetFavoritesBoardAsync(UserId, "symbol_asc", null, limit, CancellationToken.None);
+        await ctx.Service.GetFavoritesBoardAsync(UserId, "symbol_asc", null, null, limit, CancellationToken.None);
 
         await ctx.Instruments.Received().GetFavoritesBoardPagedAsync(
-            UserId, "symbol_asc", Arg.Any<int>(), expected, Arg.Any<CancellationToken>());
+            UserId, "symbol_asc", null, Arg.Any<int>(), expected, Arg.Any<CancellationToken>());
     }
 
     // ── a favorite is un-hearted mid-walk ────────────────────────────
@@ -122,17 +122,17 @@ public class FavoritesBoardPagingTests
         const int limit = 2;
         var all = GivenInstruments(4).OrderBy(i => i.Symbol).ToList();
 
-        ctx.Instruments.GetFavoritesBoardPagedAsync(UserId, "symbol_asc", 1, limit, Arg.Any<CancellationToken>())
+        ctx.Instruments.GetFavoritesBoardPagedAsync(UserId, "symbol_asc", null, 1, limit, Arg.Any<CancellationToken>())
             .Returns(new PagedRows<Instrument>(all.Take(limit).ToList(), all.Count));
 
-        var page1 = await ctx.Service.GetFavoritesBoardAsync(UserId, "symbol_asc", 1, limit, CancellationToken.None);
+        var page1 = await ctx.Service.GetFavoritesBoardAsync(UserId, "symbol_asc", null, 1, limit, CancellationToken.None);
         Assert.Equal(limit, page1.Items.Count);
 
         var remaining = new List<Instrument> { all[3] };
-        ctx.Instruments.GetFavoritesBoardPagedAsync(UserId, "symbol_asc", 2, limit, Arg.Any<CancellationToken>())
+        ctx.Instruments.GetFavoritesBoardPagedAsync(UserId, "symbol_asc", null, 2, limit, Arg.Any<CancellationToken>())
             .Returns(new PagedRows<Instrument>(remaining, 3));
 
-        var page2 = await ctx.Service.GetFavoritesBoardAsync(UserId, "symbol_asc", 2, limit, CancellationToken.None);
+        var page2 = await ctx.Service.GetFavoritesBoardAsync(UserId, "symbol_asc", null, 2, limit, CancellationToken.None);
 
         Assert.Single(page2.Items);
         Assert.Equal(all[3].Id, page2.Items[0].Id);
