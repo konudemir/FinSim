@@ -403,3 +403,27 @@ middleware instead of reaching the client as a stack trace. The real exception g
 the caller gets `ServerError` with a trace id it can quote back, plus the actual detail while in
 development. A request the browser abandoned mid-flight isn't treated as an error, and a response
 that already started writing is left alone, because the headers are gone by then.
+
+
+## Screenshots
+
+### Sign in & register
+![Sign in](docs/screenshots4readme/01-sign-in.png)
+![Create account](docs/screenshots4readme/02-create-account.png)
+
+### Portfolio
+![Portfolio](docs/screenshots4readme/03-portfolio.png)
+![Portfolio, P&L history](docs/screenshots4readme/04-portfolio-pnl.png)
+![Favourites](docs/screenshots4readme/05-favourites.png)
+
+### Market
+![Stock board](docs/screenshots4readme/06-stocks.png)
+![Single instrument, order book](docs/screenshots4readme/07-stock-detail.png)
+
+### Admin panel
+![Admin, instruments](docs/screenshots4readme/08-admin-instruments.png)
+![Admin, users](docs/screenshots4readme/09-admin-users.png)
+![Admin, bot view](docs/screenshots4readme/10-admin-bots.png)
+
+### Dark theme and Turkish
+![Dark theme, Turkish](docs/screenshots4readme/11-dark-tr.png)
