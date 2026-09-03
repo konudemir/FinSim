@@ -71,15 +71,16 @@ function useLiveMarket() {
 function HeroChart({ data, rising }: { data: number[]; rising: boolean }) {
   const w = 480
   const h = 220
-  const pad = 6
+  const padX = 0
+  const padY = 10
   const max = Math.max(...data)
   const min = Math.min(...data)
   const range = max - min || 1
   const last = data.length - 1
 
   const pts = data.map((v, i) => {
-    const x = (i / last) * (w - pad * 2) + pad
-    const y = h - pad - ((v - min) / range) * (h - pad * 2)
+    const x = (i / last) * (w - padX * 2) + padX
+    const y = h - padY - ((v - min) / range) * (h - padY * 2)
     return [x, y] as const
   })
   const line = pts.map(([x, y]) => `${x.toFixed(1)},${y.toFixed(1)}`).join(' ')
@@ -97,7 +98,7 @@ function HeroChart({ data, rising }: { data: number[]; rising: boolean }) {
       {[0.22, 0.5, 0.78].map(f => (
         <line key={f} x1="0" x2={w} y1={h * f} y2={h * f} className="hero-grid" />
       ))}
-      <polygon points={`${pad},${h - pad} ${line} ${w - pad},${h - pad}`} fill="url(#heroFill)" />
+      <polygon points={`${padX},${h} ${line} ${w - padX},${h}`} fill="url(#heroFill)" />
       <polyline
         points={line}
         pathLength={1}
@@ -156,6 +157,9 @@ export default function GateLayout({ children }: { children: ReactNode }) {
   return (
     <div className="gate-shell">
       <aside className="gate-aside">
+        <div className="gate-aurora" aria-hidden="true">
+          <span /><span /><span />
+        </div>
         <div className="gate-aside-in">
           <div className="gate-brand">
             <Logomark size={30} />

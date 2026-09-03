@@ -74,6 +74,8 @@ export default function Admin({ onClose }: { onClose: () => void }) {
   const [askPage, setAskPage] = useState(1)
   const [bidPage, setBidPage] = useState(1)
 
+  const [openUsers, setOpenUsers] = useState<Set<string>>(new Set())
+
   const [cashDelta, setCashDelta] = useState<Record<string, string>>({})
   const [cashReason, setCashReason] = useState<Record<string, string>>({})
   const [shareInstrument, setShareInstrument] = useState<Record<string, string>>({})
@@ -226,6 +228,14 @@ export default function Admin({ onClose }: { onClose: () => void }) {
       fail(e, 'err.orderFailed')
     }
   }
+
+  const toggleUser = (id: string) =>
+    setOpenUsers(prev => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
 
   const isBotUser = (u: AdminUser) =>
     u.email.toLocaleLowerCase('tr').endsWith('@bots.finsim.local')
@@ -695,56 +705,75 @@ export default function Admin({ onClose }: { onClose: () => void }) {
   )
 
   function renderUserCard(u: AdminUser) {
+    const open = openUsers.has(u.id)
     return (
-      <div key={u.id} className="admin-user">
-        <div className="admin-user-head">
-          <strong>{u.username}</strong>
-          <span className="section-note">{u.email}</span>
-          <span>{t('admin.free')}: {fmt(u.freeCashBalance)}</span>
-          <span>{t('admin.locked')}: {fmt(u.lockedCashBalance)}</span>
-          <span>{t('admin.realized')}: {fmt(u.realizedProfitLoss)}</span>
-        </div>
+      <div key={u.id} className="admin-user" data-open={open}>
+        <button
+          type="button"
+          className="admin-user-head"
+          onClick={() => toggleUser(u.id)}
+          aria-expanded={open}
+        >
+          <span className="admin-user-chevron" aria-hidden="true">{open ? '▾' : '▸'}</span>
+          <span className="admin-user-summary">
+            <strong>{u.username}</strong>
+            <span className="admin-user-email">{u.email}</span>
+            <span className="admin-user-stat">
+              {t('admin.free')}: <span className="admin-user-num">{fmt(u.freeCashBalance)}</span>
+            </span>
+            <span className="admin-user-stat">
+              {t('admin.locked')}: <span className="admin-user-num">{fmt(u.lockedCashBalance)}</span>
+            </span>
+            <span className="admin-user-stat">
+              {t('admin.realized')}: <span className={`admin-user-num ${dirOf(u.realizedProfitLoss)}`}>{signed(u.realizedProfitLoss)}</span>
+            </span>
+          </span>
+        </button>
 
-        <div className="admin-user-holdings">
-          {u.holdings.length === 0 ? (
-            <span className="empty">{t('admin.noHoldings')}</span>
-          ) : (
-            u.holdings.map(h => (
-              <span key={h.symbol}>
-                {h.symbol}: {h.totalQuantity}
-                {h.lockedQuantity > 0 ? ` (${t('board.locked', { n: h.lockedQuantity })})` : ''}
-              </span>
-            ))
-          )}
-        </div>
+        {open && (
+          <div className="admin-user-body">
+            <div className="admin-user-holdings">
+              {u.holdings.length === 0 ? (
+                <span className="empty">{t('admin.noHoldings')}</span>
+              ) : (
+                u.holdings.map(h => (
+                  <span key={h.symbol}>
+                    {h.symbol}: {h.totalQuantity}
+                    {h.lockedQuantity > 0 ? ` (${t('board.locked', { n: h.lockedQuantity })})` : ''}
+                  </span>
+                ))
+              )}
+            </div>
 
-        <div className="admin-form">
-          <input className="field-input" placeholder={t('admin.cashDelta')}
-            value={cashDelta[u.id] ?? ''}
-            onChange={e => setCashDelta(prev => ({ ...prev, [u.id]: e.target.value }))} />
-          <input className="field-input" placeholder={t('admin.reason')}
-            value={cashReason[u.id] ?? ''}
-            onChange={e => setCashReason(prev => ({ ...prev, [u.id]: e.target.value }))} />
-          <button className="ghost-btn" onClick={() => applyCash(u.id)}>
-            {t('admin.applyCash')}
-          </button>
-        </div>
+            <div className="admin-form">
+              <input className="field-input" placeholder={t('admin.cashDelta')}
+                value={cashDelta[u.id] ?? ''}
+                onChange={e => setCashDelta(prev => ({ ...prev, [u.id]: e.target.value }))} />
+              <input className="field-input" placeholder={t('admin.reason')}
+                value={cashReason[u.id] ?? ''}
+                onChange={e => setCashReason(prev => ({ ...prev, [u.id]: e.target.value }))} />
+              <button className="ghost-btn" onClick={() => applyCash(u.id)}>
+                {t('admin.applyCash')}
+              </button>
+            </div>
 
-        <div className="admin-form">
-          <select className="field-input" value={shareInstrument[u.id] ?? ''}
-            onChange={e => setShareInstrument(prev => ({ ...prev, [u.id]: e.target.value }))}>
-            <option value="">{t('admin.shareInstrument')}</option>
-            {instruments.filter(i => i.isActive).map(i => (
-              <option key={i.id} value={i.id}>{i.symbol}</option>
-            ))}
-          </select>
-          <input className="field-input" placeholder={t('admin.shareQty')}
-            value={shareQty[u.id] ?? ''}
-            onChange={e => setShareQty(prev => ({ ...prev, [u.id]: e.target.value }))} />
-          <button className="ghost-btn" onClick={() => applyShares(u.id)}>
-            {t('admin.applyShares')}
-          </button>
-        </div>
+            <div className="admin-form">
+              <select className="field-input" value={shareInstrument[u.id] ?? ''}
+                onChange={e => setShareInstrument(prev => ({ ...prev, [u.id]: e.target.value }))}>
+                <option value="">{t('admin.shareInstrument')}</option>
+                {instruments.filter(i => i.isActive).map(i => (
+                  <option key={i.id} value={i.id}>{i.symbol}</option>
+                ))}
+              </select>
+              <input className="field-input" placeholder={t('admin.shareQty')}
+                value={shareQty[u.id] ?? ''}
+                onChange={e => setShareQty(prev => ({ ...prev, [u.id]: e.target.value }))} />
+              <button className="ghost-btn" onClick={() => applyShares(u.id)}>
+                {t('admin.applyShares')}
+              </button>
+            </div>
+          </div>
+        )}
       </div>
     )
   }
