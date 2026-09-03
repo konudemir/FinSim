@@ -24,7 +24,7 @@ namespace FinSim.Application.Interfaces
             int page, int pageSize, CancellationToken ct);
 
         Task<PagedRows<Instrument>> GetFavoritesBoardPagedAsync(
-            Guid userId, string sort,
+            Guid userId, string sort, string? q,
             int page, int pageSize, CancellationToken ct);
 
         Task<PagedRows<Instrument>> GetAdminBoardPagedAsync(

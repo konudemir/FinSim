@@ -61,7 +61,7 @@ startup and does nothing if no account is registered under that address yet.
 ### Prerequisites
 
 - .NET 10 SDK
-- Node 20+
+- Node 22+
 - Docker
 - EF Core CLI tools:
 
@@ -191,7 +191,7 @@ valid for an hour. **Admin** means the same token, but the account also needs th
 | Method | Path | Description | Auth |
 |---|---|---|---|
 | GET | `/api/favorites` | The instruments the user starred | Yes |
-| GET | `/api/favorites/board` | The starred instruments as a board, one page at a time. Takes `sort`, `page` and `limit` | Yes |
+| GET | `/api/favorites/board` | The starred instruments as a board, one page at a time. Takes `sort`, an optional `q` that matches symbol or name, `page` and `limit` | Yes |
 | POST | `/api/favorites/{instrumentId}` | Star an instrument | Yes |
 | DELETE | `/api/favorites/{instrumentId}` | Unstar it | Yes |
 

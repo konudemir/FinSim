@@ -15,7 +15,7 @@ namespace FinSim.Application.Services
         private readonly ILogger<OrderCheckEngine> _logger;
         
         /// <summary>Traded quantity per instrument from the last MatchAsync call.
-        /// BackgroundWorker reads this to stamp Volume on the PriceHistory row.</summary>
+        /// MarketTickWorker reads this to stamp Volume on the PriceHistory row.</summary>
         public Dictionary<Guid, double> LastTickVolume { get; private set; } = new();
 
         public OrderCheckEngine(

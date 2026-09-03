@@ -30,7 +30,7 @@ namespace FinSim.Application.Services
             var cutoff = now - PollInterval;
 
             // Poll the stalest few rather than everything at once, so the request
-            // rate stays flat instead of bursting every 15 minutes.
+            // rate stays flat instead of bursting every 5 minutes.
             var due = instruments
                 .Where(i => !string.IsNullOrWhiteSpace(i.RealSymbol) && i.IsActive)
                 .Where(i => i.LastRealPriceAt is null || i.LastRealPriceAt < cutoff)

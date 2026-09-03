@@ -12,12 +12,12 @@ import { Logomark } from './icons'
 import GateLayout from './Gate'
 import Admin from './Admin'
 import { fmt } from './format'
-import { sectorLabel } from './lang'
+import StockPage from './pages/StockPage'
 
 export const PAGE_SIZE = 5
 const MARKET_PAGE_SIZE = 20
 
-type Instrument = {
+export type Instrument = {
   id: string
   symbol: string
   name: string
@@ -33,7 +33,7 @@ type Instrument = {
   city: string | null
   sharesOutstanding: number | null
 }
-type PricePoint = {
+export type PricePoint = {
   timestamp: string
   price: number
   volume: number
@@ -86,7 +86,7 @@ type Transaction = {
   transactionDate: string
 }
 
-type PortfolioItem = {
+export type PortfolioItem = {
   symbol: string
   name: string
   totalQuantity: number
@@ -109,7 +109,7 @@ type PriceUpdate = {
   indexValue: number
   prices: { symbol: string; currentPrice: number; volume: number }[]
 }
-type Tick = 'up' | 'down'
+export type Tick = 'up' | 'down'
 
 type OrderUpdate = {
   orders: Order[]
@@ -119,7 +119,7 @@ type OrderUpdate = {
 
 export type Paged<T> = { items: T[]; page: number; pageSize: number; totalCount: number }
 
-type BookOrder = {
+export type BookOrder = {
   id: string
   username: string
   direction: string
@@ -248,7 +248,7 @@ function useOrderPage(open: boolean) {
   return usePagedList<Order>('/api/order', { open }, PAGE_SIZE)
 }
 
-function useAdminBookPage(instrumentId: string, direction: 'Buy' | 'Sell') {
+export function useAdminBookPage(instrumentId: string, direction: 'Buy' | 'Sell') {
   return usePagedList<BookOrder>(`/api/admin/book/${instrumentId}/orders`, { direction }, PAGE_SIZE)
 }
 
@@ -260,11 +260,11 @@ function usePortfolioBoardPage(sort: string, q: string) {
   return usePagedList<Instrument>('/api/users/portfolio/board', { sort, q }, PAGE_SIZE)
 }
 
-function useFavoritesBoardPage(sort: string) {
-  return usePagedList<Instrument>('/api/favorites/board', { sort }, PAGE_SIZE)
+function useFavoritesBoardPage(sort: string, q: string) {
+  return usePagedList<Instrument>('/api/favorites/board', { sort, q }, PAGE_SIZE)
 }
 
-function AdminBookSide({ title, side, book }: {
+export function AdminBookSide({ title, side, book }: {
   title: string
   side: 'up' | 'down'
   book: ReturnType<typeof usePagedList<BookOrder>>
@@ -559,24 +559,18 @@ const seeded = useRef<Set<string>>(new Set())
   const prevPrices = useRef<Record<string, number>>({})
   const [online, setOnline] = useState(true)
   const pathname = usePath()
-  // /stocks/:symbol opens as an overlay on top of whatever page was already
-  // showing, so the background view tracks the last non-overlay path
-  // instead of flipping to 'portfolio' while a stock page is open. A cold
-  // load straight into /stocks/:symbol has no prior page to fall back to,
-  // so default it to the market board rather than the stock page itself.
-  const bgPathRef = useRef(pathname.startsWith('/stocks/') ? '/market' : pathname)
-  if (!pathname.startsWith('/stocks/')) bgPathRef.current = pathname
-  const view: 'portfolio' | 'market' | 'admin' =
-    bgPathRef.current === '/market' ? 'market' : bgPathRef.current === '/admin' ? 'admin' : 'portfolio'
+  const stockSymbol = pathname.startsWith('/stocks/') ? pathname.slice('/stocks/'.length).toLowerCase() : null
+  const view: 'portfolio' | 'market' | 'admin' | 'stock' =
+    stockSymbol ? 'stock' : pathname === '/market' ? 'market' : pathname === '/admin' ? 'admin' : 'portfolio'
   const [query, setQuery] = useState('')
   const [sort, setSort] = useState(() => urlSort() ?? 'symbol_asc')
   const [marketQuery, setMarketQuery] = useState('')
   const [marketSort, setMarketSort] = useState(() => urlSort() ?? 'symbol_asc')
   const [debouncedMarketQuery, setDebouncedMarketQuery] = useState('')
   const [debouncedQuery, setDebouncedQuery] = useState('')
-  // No sort control in the favorites panel (matches the pre-pagination UI) —
-  // symbol-asc via the board endpoint replaces the old client-side default sort.
-  const favSort = 'symbol_asc'
+  const [favQuery, setFavQuery] = useState('')
+  const [favSort, setFavSort] = useState('symbol_asc')
+  const [debouncedFavQuery, setDebouncedFavQuery] = useState('')
 
   useEffect(() => {
     const timer = window.setTimeout(() => setDebouncedMarketQuery(marketQuery), 300)
@@ -588,38 +582,43 @@ const seeded = useRef<Set<string>>(new Set())
     return () => window.clearTimeout(timer)
   }, [query])
 
+  useEffect(() => {
+    const timer = window.setTimeout(() => setDebouncedFavQuery(favQuery), 300)
+    return () => window.clearTimeout(timer)
+  }, [favQuery])
+
   const board = useBoardPage(marketSort, debouncedMarketQuery)
   const portfolioBoard = usePortfolioBoardPage(sort, debouncedQuery)
-  const favoritesBoard = useFavoritesBoardPage(favSort)
+  const favoritesBoard = useFavoritesBoardPage(favSort, debouncedFavQuery)
 
   // The market view seeds its initial page from the URL (a linked/refreshed
   // page); every later sort/query change resets to page 1.
   const marketInitial = useRef(true)
   useEffect(() => {
-    board.goTo(marketInitial.current && bgPathRef.current === '/market' ? urlPage() : 1)
+    board.goTo(marketInitial.current && pathname === '/market' ? urlPage() : 1)
     marketInitial.current = false
   }, [marketSort, debouncedMarketQuery])
 
   const portfolioInitial = useRef(true)
   useEffect(() => {
-    portfolioBoard.goTo(portfolioInitial.current && bgPathRef.current !== '/market' ? urlPage() : 1)
+    portfolioBoard.goTo(portfolioInitial.current && pathname !== '/market' && pathname !== '/admin' && !stockSymbol ? urlPage() : 1)
     portfolioInitial.current = false
   }, [sort, debouncedQuery])
 
   useEffect(() => {
     favoritesBoard.goTo(1)
-  }, [favSort])
+  }, [favSort, debouncedFavQuery])
 
   // Keep the URL's page/sort in sync with whichever board is currently active.
   useEffect(() => {
-    if (bgPathRef.current !== '/market') return
+    if (view !== 'market') return
     setUrlParams(board.page, marketSort)
-  }, [board.page, marketSort])
+  }, [board.page, marketSort, view])
 
   useEffect(() => {
-    if (bgPathRef.current === '/market') return
+    if (view === 'market' || view === 'stock') return
     setUrlParams(portfolioBoard.page, sort)
-  }, [portfolioBoard.page, sort])
+  }, [portfolioBoard.page, sort, view])
 
   const loadBalance = () =>
     api.get<Balance>('/api/users/balance').then(r => setBalance(r.data)).catch(console.error)
@@ -781,7 +780,6 @@ const seeded = useRef<Set<string>>(new Set())
   }, [])
 
   const chosen = instruments.find(i => i.id === selected) ?? null
-  const stockSymbol = pathname.startsWith('/stocks/') ? pathname.slice('/stocks/'.length).toLowerCase() : null
   const fullscreenInstrument = stockSymbol
     ? instruments.find(i => i.symbol.toLowerCase() === stockSymbol) ?? null
     : null
@@ -1121,7 +1119,7 @@ const loadHistory = (i: Instrument) => {
   )
 
   return (
-    <div className="shell">
+    <div className={`shell${view === 'stock' ? ' shell-flush' : ''}`}>
       <header className="rail">
         <div className="wrap rail-in">
           <span className="rail-brand">
@@ -1211,35 +1209,39 @@ const loadHistory = (i: Instrument) => {
         </div>
       </header>
 
-      <Tape items={tapeRow} />
+      {view !== 'stock' && (
+        <>
+          <Tape items={tapeRow} />
 
-      <section className="strip">
-        <div className="cell">
-          <div className="cell-label">{t('strip.equity')}</div>
-          <div className="cell-value">₺<Money value={equity} /></div>
-          <div className={`cell-delta ${dirOf(openPL)}`}>
-            {t('strip.openPL')} {signed(openPL)} ₺
-          </div>
-        </div>
-        <div className="cell">
-          <div className="cell-label">{t('strip.free')}</div>
-          <div className="cell-value sm">{balance ? fmt(balance.freeCashBalance) : '—'}</div>
-          {balance && balance.lockedCashBalance !== 0 && (
-            <div className="cell-delta flat">{t('strip.locked', { n: fmt(balance.lockedCashBalance) })}</div>
-          )}
-          {balance && balance.marginUsed > 0 && (
-            <div className="cell-delta amber">{t('strip.margin', { n: fmt(balance.marginUsed) })}</div>
-          )}
-        </div>
-        <div className="cell">
-          <div className="cell-label">{t('strip.position')}</div>
-          <div className="cell-value sm">{fmt(holdingsValue)}</div>
-        </div>
-        <div className="cell">
-          <div className="cell-label">{t('strip.realized')}</div>
-          <div className="cell-value sm">{balance ? `${signed(balance.realizedProfitLoss)} ₺` : '—'}</div>
-        </div>
-      </section>
+          <section className="strip">
+            <div className="cell">
+              <div className="cell-label">{t('strip.equity')}</div>
+              <div className="cell-value">₺<Money value={equity} /></div>
+              <div className={`cell-delta ${dirOf(openPL)}`}>
+                {t('strip.openPL')} {signed(openPL)} ₺
+              </div>
+            </div>
+            <div className="cell">
+              <div className="cell-label">{t('strip.free')}</div>
+              <div className="cell-value sm">{balance ? fmt(balance.freeCashBalance) : '—'}</div>
+              {balance && balance.lockedCashBalance !== 0 && (
+                <div className="cell-delta flat">{t('strip.locked', { n: fmt(balance.lockedCashBalance) })}</div>
+              )}
+              {balance && balance.marginUsed > 0 && (
+                <div className="cell-delta amber">{t('strip.margin', { n: fmt(balance.marginUsed) })}</div>
+              )}
+            </div>
+            <div className="cell">
+              <div className="cell-label">{t('strip.position')}</div>
+              <div className="cell-value sm">{fmt(holdingsValue)}</div>
+            </div>
+            <div className="cell">
+              <div className="cell-label">{t('strip.realized')}</div>
+              <div className="cell-value sm">{balance ? `${signed(balance.realizedProfitLoss)} ₺` : '—'}</div>
+            </div>
+          </section>
+        </>
+      )}
 
       {liquidations.length > 0 && (
         <div className="liq-stack" role="alert">
@@ -1259,7 +1261,27 @@ const loadHistory = (i: Instrument) => {
       )}
 
       <main className="wrap">
-        {stockSymbol && !instrumentsLoaded ? null : view === 'admin' ? (
+        {view === 'stock' ? (
+          !instrumentsLoaded ? (
+            <div className="market-page">{t('fs.loading')}</div>
+          ) : !fullscreenInstrument ? (
+            <div className="market-page">
+              <p>{t('stock.unknownSymbol', { symbol: stockSymbol! })}</p>
+              <button className="ghost-btn" onClick={() => navigate('/market')}>{t('stock.backToMarket')}</button>
+            </div>
+          ) : (
+            <StockPage
+              i={fullscreenInstrument}
+              pos={fullscreenPos}
+              tick={ticks[fullscreenInstrument.symbol]}
+              history={fullscreenHistory}
+              isFavorite={favorites.has(fullscreenInstrument.id)}
+              onToggleFavorite={() => toggleFavorite(fullscreenInstrument)}
+              renderTicketFields={renderTicketFields}
+              isAdmin={!!balance?.isAdmin}
+            />
+          )
+        ) : view === 'admin' ? (
           balance === null ? (
             <div className="market-page">{t('fs.loading')}</div>
           ) : !balance.isAdmin ? (
@@ -1523,32 +1545,12 @@ const loadHistory = (i: Instrument) => {
         hasNext={favoritesBoard.hasNext}
         hasPrevious={favoritesBoard.hasPrevious}
         goTo={favoritesBoard.goTo}
+        query={favQuery}
+        onQueryChange={setFavQuery}
+        sort={favSort}
+        onSortChange={setFavSort}
       />
 
-      {stockSymbol && !instrumentsLoaded && (
-        <div className="market-page">{t('fs.loading')}</div>
-      )}
-
-      {stockSymbol && instrumentsLoaded && !fullscreenInstrument && (
-        <div className="market-page">
-          <p>{t('stock.unknownSymbol', { symbol: stockSymbol })}</p>
-          <button className="ghost-btn" onClick={() => navigate('/market')}>{t('stock.backToMarket')}</button>
-        </div>
-      )}
-
-      {fullscreenInstrument && (
-        <InstrumentFullscreen
-          i={fullscreenInstrument}
-          pos={fullscreenPos}
-          tick={ticks[fullscreenInstrument.symbol]}
-          history={fullscreenHistory}
-          isFavorite={favorites.has(fullscreenInstrument.id)}
-          onToggleFavorite={() => toggleFavorite(fullscreenInstrument)}
-          onClose={() => navigate(bgPathRef.current)}
-          renderTicketFields={renderTicketFields}
-          isAdmin={!!balance?.isAdmin}
-        />
-      )}
     </div>
   )
 }
@@ -1556,6 +1558,7 @@ const loadHistory = (i: Instrument) => {
 function FavoritesDrawer({
   open, onClose, items, ticks, livePortfolio, history, onOpenStock, onToggleFavorite,
   page, totalPages, hasNext, hasPrevious, goTo,
+  query, onQueryChange, sort, onSortChange,
 }: {
   open: boolean
   onClose: () => void
@@ -1570,6 +1573,10 @@ function FavoritesDrawer({
   hasNext: boolean
   hasPrevious: boolean
   goTo: (n: number) => void
+  query: string
+  onQueryChange: (q: string) => void
+  sort: string
+  onSortChange: (s: string) => void
 }) {
   const { t } = useLang()
   return (
@@ -1585,11 +1592,38 @@ function FavoritesDrawer({
           <button className="ghost-btn" onClick={onClose} aria-label={t('app.close')}>×</button>
         </div>
 
+        <div className="board-controls">
+          <div className="search-input">
+            <input
+              className="field-input"
+              type="text"
+              value={query}
+              onChange={e => onQueryChange(e.target.value)}
+              placeholder={t('search.placeholder')}
+            />
+            {query && (
+              <button
+                className="ghost-btn"
+                onClick={() => onQueryChange('')}
+                aria-label={t('app.close')}
+              >
+                ×
+              </button>
+            )}
+          </div>
+          <select className="field-input" value={sort} onChange={e => onSortChange(e.target.value)}>
+            <option value="symbol_asc">{t('sort.symbolAsc')}</option>
+            <option value="symbol_desc">{t('sort.symbolDesc')}</option>
+            <option value="price_desc">{t('sort.priceDesc')}</option>
+            <option value="price_asc">{t('sort.priceAsc')}</option>
+          </select>
+        </div>
+
         <div className="fav-drawer-body">
           {items.length === 0 ? (
             <div className="fav-empty">
               <span className="fav-empty-icon" aria-hidden="true">♡</span>
-              <p>{t('board.favoritesEmpty')}</p>
+              <p>{query ? t('search.noResults') : t('board.favoritesEmpty')}</p>
             </div>
           ) : (
             <div className="fav-grid">
@@ -1796,7 +1830,7 @@ function PnlChart({ live }: {
   )
 }
 
-function AreaSpark({ data, className }: { data: PricePoint[]; className: string }) {
+export function AreaSpark({ data, className }: { data: PricePoint[]; className: string }) {
   const [hover, setHover] = useState<number | null>(null)
   if (data.length < 2) return null
   const { lang } = useLang()
@@ -1876,7 +1910,7 @@ const fmtAxisTime = (iso: string, lang: string) =>
     day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit',
   })
 
-function ChartAxes({ min, max, times, lang }: { min: number; max: number; times: string[]; lang: string }) {
+export function ChartAxes({ min, max, times, lang }: { min: number; max: number; times: string[]; lang: string }) {
   const yTicks = 4
   const rows = Array.from({ length: yTicks + 1 }, (_, idx) => {
     const frac = idx / yTicks
@@ -1932,7 +1966,7 @@ function buildCandles(data: PricePoint[], count: number): Candle[] {
   return candles
 }
 
-function CandleChart({ data, className }: { data: PricePoint[]; className: string }) {
+export function CandleChart({ data, className }: { data: PricePoint[]; className: string }) {
   const { lang } = useLang()
   const [hover, setHover] = useState<number | null>(null)
   const candles = useMemo(() => buildCandles(data, 40), [data])
@@ -1994,7 +2028,7 @@ function CandleChart({ data, className }: { data: PricePoint[]; className: strin
   )
 }
 
-function fmtCompactTRY(n: number): string {
+export function fmtCompactTRY(n: number): string {
   const abs = Math.abs(n)
   const units: [number, string][] = [
     [1_000_000_000_000, 'Tr'],
@@ -2009,197 +2043,6 @@ function fmtCompactTRY(n: number): string {
     }
   }
   return `${n.toLocaleString('tr-TR', { maximumFractionDigits: 0 })} ₺`
-}
-
-function InstrumentFullscreen({
-  i, pos, tick, history, isFavorite, onToggleFavorite, onClose, renderTicketFields, isAdmin,
-}: {
-  i: Instrument
-  pos: PortfolioItem | undefined
-  tick: Tick | undefined
-  history: PricePoint[]
-  isFavorite: boolean
-  onToggleFavorite: () => void
-  onClose: () => void
-  renderTicketFields: (idPrefix: string) => React.ReactNode
-  isAdmin: boolean
-}) {
-  const { t, lang } = useLang()
-  const [chartMode, setChartMode] = useState<'area' | 'candle'>('area')
-  const buyBook = useAdminBookPage(i.id, 'Buy')
-  const sellBook = useAdminBookPage(i.id, 'Sell')
-
-  useEffect(() => {
-    if (isAdmin) { buyBook.goTo(1); sellBook.goTo(1) }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isAdmin, i.id])
-
-  // The panel is its own scroll surface — the board underneath must not
-  // move while it's open, even if a wheel scroll spills past the panel edge.
-  useEffect(() => {
-    const prev = document.body.style.overflow
-    document.body.style.overflow = 'hidden'
-    return () => { document.body.style.overflow = prev }
-  }, [])
-
-  const open = history[0]?.price ?? i.currentPrice
-  const prices = history.length ? history.map(p => p.price) : [i.currentPrice]
-  const high = Math.max(...prices, i.currentPrice)
-  const low = Math.min(...prices, i.currentPrice)
-  const areaPad = (high - low) * 0.15 || high * 0.05 || 1
-  const areaPadBottom = (high - low) * 0.35 || high * 0.1 || 1
-  const areaTop = high + areaPad
-  const areaMin = Math.max(0, low - areaPadBottom)
-  const volume = history.reduce((sum, p) => sum + p.volume, 0)
-  const change = i.currentPrice - open
-  const changePct = open ? (change / open) * 100 : 0
-  const rising = change >= 0
-
-  return (
-    <div className="instrument-fullscreen-backdrop" onClick={onClose}>
-      <div className="instrument-fullscreen-panel" data-trend={rising ? 'up' : 'down'} onClick={e => e.stopPropagation()}>
-        <div className="fs-glow" aria-hidden="true" />
-
-        <div className="fs-head">
-          <button
-            type="button"
-            className="row-fav fs-fav"
-            aria-pressed={isFavorite}
-            aria-label={t(isFavorite ? 'board.unfavorite' : 'board.favorite')}
-            onClick={onToggleFavorite}
-          >
-            {isFavorite ? '♥' : '♡'}
-          </button>
-
-          <div className="fs-title">
-            <div className="fs-sym-row">
-              <span className="fs-sym">{i.symbol}</span>
-              {i.type === 'Fund' && <span className="fund-badge">{t('board.fundBadge')}</span>}
-              {pos?.isShort && <span className="short-badge">{t('board.shortBadge')}</span>}
-              {!i.isActive && <span className="empty">{t('board.closed')}</span>}
-            </div>
-            <span className="fs-name">{i.name}</span>
-          </div>
-
-          <div className="fs-price-block" data-tick={tick} key={i.currentPrice}>
-            <span className="fs-price">{fmt(i.currentPrice)}</span>
-            <span className={`fs-change ${dirOf(change)}`}>
-              {rising ? '▲' : '▼'} {signed(change)} ({changePct >= 0 ? '+' : ''}{changePct.toFixed(2)}%)
-            </span>
-          </div>
-
-          <button type="button" className="ghost-btn fs-close" onClick={onClose} aria-label={t('app.close')}>
-            ×
-          </button>
-        </div>
-
-        <div className="fs-stats">
-          <div className="fs-stat">
-            <span className="fs-stat-label">{t('fs.open')}</span>
-            <span className="fs-stat-value">{fmt(open)}</span>
-          </div>
-          <div className="fs-stat">
-            <span className="fs-stat-label">{t('fs.high')}</span>
-            <span className="fs-stat-value rise">{fmt(high)}</span>
-          </div>
-          <div className="fs-stat">
-            <span className="fs-stat-label">{t('fs.low')}</span>
-            <span className="fs-stat-value fall">{fmt(low)}</span>
-          </div>
-          <div className="fs-stat">
-            <span className="fs-stat-label">{t('fs.volume')}</span>
-            <span className="fs-stat-value">{volume.toLocaleString('tr-TR')}</span>
-          </div>
-          {i.sector != null && (
-            <div className="fs-stat">
-              <span className="fs-stat-label">{t('fs.sector')}</span>
-              <span className="fs-stat-value">{sectorLabel(i.sector)}</span>
-            </div>
-          )}
-          {i.industry != null && (
-            <div className="fs-stat">
-              <span className="fs-stat-label">{t('fs.industry')}</span>
-              <span className="fs-stat-value">{i.industry}</span>
-            </div>
-          )}
-          {i.employees != null && (
-            <div className="fs-stat">
-              <span className="fs-stat-label">{t('fs.employees')}</span>
-              <span className="fs-stat-value">{i.employees.toLocaleString('tr-TR')}</span>
-            </div>
-          )}
-          {i.sharesOutstanding != null && (
-            <div className="fs-stat">
-              <span className="fs-stat-label">{t('fs.marketCap')}</span>
-              <span className="fs-stat-value">{fmtCompactTRY(i.sharesOutstanding * i.currentPrice)}</span>
-            </div>
-          )}
-          {i.city != null && (
-            <div className="fs-stat">
-              <span className="fs-stat-label">{t('fs.city')}</span>
-              <span className="fs-stat-value">{i.city}</span>
-            </div>
-          )}
-          {pos && (
-            <div className="fs-stat">
-              <span className="fs-stat-label">
-                {pos.isShort
-                  ? t('board.shortLots', { n: Math.abs(pos.totalQuantity) })
-                  : t('board.lots', { n: pos.totalQuantity })}
-              </span>
-              <span className={`fs-stat-value ${dirOf(pos.profitLoss)}`}>{signed(pos.profitLoss)}</span>
-            </div>
-          )}
-        </div>
-
-        <div className="instrument-fullscreen-body">
-          {i.description != null && (
-            <div className="fs-description">
-              <p>{i.description}</p>
-              {i.website != null && (
-                <a href={i.website} target="_blank" rel="noopener noreferrer">{i.website}</a>
-              )}
-            </div>
-          )}
-
-          <div className="instrument-fullscreen-chart">
-            <div className="fs-chart-toolbar">
-              <button type="button" className="ghost-btn" aria-pressed={chartMode === 'area'}
-                      onClick={() => setChartMode('area')}>
-                {t('fs.areaView')}
-              </button>
-              <button type="button" className="ghost-btn" aria-pressed={chartMode === 'candle'}
-                      onClick={() => setChartMode('candle')}>
-                {t('fs.candleView')}
-              </button>
-            </div>
-            {chartMode === 'area' ? (
-              <>
-                <AreaSpark data={history} className="fullscreen-spark" />
-                {history.length >= 2 && (
-                  <ChartAxes min={areaMin} max={areaTop} times={history.map(p => p.timestamp)} lang={lang} />
-                )}
-              </>
-            ) : (
-              <CandleChart data={history} className="fullscreen-spark" />
-            )}
-            {history.length < 2 && <div className="fs-chart-empty">{t('fs.loading')}</div>}
-          </div>
-
-          {isAdmin && (
-            <div className="admin-book-panels">
-              <AdminBookSide title={t('admin.book.bids')} side="up" book={buyBook} />
-              <AdminBookSide title={t('admin.book.asks')} side="down" book={sellBook} />
-            </div>
-          )}
-        </div>
-
-        <div className="ticket-in fullscreen-ticket">
-          {renderTicketFields('fullscreen-ticket')}
-        </div>
-      </div>
-    </div>
-  )
 }
 
 const Tape = memo(function Tape({ items }: { items: { id: string; symbol: string; currentPrice: number; pct: number }[] }) {

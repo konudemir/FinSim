@@ -143,14 +143,15 @@ namespace FinSim.Infrastructure.Repositories
         }
 
         public Task<PagedRows<Instrument>> GetFavoritesBoardPagedAsync(
-            Guid userId, string sort,
+            Guid userId, string sort, string? q,
             int page, int pageSize, CancellationToken ct)
         {
             var favIds = _db.FavoriteInstruments
                 .Where(f => f.UserId == userId)
                 .Select(f => f.InstrumentId);
 
-            var qry = _db.Instruments.Where(i => i.IsActive && favIds.Contains(i.Id));
+            var qry = ApplySearch(
+                _db.Instruments.Where(i => i.IsActive && favIds.Contains(i.Id)), q);
 
             return PageAsync(qry, sort, page, pageSize, ct);
         }

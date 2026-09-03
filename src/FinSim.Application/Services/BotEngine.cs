@@ -6,16 +6,6 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 
 namespace FinSim.Application.Services;
-
-/// <summary>
-/// Decides which bots act this tick and on which instrument. Every bot is a
-/// liquidity provider: it quotes near currentPrice on whichever side it can
-/// afford, so a user always has something to hit. Trades between bots happen
-/// when quotes overlap — a side effect, not the goal.
-///
-/// Placement goes through OrderService on the same path a real user takes —
-/// no shortcuts, no special casing. Runs inside the tick's transaction.
-/// </summary>
 public class BotEngine
 {
     private readonly IUserRepository _users;
@@ -168,26 +158,6 @@ public class BotEngine
 
         return result;
     }
-
-    /// <summary>
-    /// Sell only what the bot actually holds unlocked, otherwise buy — except most
-    /// bots hold only a handful of the ~100 tradable names (seeded to half the
-    /// bots, 2-5 instruments each), so for most bot/instrument pairs canSell is
-    /// false and the old rule forced a buy every time. Applied across the whole
-    /// crowd that's a one-way bid on nearly every instrument, not a coin flip —
-    /// it pushes price up regardless of what direction any individual bot wants.
-    ///
-    /// A bounded slice of that would-be-buy flow instead opens a small short, so
-    /// instruments nobody happens to hold still get real sell-side pressure. This
-    /// isn't unconstrained "coin-flip shorting" the size cap in QuantityFor keeps
-    /// any one short small, and OrderService's margin check bounds it further.
-    ///
-    /// Most bots are trend-neutral and coin-flip when both sides are open. A
-    /// small contrarian minority leans the other way on purpose: they buy
-    /// into a falling market and sell into a rising one, fading the move
-    /// instead of following it. That's what stops the book from being pure
-    /// one-way liquidity and makes the tape push back on runs.
-    /// </summary>
     private async Task<(OrderDirection? Direction, bool IsShortOpen)> ChooseDirectionAsync(
         User bot, Instrument instrument, Personality p, decimal marketMove, CancellationToken ct)
     {
@@ -253,7 +223,7 @@ public class BotEngine
 
     /// <summary>
     /// Real markets concentrate volume in a handful of names. Without this,
-    /// 25 bots spread over 100 instruments leave every book with one order
+    /// 50 bots spread over 100 instruments leave every book with one order
     /// in it and nothing ever matches.
     /// </summary>
     private List<Instrument> BuildHotList(List<Instrument> tradable)

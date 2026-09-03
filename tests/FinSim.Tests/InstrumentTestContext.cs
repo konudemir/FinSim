@@ -65,7 +65,7 @@ public class InstrumentTestContext
             .Returns(new PagedRows<Instrument>(new List<Instrument>(), 0));
 
         Instruments.GetFavoritesBoardPagedAsync(
-                Arg.Any<Guid>(), Arg.Any<string>(),
+                Arg.Any<Guid>(), Arg.Any<string>(), Arg.Any<string?>(),
                 Arg.Any<int>(), Arg.Any<int>(), Arg.Any<CancellationToken>())
             .Returns(new PagedRows<Instrument>(new List<Instrument>(), 0));
     }

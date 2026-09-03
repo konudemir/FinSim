@@ -29,10 +29,11 @@ namespace FinSim.Controllers
         [HttpGet("board")]
         public async Task<IActionResult> GetBoard(
             [FromQuery] string? sort,
+            [FromQuery] string? q,
             [FromQuery] int? page,
             [FromQuery] int? limit,
             CancellationToken ct) =>
-            Ok(await _instruments.GetFavoritesBoardAsync(CurrentUserId, sort, page, limit, ct));
+            Ok(await _instruments.GetFavoritesBoardAsync(CurrentUserId, sort, q, page, limit, ct));
 
         [HttpPost("{instrumentId:guid}")]
         public async Task<IActionResult> Add(Guid instrumentId, CancellationToken ct)
