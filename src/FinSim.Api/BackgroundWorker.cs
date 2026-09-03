@@ -83,7 +83,7 @@ namespace FinSim.Api.Services
                     {
                         await db.SaveChangesAsync(stoppingToken);
                         await tx.CommitAsync(stoppingToken);
-                        if (++_sinceCleanup >= 1440 * 4)   // ~24 saat @ 60sn
+                        if (++_sinceCleanup >= 1440 * 4)
                         {
                             _sinceCleanup = 0;
                             var cutoff = DateTime.UtcNow.AddDays(-30);
